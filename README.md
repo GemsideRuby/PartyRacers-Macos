@@ -45,6 +45,10 @@ Updated for version 2.4.
 
 There's a lot more... Check out the changelog included with the assets for a full list, along with descriptions and tips on how to use the new items!
 
+## Disclaimers
+* Online is largely untested. Any issues can be reported here, and anyone willing to assist with issues regarding it are welcome to share their findings and/or solutions. Netcoding isn't my strongest area of expertise.
+* Battle mode is also thus untested, as a direct result.
+
 ## How To Use
 
 * Get the [latest copy](www.kartkrew.org) of Dr. Robotnik's Ring Racers installed on your computer.
