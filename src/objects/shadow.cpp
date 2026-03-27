@@ -36,7 +36,9 @@ struct Shadow : mobj_t
 	{
 		switch (follow()->type)
 		{
-		case MT_HYUDORO: {
+		case MT_HYUDORO:
+		case MT_BHYUDORO:		//SCS ADD
+		{
 			fixed_t z;
 			pslope_t* slope;
 

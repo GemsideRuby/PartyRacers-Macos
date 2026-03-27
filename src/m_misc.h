@@ -65,6 +65,7 @@ void M_StopMovie(void);
 
 // the file where game vars and settings are saved
 #define CONFIGFILENAME "ringconfig.cfg"
+#define RADIOCONFIGFILENAME "radioconfig.cfg"			//SCS - RADIO
 
 // The file where we'll save the last IPs we joined
 #define IPLOGFILE "ringsavedips.txt"
@@ -166,6 +167,16 @@ const char * M_Ftrim (double);
 FUNCMATH UINT8 M_CountBits(UINT32 num, UINT8 size);
 
 extern char configfile[MAX_WADPATH];
+
+typedef INT32 floatdenormalstate_t;
+
+/** Enable floating point denormal-to-zero section, if necessary */
+floatdenormalstate_t M_EnterFloatDenormalToZero(void);
+/** Exit floating point denormal-to-zero section, if necessary, restoring previous state */
+void M_ExitFloatDenormalToZero(floatdenormalstate_t previous);
+
+// Radio
+extern char configfile_radio[MAX_WADPATH];		//SCS - RADIO
 
 #ifdef __cplusplus
 } // extern "C"

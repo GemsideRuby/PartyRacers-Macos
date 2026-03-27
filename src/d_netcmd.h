@@ -200,6 +200,8 @@ extern const char *netxcmdnames[MAXNETXCMD - 1];
 void D_RegisterServerCommands(void);
 void D_RegisterClientCommands(void);
 void CleanupPlayerName(INT32 playernum, const char *newname);
+boolean IsPlayerNameUnique(const char *name, INT32 playernum);
+boolean IsPlayerNameGood(char *name);
 boolean EnsurePlayerNameIsGood(char *name, INT32 playernum);
 void D_FillPlayerSkinAndColor(const UINT8 n, const player_t *player, player_config_t *config);
 void D_PlayerChangeSkinAndColor(player_t *player, UINT16 skin, UINT16 color, INT16 follower, UINT16 followercolor);
@@ -226,6 +228,13 @@ void ClearAdminPlayers(void);
 void RemoveAdminPlayer(INT32 playernum);
 void ItemFinder_OnChange(void);
 void D_SetPassword(const char *pw);
+
+// RadioRacers
+void ClearMutedPlayers(void); // Clear the muted players array at the end of a netgame.											//SCS - RADIO START
+void MutePlayerFromChat(INT32 playernum); // Mute a player from chat.
+void UnmutePlayerFromChat(INT32 playernum); // Unmute a player from chat.
+boolean IsPlayerMuted(INT32 playernum); // Check if a player node is in the 'muted players' array								//SCS - RADIO END
+
 
 struct scheduleTask_t
 {

@@ -134,7 +134,11 @@ std::array<Slider, Slider::kNumSliders> sliders{{
 				n = !n;
 				CV_SetValue(&cv_gamedigimusic, n);
 				CV_SetValue(&cv_gamesounds, n);
-				CV_SetValue(&cv_voice_selfdeafen, n);
+				//CV_SetValue(&cv_voice_selfdeafen, !n);			//SCS EDIT - Merge request
+				if (!n)
+				{
+					CV_SetValue(&cv_voice_selfdeafen, !n);
+				}				
 			}
 
 			return n;

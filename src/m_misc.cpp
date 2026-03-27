@@ -32,6 +32,11 @@
 // Extended map support.
 #include <ctype.h>
 
+#if defined(__x86_64__) || defined(_M_X64) || defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
+#include <immintrin.h>
+#define NEED_INTEL_DENORMAL_BIT 1
+#endif
+
 #include "doomdef.h"
 #include "g_game.h"
 #include "m_misc.h"
@@ -542,6 +547,7 @@ void M_LoadJoinedIPs(void)
 //
 
 char configfile[MAX_WADPATH];
+char configfile_radio[MAX_WADPATH];		//SCS - RADIO
 
 // ==========================================================================
 //                          CONFIGURATION
@@ -681,6 +687,9 @@ void M_FirstLoadConfig(void)
 		COM_BufAddText (va("%s \"%s\"\n",cv_playercolor[i].name,cv_playercolor[i].defaultvalue));
 	}
 #endif
+
+	// Load the Radio config
+	COM_BufInsertText(va("exec \"%s\" -immediate\n", configfile_radio));	//SCS - RADIO
 }
 
 /** Saves the game configuration.
@@ -781,6 +790,47 @@ void M_SaveConfig(const char *filename)
 			CONS_Alert(CONS_ERROR, M_GetText("Failed to move temp config file to real destination\n"));
 		}
 	}
+
+	// Radio custom config file
+	if (!filename && !dedicated) {								//SCS - RADIO START
+		FILE *cf;
+		char custom_tmppath[2048];
+
+		// The earlier else-conditional is triggered whenever the game quits, which is when the custom config should be saved.
+		sprintf(custom_tmppath, "%s.tmp", configfile_radio);
+
+		cf = fopen(custom_tmppath, "w");
+		if (!cf)
+		{
+			CONS_Alert(CONS_ERROR, M_GetText("Couldn't save Radio config file %s\n"), configfile_radio);
+			return;
+		}
+
+		// header message
+		fprintf(cf, "// RadioRacers configuration file.\n");
+
+		// Save the Radio-only cvars
+		CV_SaveRadioVariables(cf);
+		fclose(cf);
+
+		{
+			// Atomically replace the old config once the new one has been written.
+
+			namespace fs = std::filesystem;
+
+			fs::path custom_tmp{custom_tmppath};
+			fs::path custom_real{configfile_radio};
+
+			try
+			{
+				fs::rename(custom_tmp, custom_real);
+			}
+			catch (const fs::filesystem_error& ex)
+			{
+				CONS_Alert(CONS_ERROR, M_GetText("Failed to move temp Radio config file to real destination\n"));
+			}
+		}
+	}														//SCS - RADIO END
 }
 
 // ==========================================================================
@@ -2804,4 +2854,45 @@ const char * M_Ftrim (double f)
 		dig[i + 1] = '\0';
 		return &dig[1];/* skip the 0 */
 	}
+}
+
+/** Enable floating point denormal-to-zero section, if necessary */
+floatdenormalstate_t M_EnterFloatDenormalToZero(void)
+{
+#ifdef NEED_INTEL_DENORMAL_BIT
+	floatdenormalstate_t state = 0;
+	state |= _MM_GET_FLUSH_ZERO_MODE() == _MM_FLUSH_ZERO_ON ? 1 : 0;
+	state |= _MM_GET_DENORMALS_ZERO_MODE() == _MM_DENORMALS_ZERO_ON ? 2 : 0;
+
+	if ((state & 1) == 0)
+	{
+		_MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+	}
+	if ((state & 2) == 0)
+	{
+		_MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+	}
+	return state;
+#else
+	return 0;
+#endif
+}
+
+/** Exit floating point denormal-to-zero section, if necessary, restoring previous state */
+void M_ExitFloatDenormalToZero(floatdenormalstate_t previous)
+{
+#ifdef NEED_INTEL_DENORMAL_BIT
+	if ((previous & 1) == 0)
+	{
+		_MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_OFF);
+	}
+	if ((previous & 2) == 0)
+	{
+		_MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_OFF);
+	}
+	return;
+#else
+	(void)previous;
+	return;
+#endif
 }

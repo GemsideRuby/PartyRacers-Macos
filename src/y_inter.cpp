@@ -58,6 +58,7 @@
 #include "music.h"
 
 #include "v_draw.hpp"
+#include "radioracers/rr_cvar.h"	//SCS - RADIO
 
 #ifdef HWRENDER
 #include "hardware/hw_main.h"
@@ -162,6 +163,7 @@ static void Y_CalculateMatchData(UINT8 rankingsmode, void (*comparison)(INT32))
 	boolean completed[MAXPLAYERS];
 	INT32 numplayersingame = 0;
 	boolean getmainplayer = false;
+	UINT32 topscore = 0, btopemeralds = 0;
 
 	// Initialize variables
 	if (rankingsmode > 1)
@@ -189,6 +191,27 @@ static void Y_CalculateMatchData(UINT8 rankingsmode, void (*comparison)(INT32))
 		{
 			data.increase[i] = INT16_MIN;
 			continue;
+		}
+		
+		// for getting the proper maximum value for score-to-EXP conversion
+		if (gametype == GT_BATTLE)
+		{
+			if ((&players[i])->roundscore > topscore)
+			{
+				topscore = (&players[i])->roundscore;
+			}
+			if (K_NumEmeralds(&players[i]) > btopemeralds)
+			{
+				btopemeralds = K_NumEmeralds(&players[i]); // necessary so non-emerald wins can still get max EXP if no one else is holding more emeralds
+			}
+		}
+		
+		if (K_InRaceDuel() == true)
+		{
+			if (((UINT32)(&players[i])->duelscore) > topscore)
+			{
+				topscore = (&players[i])->duelscore;
+			}
 		}
 
 		if (!rankingsmode)
@@ -294,11 +317,33 @@ static void Y_CalculateMatchData(UINT8 rankingsmode, void (*comparison)(INT32))
 			if (powertype == PWRLV_DISABLED)
 			{
 				UINT8 pointgetters = numplayersingame + spectateGriefed;
+				UINT32 scoreconversion = 0;
+				UINT32 pscore = 0;
 
-				if (data.pos[data.numplayers] < pointgetters
-				&& !(players[i].pflags & PF_NOCONTEST))
+				// accept players that nocontest, but not bots
+				if (data.pos[data.numplayers] <= pointgetters &&
+					!((players[i].pflags & PF_NOCONTEST) && players[i].bot))
 				{
-					data.increase[i] = K_CalculateGPRankPoints((&players[i])->exp, data.pos[data.numplayers], pointgetters);
+					if (gametype == GT_BATTLE)
+					{
+						pscore = (&players[i])->roundscore + K_NumEmeralds(&players[i]);
+						scoreconversion = FixedRescale(pscore, 0, topscore + btopemeralds, Easing_Linear, EXP_MIN, EXP_MAX);
+						data.increase[i] = K_CalculateGPRankPoints(scoreconversion, data.pos[data.numplayers], pointgetters);
+					}
+					else
+					{
+						// For Duel scoring, convert duelscore into EXP.
+						if (K_InRaceDuel())
+						{
+							pscore = (&players[i])->duelscore;
+							scoreconversion = FixedRescale(pscore, 0, topscore, Easing_Linear, EXP_MIN, EXP_MAX);
+							data.increase[i] = K_CalculateGPRankPoints(scoreconversion, data.pos[data.numplayers], pointgetters);
+						}
+						else
+						{
+							data.increase[i] = K_CalculateGPRankPoints((&players[i])->exp, data.pos[data.numplayers], pointgetters);
+						}
+					}
 
 					if (data.winningteam != TEAM_UNASSIGNED)
 					{
@@ -566,6 +611,9 @@ void Y_PlayerStandingsDrawer(y_data_t *standings, INT32 xoffset)
 
 	patch_t *resbar = static_cast<patch_t*>(W_CachePatchName("R_RESBAR", PU_PATCH)); // Results bars for players
 	patch_t *cpu = static_cast<patch_t*>(W_CachePatchName("K_CPU", PU_PATCH));
+	
+	if (GetTotalInGameRacers() > 24)				//SCS ADD
+		yspacing = 11;
 
 	if (drawping || standings->rankingsmode != 0)
 	{
@@ -606,13 +654,16 @@ void Y_PlayerStandingsDrawer(y_data_t *standings, INT32 xoffset)
 		}
 	}
 
-	y = 106 - (heightcount * yspacing)/2;
+	//if (GetTotalInGameRacers() > 16)				//SCS ADD
+	//	y = 90 - (heightcount * yspacing)/2;
+	//else
+		y = 106 - (heightcount * yspacing)/2;
 
 	if (standings->isduel)
 	{
 		y += 38;
 	}
-	else if (y < 70)
+	else if (y < 70 && GetTotalInGameRacers() < 17)		//SCS EDIT
 	{
 		// One sanity check.
 		y = 70;
@@ -745,10 +796,22 @@ void Y_PlayerStandingsDrawer(y_data_t *standings, INT32 xoffset)
 				else
 				{
 					charcolormap = R_GetTranslationColormap(players[pnum].skin, static_cast<skincolornum_t>(players[pnum].skincolor), GTC_CACHE);
-					V_DrawMappedPatch(x+14, y-5, 0,
-						R_CanShowSkinInDemo(players[pnum].skin) ?
-						faceprefix[players[pnum].skin][FACE_MINIMAP] : kp_unknownminimap,
-						charcolormap);
+					
+					if (cv_hud_usehighresportraits.value) {			//SCS - RADIO START
+						V_DrawFixedPatch(
+							(x+14) << FRACBITS, (y-4) << FRACBITS,
+							(3*FRACUNIT)/4,
+							0,
+							R_CanShowSkinInDemo(pnum) ?
+							faceprefix[players[pnum].skin][FACE_RANK] : kp_unknownminimap,
+							charcolormap
+						);
+					} else {										//SCS - RADIO END
+						V_DrawMappedPatch(x+14, y-5, 0,
+							R_CanShowSkinInDemo(players[pnum].skin) ?
+							faceprefix[players[pnum].skin][FACE_MINIMAP] : kp_unknownminimap,
+							charcolormap);
+					}												//SCS - RADIO
 				}
 			}
 
@@ -891,13 +954,21 @@ void Y_PlayerStandingsDrawer(y_data_t *standings, INT32 xoffset)
 			}
 			else if (standings->grade[pnum] != GRADE_INVALID)
 			{
-				patch_t *gradePtc = static_cast<patch_t*>(W_CachePatchName(va("R_INRNK%c", K_GetGradeChar(static_cast<gp_rank_e>(standings->grade[pnum]))), PU_PATCH));
+				//patch_t *gradePtc = static_cast<patch_t*>(W_CachePatchName(va("R_INRNK%c", K_GetGradeChar(static_cast<gp_rank_e>(standings->grade[pnum]))), PU_PATCH));
+				// Radio hook
+				gp_rank_e playerGrade = static_cast<gp_rank_e>(standings->grade[pnum]);													//SCS - RADIO START
+				if (cv_show_s_ranks.value && players[pnum].tally.perfectRace) {
+					playerGrade = GRADE_S;
+				}
+
+				patch_t *gradePtc = static_cast<patch_t*>(W_CachePatchName(va("R_INRNK%c", K_GetGradeChar(playerGrade)), PU_PATCH));	//SCS - RADIO END
 				patch_t *gradeBG = NULL;
 
 				UINT16 gradeColor = SKINCOLOR_NONE;
 				UINT8 *gradeClm = NULL;
 
-				gradeColor = K_GetGradeColor(static_cast<gp_rank_e>(standings->grade[pnum]));
+				//gradeColor = K_GetGradeColor(static_cast<gp_rank_e>(standings->grade[pnum]));
+				gradeColor = K_GetGradeColor(playerGrade);											//SCS - RADIO
 				if (gradeColor != SKINCOLOR_NONE)
 				{
 					gradeClm = R_GetTranslationColormap(TC_DEFAULT, static_cast<skincolornum_t>(gradeColor), GTC_CACHE);
@@ -1882,13 +1953,18 @@ void Y_DrawIntermissionHeader(fixed_t x, fixed_t y, boolean gotthrough, const ch
 
 static void Y_DrawMapTitleString(fixed_t x, const char *name)
 {
+	INT32 extraflags = 0;				//SCS - RADIO START
+	if (IS_WEIRD_RES())
+		extraflags = V_SNAPTOBOTTOM;	//SCS - RADIO END
+
 	V_DrawStringScaled(
 		x - ttlscroll,
 		(BASEVIDHEIGHT - 73) * FRACUNIT,
 		FRACUNIT,
 		FRACUNIT,
 		FRACUNIT,
-		V_SUBTRACT | V_60TRANS,
+		//V_SUBTRACT | V_60TRANS,
+		V_SUBTRACT | V_60TRANS | extraflags,	//SCS - RADIO
 		NULL,
 		LSHI_FONT,
 		name
@@ -1959,17 +2035,28 @@ void Y_IntermissionDrawer(void)
 	fixed_t chkloop = SHORT(rbgchk->width)*FRACUNIT;
 
 	UINT8 *bgcolor = R_GetTranslationColormap(TC_INTERMISSION, static_cast<skincolornum_t>(0), GTC_CACHE);
+	INT32 intermissiontextflags = V_SUBTRACT;		//SCS - RADIO
+	INT32 intermissioncheckflags = V_SUBTRACT;		//SCS - RADIO
 
 	// Draw the background
-	K_DrawMapThumbnail(0, 0, BASEVIDWIDTH<<FRACBITS, (data.encore ? V_FLIP : 0), prevmap, bgcolor);
+	if (IS_WEIRD_RES()) {																								//SCS - RADIO START
+		intermissiontextflags |= V_SNAPTOBOTTOM;
+		intermissioncheckflags |= V_SNAPTOTOP;
+		K_DrawMapThumbnailWidescreen(0, 0, BASEVIDWIDTH<<FRACBITS, (data.encore ? V_FLIP : 0), prevmap, bgcolor);
+	} else {																											//SCS - RADIO END
+		K_DrawMapThumbnail(0, 0, BASEVIDWIDTH<<FRACBITS, (data.encore ? V_FLIP : 0), prevmap, bgcolor);
+	}
 
 	for (x = -mqscroll; x < (BASEVIDWIDTH * FRACUNIT); x += mqloop)
 	{
-		V_DrawFixedPatch(x, 154<<FRACBITS, FRACUNIT, V_SUBTRACT, rrmq, NULL);
+		//V_DrawFixedPatch(x, 154<<FRACBITS, FRACUNIT, V_SUBTRACT, rrmq, NULL);
+		V_DrawFixedPatch(x, 154<<FRACBITS, FRACUNIT, intermissiontextflags, rrmq, NULL);	//SCS - RADIO
 	}
 
-	V_DrawFixedPatch(chkscroll, 0, FRACUNIT, V_SUBTRACT, rbgchk, NULL);
-	V_DrawFixedPatch(chkscroll - chkloop, 0, FRACUNIT, V_SUBTRACT, rbgchk, NULL);
+	//V_DrawFixedPatch(chkscroll, 0, FRACUNIT, V_SUBTRACT, rbgchk, NULL);
+	//V_DrawFixedPatch(chkscroll - chkloop, 0, FRACUNIT, V_SUBTRACT, rbgchk, NULL);
+	V_DrawFixedPatch(chkscroll, 0, FRACUNIT, intermissioncheckflags, rbgchk, NULL);				//SCS - RADIO
+	V_DrawFixedPatch(chkscroll - chkloop, 0, FRACUNIT, intermissioncheckflags, rbgchk, NULL);	//SCS - RADIO
 
 	fixed_t ttlloop = Y_DrawMapTitle();
 
@@ -2027,7 +2114,8 @@ skiptallydrawer:
 		goto finalcounter;
 
 	// Returns early if there's no roundqueue entries to draw
-	Y_RoundQueueDrawer(&data, 0, true, false, false);
+	//Y_RoundQueueDrawer(&data, 0, true, false, false);
+	Y_RoundQueueDrawer(&data, 0, true, IS_WEIRD_RES(), false);		//SCS - RADIO
 
 	if (netgame)
 	{

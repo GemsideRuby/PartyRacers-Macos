@@ -1,0 +1,8 @@
+add_subdirectory(netgame)
+add_subdirectory(gameplay)
+add_subdirectory(menus)
+add_subdirectory(hud)
+add_subdirectory(util)
+add_subdirectory(cvar)
+add_subdirectory(video)
+add_subdirectory(demo)

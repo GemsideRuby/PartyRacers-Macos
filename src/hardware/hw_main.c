@@ -49,6 +49,9 @@
 #include "../r_fps.h"
 #include "../r_plane.h" // R_FlatDimensionsFromLumpSize
 
+#include "../radioracers/rr_util.h"							//SCS - RADIO START
+#include "../k_kart.h"										//SCS - RADIO END
+
 /// FINALLY some real clipping that doesn't make walls dissappear AND speeds the game up
 /// (that was the original comment from SRB2CB, sadly it is a lie and actually slows game down)
 /// on the bright side it fixes some weird issues with translucent walls
@@ -1274,6 +1277,9 @@ static void HWR_ProcessSeg(void) // Sort of like GLWall::Process in GZDoom
 			}
 		}
 		gl_midtexture = R_GetTextureNum(gl_sidedef->midtexture);
+		if (tripwire) {															//SCS - RADIO START
+			gl_midtexture = RR_FetchAlternateTripwire(gl_midtexture);
+		}																		//SCS - RADIO END
 		if (gl_midtexture)
 		{
 			FBITFIELD blendmode;
@@ -1386,8 +1392,18 @@ static void HWR_ProcessSeg(void) // Sort of like GLWall::Process in GZDoom
 
 				grTex = HWR_GetTexture(gl_midtexture, gl_sidedef->midtexture);
 
-				wallVerts[3].t = wallVerts[2].t = texturevpeg * grTex->scaleY;
-				wallVerts[0].t = wallVerts[1].t = (h - l + texturevpeg) * grTex->scaleY;
+				// Check if we should flip tripwire texture vertically for unpegged tripwires
+				if (R_ShouldFlipTripWire(gl_linedef))
+				{
+					// Flip texture coordinates vertically
+					wallVerts[0].t = wallVerts[1].t = texturevpeg * grTex->scaleY;
+					wallVerts[3].t = wallVerts[2].t = (h - l + texturevpeg) * grTex->scaleY;
+				}
+				else
+				{
+					wallVerts[3].t = wallVerts[2].t = texturevpeg * grTex->scaleY;
+					wallVerts[0].t = wallVerts[1].t = (h - l + texturevpeg) * grTex->scaleY;
+				}
 				wallVerts[0].s = wallVerts[3].s = cliplow * grTex->scaleX;
 				wallVerts[2].s = wallVerts[1].s = cliphigh * grTex->scaleX;
 			}
@@ -1433,8 +1449,18 @@ static void HWR_ProcessSeg(void) // Sort of like GLWall::Process in GZDoom
 						texturevpeg = textureheight[gl_sidedef->midtexture]*repeats - h + polybottom;
 					else
 						texturevpeg = polytop - h;
-					wallVerts[2].t = texturevpeg * grTex->scaleY;
-					wallVerts[1].t = (h - l + texturevpeg) * grTex->scaleY;
+					// Apply tripwire flipping for slope correction as well
+					if (R_ShouldFlipTripWire(gl_linedef))
+					{
+						// Flip texture coordinates vertically
+						wallVerts[1].t = texturevpeg * grTex->scaleY;
+						wallVerts[2].t = (h - l + texturevpeg) * grTex->scaleY;
+					}
+					else
+					{
+						wallVerts[2].t = texturevpeg * grTex->scaleY;
+						wallVerts[1].t = (h - l + texturevpeg) * grTex->scaleY;
+					}
 				}
 
 				wallVerts[2].y = FIXED_TO_FLOAT(h);
@@ -1531,8 +1557,18 @@ static void HWR_ProcessSeg(void) // Sort of like GLWall::Process in GZDoom
 
 				grTex = HWR_GetTexture(gl_midtexture, gl_sidedef->midtexture);
 
-				wallVerts[3].t = wallVerts[2].t = texturevpeg * grTex->scaleY;
-				wallVerts[0].t = wallVerts[1].t = (texturevpeg + gl_frontsector->ceilingheight - gl_frontsector->floorheight) * grTex->scaleY;
+				// Check if we should flip tripwire texture vertically for single-sided lines too
+				if (R_ShouldFlipTripWire(gl_linedef))
+				{
+					// Flip texture coordinates vertically
+					wallVerts[0].t = wallVerts[1].t = texturevpeg * grTex->scaleY;
+					wallVerts[3].t = wallVerts[2].t = (texturevpeg + gl_frontsector->ceilingheight - gl_frontsector->floorheight) * grTex->scaleY;
+				}
+				else
+				{
+					wallVerts[3].t = wallVerts[2].t = texturevpeg * grTex->scaleY;
+					wallVerts[0].t = wallVerts[1].t = (texturevpeg + gl_frontsector->ceilingheight - gl_frontsector->floorheight) * grTex->scaleY;
+				}
 				wallVerts[0].s = wallVerts[3].s = cliplow * grTex->scaleX;
 				wallVerts[2].s = wallVerts[1].s = cliphigh * grTex->scaleX;
 
@@ -3899,6 +3935,11 @@ static void HWR_DrawSprite(gl_vissprite_t *spr)
 				trans = (spr->mobj->frame & FF_TRANSMASK) >> FF_TRANSSHIFT;
 			if (trans >= NUMTRANSMAPS)
 				return; // cap
+			
+			if (RR_ShouldGhostRing(spr->mobj) || RR_ShouldGhostRingboxes(spr->mobj) || RR_ShouldGhostItemCapsuleParts(spr->mobj)) {		//SCS - RADIO START
+					blendmode = AST_TRANSLUCENT;
+					trans = tr_trans60;
+			}																															//SCS - RADIO END
 
 			blend = HWR_SurfaceBlend(blendmode, trans, &Surf);
 
@@ -5161,6 +5202,16 @@ static void HWR_ProjectSprite(mobj_t *thing)
 
 		if (encoremap && !(thing->flags & MF_DONTENCOREMAP))
 			vis->colormap += COLORMAP_REMAPOFFSET;
+	}																							//SCS - RADIO START
+	boolean ghostMo = RR_ShouldGhostRing(vis->mobj) || RR_ShouldGhostRingboxes(vis->mobj);
+	boolean isVoltageAura = RR_ShouldRecolorVoltage(vis->mobj);
+	if (ghostMo || isVoltageAura) {
+		if (ghostMo) {
+			vis->colormap = R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_NICKEL, GTC_CACHE);
+		} else if (isVoltageAura) {
+			UINT8 sparkColor = K_DriftSparkColor(stplyr, stplyr->driftcharge);
+			vis->colormap = R_GetTranslationColormap(TC_RAINBOW,sparkColor, GTC_CACHE);
+		}																						//SCS - RADIO END
 	}
 
 	// set top/bottom coords

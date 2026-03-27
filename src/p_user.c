@@ -75,6 +75,10 @@
 #include "acs/interface.h"
 #include "byteptr.h"
 
+#include "radioracers/rr_hud.h"		//SCS - RADIO START
+#include "radioracers/rr_setup.h"
+#include "radioracers/rr_util.h"	//SCS - RADIO END
+
 #ifdef HWRENDER
 #include "hardware/hw_light.h"
 #include "hardware/hw_main.h"
@@ -594,11 +598,18 @@ void P_StartPositionMusic(boolean exact)
 			? (leveltime != introtime)
 			: (leveltime  < introtime))
 			return;
+			
+		// Radio
+		const char* original_position_music = "postn";											//SCS - RADIO START
+		if (found_radioracers && radio_mapmusrng != 0 && radio_maxrandompositionmus > 0) {
+			original_position_music = va("postn%d", radio_mapmusrng+1);
+		}																						//SCS - RADIO END
 
 		Music_Remap("position",
 			(mapheaderinfo[gamemap-1]->positionmus[0]
 				? mapheaderinfo[gamemap-1]->positionmus
-				: "postn"
+				//: "postn"
+				: original_position_music						//SCS - RADIO
 			));
 	}
 
@@ -1271,6 +1282,10 @@ void P_DoPlayerExit(player_t *player, pflags_t flags)
 
 	if (!player->spectator && (gametyperules & GTR_CIRCUIT)) // Special Race-like handling
 	{
+		// RADIO: add the player to the finish ticker queue
+		if (!modeattacking)										//SCS - RADIO
+			RR_addPlayerToFinshTicker(player);					//SCS - RADIO
+
 		K_UpdateAllPlayerPositions();
 		player->mfdfinish = player->markedfordeath;
 	}
@@ -1330,7 +1345,7 @@ void P_DoPlayerExit(player_t *player, pflags_t flags)
 
 			if (grandprixinfo.gp == true
 				&& grandprixinfo.eventmode != GPEVENT_SPECIAL
-				&& player->bot == false && losing == false)
+				&& player->bot == false && losing == false && player->hudrings > 0)
 			{
 				const UINT8 lifethreshold = 20;
 
@@ -1828,6 +1843,9 @@ static void P_CheckInvincibilityTimer(player_t *player)
 {
 	if (!player->invincibilitytimer)
 		return;
+	
+	// RADIO: Directly from HOSTMOD for SRB2Kart, so credit to Tyron.
+	RR_PlayCountdownJingle(player->invincibilitytimer, player);			//SCS - RADIO
 
 	// Resume normal music stuff.
 	if (player->invincibilitytimer == 1)
@@ -2638,7 +2656,7 @@ void P_MovePlayer(player_t *player)
 			{
 				INT32 a = (ANGLE_45 / 5) * player->drift;
 
-				if (player->mo->eflags & MFE_UNDERWATER)
+				if (player->mo->eflags & MFE_UNDERWATER && player->curshield != KSHIELD_BUBBLE)	//SCS ADD
 					a /= 2;
 
 				player->drawangle += a;
@@ -2677,8 +2695,25 @@ void P_MovePlayer(player_t *player)
 		&& onground && (leveltime & 1))
 		K_SpawnBoostTrail(player);
 
-	if (player->invincibilitytimer > 0)
+	if (player->invincibilitytimer > 0 || player->timestonefrozen || player->playerringgunpower >= 60)		//SCS EDIT - ring gun thing is temporary until lights can be made working
+	{
 		K_SpawnSparkleTrail(player->mo);
+		K_SpawnSparkleTrail_OLD(player->mo);			//SCS ADD
+	}
+	
+	if (player->invincibilitytimer > 0 && player->masteremeraldinvincibility && leveltime % 20 == 0 && (player->mo->momx != 0 || player->mo->momz != 0 || player->mo->momz != 0))			//SCS ADD
+	{
+		K_SpawnSuperFormSparkle(player->mo);
+	}
+	
+	if (player->timestonefrozen)					//SCS ADD
+	{
+		K_SpawnSparkleTrail_OLD(player->mo);
+		
+		if (leveltime % 8 == 0)
+			K_SpawnTimeStoneSparkles(player->mo);
+		
+	}
 
 	if (player->wipeoutslow > 1 && (leveltime & 1))
 		K_SpawnWipeoutTrail(player->mo);
@@ -3987,6 +4022,18 @@ void P_DoTimeOver(player_t *player)
 	{
 		CON_LogMessage(va(M_GetText("%s ran out of time.\n"), player_names[player-players]));
 	}
+	
+	// actually, lets not do the below, because its a suitable penalty to not be granted the increase from remaining gradingpoints
+	
+	// iterate through remaining gradingpoints and update gradingfactor and exp for current position, as if you crossed all of them
+	//const UINT32 numgradingpoints = K_GetNumGradingPoints();
+	//const UINT32 remaininggradingpoints = numgradingpoints - player->gradingpointnum;
+	//for (UINT32 i = 0; i < remaininggradingpoints; i++)
+	//{
+		//player->gradingfactor += K_GetGradingFactorAdjustment(player, player->gradingpointnum);
+		//player->gradingpointnum++;
+		//player->exp = K_GetEXP(player);
+	//}
 
 	player->pflags |= PF_NOCONTEST;
 	K_UpdatePowerLevelsFinalize(player, false);
@@ -4633,6 +4680,11 @@ void P_PlayerThink(player_t *player)
 		(player->spectator || !P_PlayerInPain(player)))
 	{
 		player->flashing--;
+	}
+	
+	if (!player->flashing && !P_PlayerInPain(player))
+	{
+		player->wallSpikeDampen = 0;
 	}
 
 	if (player->nocontrol && player->nocontrol < UINT16_MAX)

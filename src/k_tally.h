@@ -100,6 +100,16 @@ struct level_tally_t
 	boolean done;
 	boolean releasedFastForward;
 	INT32 directorWait;
+	
+	// Radio hook
+	boolean perfectRace;				//SCS - RADIO START
+	boolean nearlyPerfectExpBonus;
+	boolean perfectExpBonus;
+	boolean perfectRingBonus;
+	boolean perfectPrisonBonus;
+	boolean expBonusEvaulated;
+	boolean prisonBonusEvaluated;
+	boolean ringBonusEvaluated;			//SCS - RADIO END
 
 #ifdef __cplusplus
 	boolean UseBonuses(void);

@@ -59,9 +59,11 @@
 
 // Distance when SPB can start appearing
 #define SPBSTARTDIST (8*DISTVAR)
+#define SPBSTARTDIST2 (12*DISTVAR)		//SCS ADD
 
 // Distance when SPB is forced onto the next person who rolls an item
 #define SPBFORCEDIST (16*DISTVAR)
+#define SPBFORCEDIST2 (24*DISTVAR)		//SCS ADD
 
 // Distance when the game stops giving you bananas
 #define ENDDIST (14*DISTVAR)
@@ -80,39 +82,58 @@
 static UINT32 K_DynamicItemOddsRace[NUMKARTRESULTS-1][2] =
 {
 	// distance, duplication tolerance
-	{25, 10}, // sneaker
-	{63, 12}, // rocketsneaker
-	{60, 19}, // invincibility
+	{25, 7}, // sneaker
+	{48, 11}, // rocketsneaker
+	{50, 15}, // invincibility
 	{8, 4}, // banana
 	{3, 1}, // eggmark
-	{11, 4}, // orbinaut
+	{9, 4}, // orbinaut
 	{16, 4}, // jawz
-	{19, 4}, // mine
+	{23, 4}, // mine
 	{1, 3}, // landmine
 	{25, 3}, // ballhog
 	{58, 6}, // selfpropelledbomb
-	{60, 7}, // grow
-	{70, 8}, // shrink
+	{45, 7}, // grow
+	{60, 8}, // shrink
 	{1, 1}, // lightningshield
 	{25, 4}, // bubbleshield
-	{66, 9}, // flameshield
+	{56, 9}, // flameshield
 	{1, 2}, // hyudoro
-	{0, 0}, // pogospring
+	{32, 3}, // pogospring
 	{30, 8}, // superring (SPECIAL! distance value specifies when this can NO LONGER appear)
 	{0, 0}, // kitchensink
 	{1, 2}, // droptarget
-	{43, 5}, // gardentop
-	{0, 0}, // gachabom
+	{27, 5}, // gardentop
+	{23, 12}, // gachabom
 	{1, 2}, // stoneshoe
 	{1, 2}, // toxomister
-	{45, 6}, // dualsneaker
-	{55, 8}, // triplesneaker
-	{25, 2}, // triplebanana
-	{25, 1}, // tripleorbinaut
-	{35, 2}, // quadorbinaut
-	{30, 4}, // dualjawz
-	{0, 0}, // triplegachabom
-};
+	{40, 4}, // superjackpot
+	{25, 7}, //wreckingball	
+	{35, 6}, //masteremerald
+	{1, 2}, //pickpockethyu
+	{24, 4}, //yellowpogospring
+	{28, 3}, //timestone
+	{43, 1}, //bluepogospring
+	{14, 2}, //normalshield
+	{25, 4}, //megachopper
+	{29, 5}, //armashield
+	{20, 3}, //afterburnerjawz
+	{12, 4}, //pressuremine
+	{24, 5}, //chameleonblaster
+	{20, 6}, //eggblaster
+	{32, 4}, //ringgun
+	{27, 7}, //butlerhyudoro
+	{15, 3}, //octus
+	{35, 6}, // dualsneaker
+	{45, 8}, // triplesneaker
+	{18, 2}, // triplebanana
+	{20, 1}, // tripleorbinaut
+	{26, 5}, // quadorbinaut
+	{22, 4}, // dualjawz
+	{30, 5}, // triplegachabom
+	{23, 2}, // decabanana
+	{25, 2}, // dualafterburnerjawz
+};														//SCS -Adjusted some odds around here, and made all but 1 item available in the roulette
 
 static UINT32 K_DynamicItemOddsBattle[NUMKARTRESULTS-1][2] =
 {
@@ -142,6 +163,23 @@ static UINT32 K_DynamicItemOddsBattle[NUMKARTRESULTS-1][2] =
 	{10, 5}, // gachabom
 	{0, 0}, // stoneshoe
 	{0, 0}, // toxomister
+	{0, 0}, // superjackpot
+	{16, 3}, //wreckingball
+	{0, 0}, //masteremerald
+	{0, 0}, //pickpockethyu
+	{0, 0}, //yellowpogospring
+	{0, 0}, //timestone
+	{0, 0}, //bluepogospring
+	{10, 2}, //normalshield
+	{14, 2}, //megachopper
+	{11, 2}, //armashield
+	{14, 3}, //afterburnerjawz
+	{13, 2}, //pressuremine
+	{10, 1}, //chameleonblaster
+	{10, 2}, //eggblaster
+	{0, 0}, //ringgun
+	{0, 0}, //butlerhyudoro
+	{0, 0}, //octus
 	{0, 0}, // dualsneaker
 	{20, 1}, // triplesneaker
 	{0, 0}, // triplebanana
@@ -149,6 +187,8 @@ static UINT32 K_DynamicItemOddsBattle[NUMKARTRESULTS-1][2] =
 	{13, 3}, // quadorbinaut
 	{13, 3}, // dualjawz
 	{10, 2}, // triplegachabom
+	{7, 1}, // decabanana
+	{16, 1}, // dualafterburnerjawz
 };
 
 static UINT32 K_DynamicItemOddsSpecial[NUMKARTRESULTS-1][2] =
@@ -179,6 +219,23 @@ static UINT32 K_DynamicItemOddsSpecial[NUMKARTRESULTS-1][2] =
 	{0, 0}, // gachabom
 	{0, 0}, // stoneshoe
 	{0, 0}, // toxomister
+	{0, 0}, // superjackpot
+	{0, 0}, //wreckingball
+	{0, 0}, //masteremerald
+	{0, 0}, //pickpockethyu
+	{0, 0}, //yellowpogospring
+	{0, 0}, //timestone
+	{0, 0}, //bluepogospring
+	{0, 0}, //normalshield
+	{0, 0}, //megachopper
+	{0, 0}, //armashield
+	{20, 3}, //afterburnerjawz
+	{0, 0}, //pressuremine
+	{0, 0}, //chameleonblaster
+	{0, 0}, //eggblaster
+	{0, 0}, //ringgun
+	{0, 0}, //butlerhyudoro
+	{0, 0}, //octus
 	{35, 2}, // dualsneaker
 	{0, 0}, // triplesneaker
 	{0, 0}, // triplebanana
@@ -186,6 +243,9 @@ static UINT32 K_DynamicItemOddsSpecial[NUMKARTRESULTS-1][2] =
 	{0, 0}, // quadorbinaut
 	{35, 2}, // dualjawz
 	{0, 0}, // triplegachabom
+	{0, 0}, // decabanana
+	{40, 2}, // dualafterburnerjawz
+
 };
 
 
@@ -216,13 +276,32 @@ static UINT8 K_KartLegacyBattleOdds[NUMKARTRESULTS-1][2] =
 	{ 5, 0 }, // Gachabom
 	{ 0, 1 }, // Stone Shoe
 	{ 0, 1 }, // Toxomister
+	{ 0, 0 }, // Super Jackpot
+	{ 2, 1 }, // Wrecking Ball
+	{ 0, 0 }, // Master Emerald
+	{ 0, 0 }, // Pickpocket Hyudoro
+	{ 0, 0 }, // Yellow Pogo Spring
+	{ 0, 0 }, // Time Stone
+	{ 0, 0 }, // Blue Pogo Spring
+	{ 0, 0 }, // Normal Shield
+	{ 0, 0 }, // Mega Chopper
+	{ 0, 0 }, // Armageddon Shield
+	{ 3, 1 }, // Afterburner Jawz
+	{ 2, 1 }, // Pressure Mine
+	{ 2, 2 }, // Chameleon Blaster
+	{ 2, 1 }, // Egg Blaster
+	{ 2, 1 }, // Ring Gun
+	{ 0, 0 }, // Butler Hyudoro
+	{ 0, 0 }, // Octus
 	{ 0, 0 }, // Sneaker x2
 	{ 0, 1 }, // Sneaker x3
 	{ 0, 0 }, // Banana x3
 	{ 2, 0 }, // Orbinaut x3
 	{ 2, 1 }, // Orbinaut x4
 	{ 2, 1 }, // Jawz x2
-	{ 2, 0 }  // Gachabom x3
+	{ 2, 0 }, // Gachabom x3
+	{ 2, 1 }, // Banana x10
+	{ 2, 1 }, // Afterburner Jawz x2
 };
 
 static kartitems_t K_KartItemReelSpecialEnd[] =
@@ -276,7 +355,6 @@ static kartslotmachine_t K_KartItemReelRingBox[] =
 	KSM_JACKPOT,
 	KSM__MAX
 };
-
 static sfxenum_t ringboxsound[] =
 {
 	sfx_slot00,
@@ -321,6 +399,18 @@ boolean K_ItemSingularity(kartitems_t item)
 	{
 		case KITEM_SPB:
 		case KITEM_SHRINK:
+		case KITEM_MASTEREMERALD:		//SCS ADD
+		case KRITEM_DECABANANA:			//SCS ADD
+		case KITEM_TIMESTONE:			//SCS ADD
+		case KITEM_BOGOSPRING:			//SCS ADD
+		case KITEM_EGGMAN:				//SCS ADD
+		case KITEM_PRESSUREMINE:		//SCS ADD
+		case KITEM_CHAMBLASTER:			//SCS ADD
+		case KITEM_EGGBLASTER:			//SCS ADD
+		case KITEM_RINGGUN:				//SCS ADD
+		case KITEM_BUTLERHYU:			//SCS ADD
+		case KITEM_OCTUS:				//SCS ADD
+		case KITEM_SUPERJACKPOT:		//SCS ADD
 		{
 			return true;
 		}
@@ -350,6 +440,7 @@ botItemPriority_e K_GetBotItemPriority(kartitems_t result)
 		case KITEM_INVINCIBILITY:
 		case KITEM_GROW:
 		case KITEM_SHRINK:
+		case KITEM_MASTEREMERALD:		//SCS ADD
 		{
 			// Items that drastically improve your own defense and/or speed.
 			return BOT_ITEM_PR_POWER;
@@ -362,7 +453,12 @@ botItemPriority_e K_GetBotItemPriority(kartitems_t result)
 		case KITEM_SNEAKER:
 		case KITEM_ROCKETSNEAKER:
 		case KITEM_GARDENTOP:
-		case KITEM_POGOSPRING:
+		case KITEM_POGOSPRING:		//SCS ADD
+		case KITEM_SUPERJACKPOT:	//SCS ADD
+		case KITEM_YOGOSPRING:		//SCS ADD
+		case KITEM_TIMESTONE:		//SCS ADD
+		case KITEM_BOGOSPRING:		//SCS ADD
+		case KITEM_ARMASHIELD:		//SCS ADD
 		{
 			// Used when not in 1st place and relatively far from players.
 			// Items that give you speed with no protection.
@@ -372,16 +468,18 @@ botItemPriority_e K_GetBotItemPriority(kartitems_t result)
 		case KITEM_LANDMINE:
 		case KITEM_DROPTARGET:
 		case KITEM_EGGMAN:
-		case KITEM_GACHABOM:
 		case KITEM_STONESHOE:
 		case KITEM_TOXOMISTER:
 		case KITEM_KITCHENSINK:
+		case KITEM_PICKPOCKETHYU:	//SCS ADD
+		case KITEM_OCTUS:			//SCS ADD
 		{
 			// Used when in 1st place and relatively far from players.
 			// Typically attack items that don't give you protection.
 			return BOT_ITEM_PR_FRONTRUNNER;
 		}
 		case KITEM_ORBINAUT:
+		case KITEM_GACHABOM:
 		case KITEM_BALLHOG:
 		case KITEM_JAWZ:
 		case KITEM_BANANA:
@@ -389,6 +487,15 @@ botItemPriority_e K_GetBotItemPriority(kartitems_t result)
 		case KITEM_LIGHTNINGSHIELD:
 		case KITEM_BUBBLESHIELD:
 		case KITEM_FLAMESHIELD:
+		case KITEM_WRECKINGBALL:	//SCS ADD
+		case KITEM_NORMALSHIELD:	//SCS ADD
+		case KITEM_MEGACHOPPER:		//SCS ADD
+		case KITEM_ABURNERJAWZ:		//SCS ADD
+		case KITEM_PRESSUREMINE:	//SCS ADD
+		case KITEM_CHAMBLASTER:		//SCS ADD
+		case KITEM_EGGBLASTER:		//SCS ADD
+		case KITEM_RINGGUN:			//SCS ADD
+		case KITEM_BUTLERHYU:		//SCS ADD
 		{
 			// Used in all other instances (close to other players, no priority override)
 			// Typically attack items that give you protection.
@@ -640,21 +747,46 @@ static fixed_t K_PercentSPBOdds(const itemroulette_t *roulette, UINT8 position)
 	}
 	else
 	{
-		const UINT32 dist = max(0, ((signed)roulette->secondToFirst) - SPBSTARTDIST);
-		const UINT32 distRange = SPBFORCEDIST - SPBSTARTDIST;
-		fixed_t multiplier = FixedDiv(dist, distRange);
-
-		if (multiplier < 0)
+		if (GetTotalInGameRacers() > 16)
 		{
-			multiplier = 0;
-		}
+			//CONS_Printf("We're using the farther distance for SPB\n");
 
-		if (multiplier > FRACUNIT)
+			const UINT32 dist = max(0, ((signed)roulette->secondToFirst) - SPBSTARTDIST2);
+			const UINT32 distRange = SPBFORCEDIST2 - SPBSTARTDIST2;
+		
+			fixed_t multiplier = FixedDiv(dist, distRange);
+
+			if (multiplier < 0)
+			{
+				multiplier = 0;
+			}
+
+			if (multiplier > FRACUNIT)
+			{
+				multiplier = FRACUNIT;
+			}
+			
+			return multiplier;			
+		}
+		else
 		{
-			multiplier = FRACUNIT;
-		}
+			const UINT32 dist = max(0, ((signed)roulette->secondToFirst) - SPBSTARTDIST);
+			const UINT32 distRange = SPBFORCEDIST - SPBSTARTDIST;
+		
+			fixed_t multiplier = FixedDiv(dist, distRange);
 
-		return multiplier;
+			if (multiplier < 0)
+			{
+				multiplier = 0;
+			}
+
+			if (multiplier > FRACUNIT)
+			{
+				multiplier = FRACUNIT;
+			}
+			
+			return multiplier;
+		}	
 	}
 }
 
@@ -729,7 +861,12 @@ boolean K_ForcedSPB(const player_t *player, itemroulette_t *const roulette)
 	}
 #endif
 
-	return (roulette->secondToFirst >= SPBFORCEDIST);
+	if (GetTotalInGameRacers() > 16)							//SCS ADD
+	{
+		return (roulette->secondToFirst >= SPBFORCEDIST2);
+	}
+	else
+		return (roulette->secondToFirst >= SPBFORCEDIST);
 }
 
 /*--------------------------------------------------
@@ -830,7 +967,7 @@ void K_InitRoulette(itemroulette_t *const roulette)
 		&& roulette->secondDist > roulette->firstDist)
 	{
 		roulette->secondToFirst = roulette->secondDist - roulette->firstDist;
-		roulette->secondToFirst = K_ScaleItemDistance(roulette->secondToFirst, 16 - roulette->playing); // Reversed scaling
+		roulette->secondToFirst = K_ScaleItemDistance(roulette->secondToFirst, MAXPLAYERS - roulette->playing); // Reversed scaling		//SCS EDIT - Changed 16 to MAXPLAYERS for 32 player support
 	}
 }
 
@@ -994,10 +1131,24 @@ static boolean K_IsItemPower(kartitems_t item)
 		case KRITEM_DUALJAWZ:
 		case KITEM_HYUDORO:
 		case KRITEM_TRIPLEBANANA:
+		case KRITEM_DECABANANA:					//SCS ADD
 		case KITEM_FLAMESHIELD:
 		case KITEM_GARDENTOP:
 		case KITEM_SHRINK:
 		case KITEM_LIGHTNINGSHIELD:
+		case KRITEM_TRIPLEGACHABOM:				//SCS ADD
+		case KITEM_POGOSPRING:					//SCS ADD
+		case KITEM_SUPERJACKPOT:				//SCS ADD
+		case KITEM_WRECKINGBALL:				//SCS ADD
+		case KITEM_MASTEREMERALD:				//SCS ADD
+		case KITEM_PICKPOCKETHYU:				//SCS ADD
+		case KITEM_MEGACHOPPER:					//SCS ADD
+		case KITEM_ARMASHIELD:					//SCS ADD
+		case KITEM_ABURNERJAWZ:					//SCS ADD
+		case KITEM_CHAMBLASTER:					//SCS ADD
+		case KITEM_EGGBLASTER:					//SCS ADD
+		case KITEM_RINGGUN:						//SCS ADD
+		case KITEM_OCTUS:						//SCS ADD
 			return true;
 		default:
 			return false;
@@ -1014,6 +1165,7 @@ static boolean K_IsItemFirstOnly(kartitems_t item)
 		case KITEM_DROPTARGET:
 		case KITEM_STONESHOE:
 		case KITEM_TOXOMISTER:
+		case KITEM_PICKPOCKETHYU:				//SCS ADD
 			return true;
 		default:
 			return false;
@@ -1031,6 +1183,7 @@ static boolean K_IsItemFirstPermitted(kartitems_t item)
 		case KITEM_EGGMAN:
 		case KITEM_ORBINAUT:
 		case KITEM_SUPERRING:
+		case KITEM_OCTUS:				//SCS ADD
 			return true;
 		default:
 			return false;
@@ -1049,6 +1202,16 @@ ATTRUNUSED static boolean K_IsItemUselessAlone(kartitems_t item)
 		case KRITEM_QUADORBINAUT:
 		case KITEM_BALLHOG:
 		case KITEM_BUBBLESHIELD: // shhhhhh
+		case KITEM_GACHABOM:						//SCS ADD
+		case KRITEM_TRIPLEGACHABOM:					//SCS ADD
+		case KRITEM_DECABANANA:						//SCS ADD
+		case KITEM_WRECKINGBALL:					//SCS ADD
+		case KITEM_NORMALSHIELD:					//SCS ADD
+		case KITEM_ABURNERJAWZ:						//SCS ADD
+		case KITEM_CHAMBLASTER:						//SCS ADD
+		case KITEM_EGGBLASTER:						//SCS ADD
+		case KITEM_RINGGUN:							//SCS ADD
+		case KITEM_OCTUS:							//SCS ADD
 			return true;
 		default:
 			return false;
@@ -1068,24 +1231,28 @@ static boolean K_IsItemSpeed(kartitems_t item)
 		case KITEM_FLAMESHIELD:
 		case KITEM_SHRINK:
 		case KITEM_SUPERRING:
+		case KITEM_SUPERJACKPOT:			//SCS ADD
+		case KITEM_MASTEREMERALD:			//SCS ADD
+		case KITEM_MEGACHOPPER:				//SCS ADD
+		case KITEM_ARMASHIELD:				//SCS ADD
 			return true;
 		default:
 			return false;
 	}
 }
-
+/*
 static fixed_t K_RequiredXPForItem(kartitems_t item)
 {
 	switch (item)
 	{
-		case KITEM_GARDENTOP:
-		case KITEM_SHRINK:
-			return FRACUNIT; // "Base" item odds
+		//case KITEM_GARDENTOP:								//SCS - Disabling this crap
+		//case KITEM_SHRINK:
+			//return FRACUNIT; // "Base" item odds
 		default:
 			return 0;
 	}
 }
-
+*/
 // Which items are disallowed for this player's specific placement?
 static boolean K_ShouldPlayerAllowItem(kartitems_t item, const player_t *player)
 {
@@ -1098,17 +1265,17 @@ static boolean K_ShouldPlayerAllowItem(kartitems_t item, const player_t *player)
 		return K_IsItemFirstPermitted(item);
 	else
 	{
-		// A little inelegant: filter the most chaotic items from courses with early sets and tight layouts.
-		if (K_IsItemPower(item) && (leveltime < ((15*TICRATE) + starttime)))
-			return false;
+		// A little inelegant: filter the most chaotic items from courses with early sets and tight layouts.			//SCS - This, too.
+		//if (K_IsItemPower(item) && (leveltime < ((15*TICRATE) + starttime)))
+			//return false;
 
 		// GIGA power items reserved only for players who were doing great and died.
-		if (K_EffectiveGradingFactor(player) < K_RequiredXPForItem(item))
-			return false;
+		//if (K_EffectiveGradingFactor(player) < K_RequiredXPForItem(item))
+			//return false;
 
 		// Expert items are G2+ only, no Top in Relaxed!
-		if (K_RequiredXPForItem(item) >= FRACUNIT && gamespeed == KARTSPEED_EASY)
-			return false;
+		//if (K_RequiredXPForItem(item) >= FRACUNIT && gamespeed == KARTSPEED_EASY)
+			//return false;
 
 		return !K_IsItemFirstOnly(item);
 	}
@@ -1131,14 +1298,17 @@ static boolean K_TimingPermitsItem(kartitems_t item, const itemroulette_t *roule
 		case KITEM_EGGMAN:
 		case KITEM_SUPERRING:
 		{
-			notNearEnd = true;
+			//notNearEnd = true;
 			break;
 		}
 
 		case KITEM_HYUDORO:
 		case KRITEM_TRIPLEBANANA:
+		case KRITEM_DECABANANA:			//SCS ADD (But not using atm :) )
+		case KITEM_PICKPOCKETHYU:		//SCS ADD (But not using)
+		case KITEM_ABURNERJAWZ:			//SCS ADD (But not using)
 		{
-			notNearEnd = true;
+			//notNearEnd = true;
 			break;
 		}
 
@@ -1146,16 +1316,20 @@ static boolean K_TimingPermitsItem(kartitems_t item, const itemroulette_t *roule
 		case KITEM_MINE:
 		case KITEM_GROW:
 		case KITEM_BUBBLESHIELD:
+		case KITEM_MASTEREMERALD:			//SCS ADD (But not using)
 		{
-			cooldownOnStart = true;
+			//cooldownOnStart = true;
 			break;
 		}
 
 		case KITEM_FLAMESHIELD:
 		case KITEM_GARDENTOP:
+		case KITEM_SUPERJACKPOT:			//SCS ADD (But not using)
+		case KITEM_WRECKINGBALL:			//SCS ADD (But not using)
+		case KITEM_NORMALSHIELD:			//SCS ADD (But not using)
 		{
-			cooldownOnStart = true;
-			notNearEnd = true;
+			//cooldownOnStart = true;
+			//notNearEnd = true;
 			break;
 		}
 
@@ -1169,14 +1343,14 @@ static boolean K_TimingPermitsItem(kartitems_t item, const itemroulette_t *roule
 
 		case KITEM_SHRINK:
 		{
-			cooldownOnStart = true;
-			notNearEnd = true;
+			//cooldownOnStart = true;
+			//notNearEnd = true;
 			break;
 		}
 
 		case KITEM_LIGHTNINGSHIELD:
 		{
-			cooldownOnStart = true;
+			//cooldownOnStart = true;
 			if ((gametyperules & GTR_CIRCUIT) && spbplace != -1)
 			{
 				return false;
@@ -1204,7 +1378,7 @@ static void K_FixEmptyRoulette(const player_t *player, itemroulette_t *const rou
 	if (K_PlayerUsesBotMovement(player)) // Bots can't use certain items. Give them _something_.
 		K_PushToRouletteItemList(roulette, KITEM_SUPERRING);
 	else // Players can use all items, so this should never happen.
-		K_PushToRouletteItemList(roulette, KITEM_SAD);
+		K_PushToRouletteItemList(roulette, KITEM_SUPERRING);		//SCS EDIT - Changing this to Super Ring in case you enable only Thunder and Flame shields and then get an underwater item box
 }
 
 /*--------------------------------------------------
@@ -1271,8 +1445,8 @@ void K_FillItemRouletteData(player_t *player, itemroulette_t *const roulette, bo
 
 	if (ringbox == true)
 	{
-		// If this is being invoked by a Ring Box, it should literally never produce items.
 		kartslotmachine_t *presetlist = K_KartItemReelRingBox;
+		
 		roulette->ringbox = true;
 
 		for (i = 0; presetlist[i] != KSM__MAX; i++)
@@ -1466,7 +1640,7 @@ void K_FillItemRouletteData(player_t *player, itemroulette_t *const roulette, bo
 		targetpower = Easing_Linear(crowdingFirst, targetpower, targetpower/2);
 
 	boolean rival = (player->bot && (player->botvars.rival || cv_levelskull.value));
-	boolean filterweakitems = true; // strip unusually weak items from reel?
+	boolean filterweakitems = false; // strip unusually weak items from reel?				//SCS EDIT - Changing this to false to fix funky item odds - Eggmark wasn't appearing outside of 1st, Quad Orbi was cannabalizing Triple Orbi, etc.
 	UINT8 reelsize = 15; // How many items to attempt to add in prepass?
 	UINT32 humanscaler = 250; // Scaler that converts "useodds" style distances in odds tables to raw distances. Affects general item distance scale.
 
@@ -1481,7 +1655,7 @@ void K_FillItemRouletteData(player_t *player, itemroulette_t *const roulette, bo
 			permit[i] = false;
 		else if (!K_ShouldPlayerAllowItem(i, player))
 			permit[i] = false;
-		else if (K_GetItemCooldown(i))
+		else if (K_GetItemCooldown(i) && !(player->position == 1 && K_IsItemFirstPermitted(i)))		//Cooldown for Eggmark, but only outside of 1st place.
 			permit[i] = false;
 		else if (!K_ItemEnabled(i))
 			permit[i] = false;
@@ -1534,7 +1708,7 @@ void K_FillItemRouletteData(player_t *player, itemroulette_t *const roulette, bo
 	// is completely ineligible for the gametype we're in, and should never be selected.
 	for (i = 1; i < NUMKARTRESULTS; i++)
 	{
-		if (powers[i] == 0)
+		if (powers[i] == 0) //&& !(K_IsItemFirstOnly(i) || K_IsItemFirstPermitted(i)))		//SCS EDIT - Sometimes 1st isn't getting all of their items now. We need them to be 0 so they are FOR SURE in the reel
 		{
 			permit[i] = false;
 		}
@@ -1566,7 +1740,7 @@ void K_FillItemRouletteData(player_t *player, itemroulette_t *const roulette, bo
 			permit[KITEM_SUPERRING] = true;
 			deltas[KITEM_SUPERRING] = 0;
 			canfiltersuperring = false;
-			roulette->popcorn = (player->position > 1) ? max(1, targetpower/humanscaler/3) : 1;
+			roulette->popcorn = (player->position > 1) ? max(1, targetpower/humanscaler/3) : 1;	
 		}
 	}
 
@@ -1750,6 +1924,7 @@ void K_FillItemRouletteData(player_t *player, itemroulette_t *const roulette, bo
 
 	UINT8 debugcount = 0; // For the "simple" odds debugger.
 	UINT32 meanreelpower = totalreelpower/max(added, 1); // Average power for the "moth filter".
+	UINT32 maxreduction = -1 * min(2 * DISTVAR, meanreelpower/2);
 
 	// == PREP FOR ADDING TO THE ROULETTE REEL
 	// Sal's prior work for this is rock-solid.
@@ -1765,11 +1940,18 @@ void K_FillItemRouletteData(player_t *player, itemroulette_t *const roulette, bo
 
 		// If we're far away from interactions, be extra aggressive about tossing attack items.
 		if (filterweakitems && !reject && !K_IsItemSpeed(i))
-			reject = (powers[i] + Easing_Linear(loneliness, DISTVAR, -2 * DISTVAR) < meanreelpower);
+			reject = (powers[i] + Easing_Linear(loneliness, DISTVAR, maxreduction) < meanreelpower);
 
 		// Popcorn Super Ring is always strong enough, we put it there on purpose.
 		if (i == KITEM_SUPERRING && !canfiltersuperring)
 			reject = false;
+		
+
+		if (i == KITEM_LIGHTNINGSHIELD && (player->mo->eflags & MFE_UNDERWATER))		//SCS ADD - don't even bother putting these in the roulette if you get an item box underwater.
+			reject = true;
+		
+		if (i == KITEM_FLAMESHIELD && (player->mo->eflags & MFE_UNDERWATER))
+			reject = true;
 
 		// Before we actually apply that rejection, draw the simple odds debugger.
 		// This one is just to watch the distribution for vibes as you drive around.
@@ -1778,6 +1960,9 @@ void K_FillItemRouletteData(player_t *player, itemroulette_t *const roulette, bo
 			UINT16 BASE_X = 280;
 			UINT16 BASE_Y = 5+12*debugcount;
 			INT32 FLAGS = V_SNAPTOTOP|V_SNAPTORIGHT;
+			
+			if (reject)
+				FLAGS |= V_TRANSLUCENT;
 			V_DrawRightAlignedThinString(BASE_X - 12, 5, FLAGS, va("TP %d", targetpower/humanscaler));
 			V_DrawRightAlignedThinString(BASE_X - 12, 5+12, FLAGS, va("FB %d / %d", toFront, toBack));
 			V_DrawRightAlignedThinString(BASE_X - 12, 5+24, FLAGS, va("L %d / CF %d", loneliness, crowdingFirst));
@@ -1903,7 +2088,8 @@ fixed_t K_GetRouletteOffset(itemroulette_t *const roulette, fixed_t renderDelta,
 	const fixed_t curTic = (roulette->tics << FRACBITS) - renderDelta;
 	const fixed_t midTic = roulette->speed * (FRACUNIT >> 1);
 
-	fixed_t result = FixedMul(FixedDiv(midTic - curTic, ((roulette->speed + 1) << FRACBITS)), ROULETTE_SPACING);
+	//fixed_t result = FixedMul(FixedDiv(midTic - curTic, ((roulette->speed + 1) << FRACBITS)), ROULETTE_SPACING);
+	fixed_t result = FixedMul(FixedDiv(midTic - curTic, ((roulette->speed + 1) << FRACBITS)), (ROULETTE_SPACING));		//SCS - RADIO
 
 	if (fudge > 0)
 	{
@@ -1942,7 +2128,31 @@ void K_KartGetItemResult(player_t *const player, kartitems_t getitem)
 {
 	if (K_ItemSingularity(getitem) == true)
 	{
-		K_SetItemCooldown(getitem, 20*TICRATE);
+		switch (getitem)								//SCS ADD
+		{	
+			case KITEM_SPB:
+			case KITEM_SHRINK:
+			case KITEM_MASTEREMERALD:
+				K_SetItemCooldown(getitem, 20*TICRATE);
+				break;
+			case KRITEM_DECABANANA:
+			case KITEM_TIMESTONE:
+			case KITEM_BOGOSPRING:
+				K_SetItemCooldown(getitem, 15*TICRATE);
+				break;
+			case KITEM_EGGMAN:
+			case KITEM_RINGGUN:
+				K_SetItemCooldown(getitem, 10*TICRATE);
+				break;
+			case KITEM_PRESSUREMINE:
+			case KITEM_CHAMBLASTER:
+			case KITEM_EGGBLASTER:
+			case KITEM_SUPERJACKPOT:
+				K_SetItemCooldown(getitem, 5*TICRATE);
+				break;
+			default:
+				break;
+		}
 	}
 
 	player->botvars.itemdelay = TICRATE;
@@ -1952,7 +2162,7 @@ void K_KartGetItemResult(player_t *const player, kartitems_t getitem)
 	UINT8 itemamount = K_ItemResultToAmount(getitem, &player->itemRoulette);
 	if (cv_kartdebugitem.value != KITEM_NONE && cv_kartdebugitem.value == player->itemtype && cv_kartdebugamount.value > 1)
 		itemamount = cv_kartdebugamount.value;
-	player->itemamount = itemamount;
+	K_SetPlayerItemAmount(player, itemamount);
 
 	if (player->itemtype == KITEM_SPB)
 		Obj_SPBEradicateCapsules();
@@ -2056,7 +2266,8 @@ void K_KartItemRoulette(player_t *const player, ticcmd_t *const cmd)
 			}
 
 			// And one more nudge for the remaining delay.
-			roulette->tics = (roulette->tics + fudgedDelay) % roulette->speed;
+			//roulette->tics = (roulette->tics + fudgedDelay) % roulette->speed;		//SCS EDIT - disabling this because it seems unreliable
+			roulette->tics = (roulette->tics) % roulette->speed;
 
 			INT32 finalItem = roulette->itemList.items[ roulette->index ];
 
@@ -2064,12 +2275,14 @@ void K_KartItemRoulette(player_t *const player, ticcmd_t *const cmd)
 			{
 				player->ringboxdelay = TICRATE;
 				player->ringboxaward = finalItem;
-				player->karthud[khud_rouletteoffset] = K_GetSlotOffset(roulette, FRACUNIT, baseFudge);
+				//player->karthud[khud_rouletteoffset] = K_GetSlotOffset(roulette, FRACUNIT, baseFudge); 		//SCS EDIT
+				player->karthud[khud_rouletteoffset] = K_GetSlotOffset(roulette, FRACUNIT, 0);
 			}
 			else
 			{
 				K_KartGetItemResult(player, finalItem);
-				player->karthud[khud_rouletteoffset] = K_GetRouletteOffset(roulette, FRACUNIT, baseFudge);
+				//player->karthud[khud_rouletteoffset] = K_GetRouletteOffset(roulette, FRACUNIT, baseFudge);		/SCS EDIT
+				player->karthud[khud_rouletteoffset] = K_GetRouletteOffset(roulette, FRACUNIT, 0);
 			}
 
 			player->karthud[khud_itemblink] = TICRATE;

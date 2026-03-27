@@ -56,6 +56,8 @@
 #include "k_dialogue.h"
 #include "m_easing.h"
 
+#include "radioracers/rr_cvar.h"		//SCS - RADIO
+
 UINT16 objectsdrawn = 0;
 
 //
@@ -1584,12 +1586,15 @@ void ST_Drawer(void)
 
 #ifdef BETAVERSION
 
-	char nag[256];
-	snprintf(nag, sizeof(nag), "KartKrew.org - %s %s - Pre-release testing version", SRB2VERSION, BETAVERSION);
+	//if (g_takemapthumbnail == TMT_NO)
+	//{
+		//char nag[256];
+		//snprintf(nag, sizeof(nag), "KartKrew.org - %s %s - Pre-release testing version", SRB2VERSION, BETAVERSION);		//SCS - Get this annoying HUD off the damn screen
 
-	V_DrawCenteredMenuString(BASEVIDWIDTH/2, 2, V_60TRANS|V_SNAPTOTOP, nag);
+		//V_DrawCenteredMenuString(BASEVIDWIDTH/2, 2, V_60TRANS|V_SNAPTOTOP, nag);
 
-	V_DrawCenteredMenuString(BASEVIDWIDTH/2, BASEVIDHEIGHT - 10, V_60TRANS|V_SNAPTOBOTTOM, nag);
+		//V_DrawCenteredMenuString(BASEVIDWIDTH/2, BASEVIDHEIGHT - 10, V_60TRANS|V_SNAPTOBOTTOM, nag);
+	//}
 
 #endif
 
@@ -1613,7 +1618,13 @@ void ST_Drawer(void)
 			}
 		}
 
-		st_translucency = FixedMul(10, maxFade);
+		//st_translucency = FixedMul(10, maxFade);
+		if (maxFade == FRACUNIT)											//SCS - RADIO START
+			st_translucency = cv_translucenthud.value;
+		else
+			st_translucency = FixedMul(cv_translucenthud.value, maxFade);
+
+		st_translucency = min(max((st_translucency), 0), 10);				//SCS - RADIO END
 	}
 
 	// Check for a valid level title

@@ -16,6 +16,7 @@
 #include "p_mobj.h"
 #include "k_kart.h"
 #include "p_local.h"
+#include "radioracers/rr_hud.h"			//SCS - RADIO
 #include "s_sound.h"
 #include "r_main.h" // R_PointToAngle2, R_PointToDist2
 #include "hu_stuff.h" // Sink snipe print
@@ -59,6 +60,8 @@ extern "C" consvar_t cv_debugpickmeup;
 
 boolean K_BananaBallhogCollide(mobj_t *t1, mobj_t *t2)
 {
+	// Radio
+	boolean issnipe = false;			//SCS - RADIO
 	boolean damageitem = false;
 
 	if (((t1->target == t2) || (!(t2->flags & (MF_ENEMY|MF_BOSS)) && (t1->target == t2->target))) && (t1->threshold > 0 || (t2->type != MT_PLAYER && t2->threshold > 0)))
@@ -89,8 +92,10 @@ boolean K_BananaBallhogCollide(mobj_t *t1, mobj_t *t2)
 			return true;
 
 		// Banana snipe!
-		if (t1->type == MT_BANANA && t1->health > 1)
+		if (t1->type == MT_BANANA && t1->health > 1) {
 			S_StartSound(t2, sfx_bsnipe);
+			issnipe = true;						//SCS - RADIO
+		}										//SCS - RADIO
 
 		if (t1->type != MT_BALLHOGBOOM) // ballhog booms linger and expire after their anim is done
 		{
@@ -109,13 +114,17 @@ boolean K_BananaBallhogCollide(mobj_t *t1, mobj_t *t2)
 		}
 		else
 		{
+			if (issnipe && t1->target) {											//SCS - RADIO START
+				RR_PushPlayerInteractionToFeed(t1->target, t2, ATTACK_SNIPE, 0);
+			}																		//SCS - RADIO END
 			P_DamageMobj(t2, t1, t1->target, 1, DMG_NORMAL|DMG_WOMBO);
 		}
 	}
 	else if (t2->type == MT_BANANA || t2->type == MT_BANANA_SHIELD
 		|| t2->type == MT_ORBINAUT || t2->type == MT_ORBINAUT_SHIELD
 		|| t2->type == MT_JAWZ || t2->type == MT_JAWZ_SHIELD
-		|| t2->type == MT_BALLHOG || t2->type == MT_GACHABOM)
+		|| t2->type == MT_BALLHOG || t2->type == MT_GACHABOM
+		|| t2->type == MT_AFTERBURNER_JAWZ)							//SCS ADD
 	{
 		// Other Item Damage
 		angle_t bounceangle = K_GetCollideAngle(t1, t2);
@@ -130,7 +139,7 @@ boolean K_BananaBallhogCollide(mobj_t *t1, mobj_t *t2)
 
 		damageitem = true;
 	}
-	else if (t2->type == MT_SSMINE_SHIELD || t2->type == MT_SSMINE || t2->type == MT_LANDMINE)
+	else if (t2->type == MT_SSMINE_SHIELD || t2->type == MT_SSMINE || t2->type == MT_LANDMINE || t2->type == MT_PRESSUREMINE)		//SCS EDIT
 	{
 		damageitem = true;
 		// Bomb death
@@ -423,7 +432,7 @@ boolean K_MineCollide(mobj_t *t1, mobj_t *t2)
 	}
 	else if (t2->type == MT_ORBINAUT || t2->type == MT_JAWZ
 		|| t2->type == MT_ORBINAUT_SHIELD || t2->type == MT_JAWZ_SHIELD
-		|| t2->type == MT_GACHABOM)
+		|| t2->type == MT_GACHABOM || t2->type == MT_AFTERBURNER_JAWZ)					//SCS ADD
 	{
 		// Bomb death
 		angle_t bounceangle = K_GetCollideAngle(t1, t2);
@@ -450,6 +459,9 @@ boolean K_MineCollide(mobj_t *t1, mobj_t *t2)
 
 boolean K_LandMineCollide(mobj_t *t1, mobj_t *t2)
 {
+	// Radio
+	boolean issnipe = false;			//SCS - RADIO
+
 	if (((t1->target == t2) || (!(t2->flags & (MF_ENEMY|MF_BOSS)) && (t1->target == t2->target))) && (t1->threshold > 0 || (t2->type != MT_PLAYER && t2->threshold > 0)))
 		return true;
 
@@ -478,6 +490,8 @@ boolean K_LandMineCollide(mobj_t *t1, mobj_t *t2)
 			}
 
 			S_StartSound(t2, sfx_bsnipe);
+			// Radio
+			issnipe = true;			//SCS - RADIO
 		}
 
 		if (t2->player->flamedash && t2->player->itemtype == KITEM_FLAMESHIELD)
@@ -489,7 +503,14 @@ boolean K_LandMineCollide(mobj_t *t1, mobj_t *t2)
 		else
 		{
 			// Player Damage
-			P_DamageMobj(t2, t1, t1->target, 1, DMG_TUMBLE);
+			if (issnipe && t1->target) {													//SCS - RADIO START
+				RR_PushPlayerInteractionToFeed(t1->target, t2, ATTACK_SNIPE, 0);
+			}																				//SCS - RADIO END
+			if (t1->type == MT_LANDMINE)							//SCS ADD
+				P_DamageMobj(t2, t1, t1->target, 1, DMG_TUMBLE);
+			else													//SCS ADD
+				P_DamageMobj(t2, t1, t1->target, 1, DMG_EXPLODE);	//SCS ADD
+			
 		}
 
 		t1->reactiontime = (t2->hitlag - oldhitlag);
@@ -498,7 +519,8 @@ boolean K_LandMineCollide(mobj_t *t1, mobj_t *t2)
 	else if (t2->type == MT_BANANA || t2->type == MT_BANANA_SHIELD
 		|| t2->type == MT_ORBINAUT || t2->type == MT_ORBINAUT_SHIELD
 		|| t2->type == MT_JAWZ || t2->type == MT_JAWZ_SHIELD
-		|| t2->type == MT_BALLHOG || t2->type == MT_GACHABOM)
+		|| t2->type == MT_BALLHOG || t2->type == MT_GACHABOM
+		|| t2->type == MT_AFTERBURNER_JAWZ)						//SCS ADD
 	{
 		// Other Item Damage
 		angle_t bounceangle = K_GetCollideAngle(t1, t2);
@@ -526,7 +548,7 @@ boolean K_LandMineCollide(mobj_t *t1, mobj_t *t2)
 		}
 		P_KillMobj(t1, t2, t2, DMG_NORMAL);
 	}
-	else if (t2->type == MT_SSMINE_SHIELD || t2->type == MT_SSMINE || t2->type == MT_LANDMINE)
+	else if (t2->type == MT_SSMINE_SHIELD || t2->type == MT_SSMINE || t2->type == MT_LANDMINE || t2->type == MT_PRESSUREMINE)		//SCS EDIT
 	{
 		P_KillMobj(t1, t2, t2, DMG_NORMAL);
 		// Bomb death
@@ -547,6 +569,363 @@ boolean K_LandMineCollide(mobj_t *t1, mobj_t *t2)
 		}
 
 		P_KillMobj(t1, t2, t2, DMG_NORMAL);
+	}
+
+	return true;
+}
+
+void K_GHZBall_BounceWithOther(mobj_t *t1, mobj_t *t2)			//SCS ADD
+{
+	int mass1 = FixedMul(100*FRACUNIT, t1->scale);
+	int mass2 = FixedMul(60*FRACUNIT, t2->scale);
+			
+	int NewX = t1->x - t2->x;
+	int NewY = t1->y - t2->y;
+	int NewZ = FixedMul(NewX, NewX) + FixedMul(NewY, NewY);
+			
+	if (NewZ != 0)
+	{
+		int u1 = FixedDiv(FixedMul(t1->momx , NewX) + FixedMul(t1->momy , NewY) , NewZ);
+		int u2 = FixedDiv(FixedMul(NewX , t1->momy) - FixedMul(NewY , t1->momx) , NewZ);  // Adjust self along tangent
+		int u3 = FixedDiv(FixedMul(t2->momx , NewX) + FixedMul(t2->momy , NewY) , NewZ);
+		int u4 = FixedDiv(FixedMul(NewX , t2->momy) - FixedMul(NewY , t2->momx) , NewZ); // Adjust inflictor along tangent
+				
+		int mm = mass1 + mass2;
+		int vu3 = FixedMul(FixedDiv(mass1 - mass2, mm), u1) + FixedMul(FixedDiv(2*mass2, mm), u3);
+		int vu1 = FixedMul(FixedDiv(mass2 - mass1, mm), u3) + FixedMul(FixedDiv(2*mass1, mm), u1);
+
+		// set new velocities
+		t2->momx = FixedMul(NewX , vu1) - FixedMul(NewY , u4);
+		t2->momy = FixedMul(NewY , vu1) + FixedMul(NewX , u4);
+		t1->momx = FixedMul(NewX , vu3) - FixedMul(NewY , u2);
+		t1->momy = FixedMul(NewY , vu3) + FixedMul(NewX , u2);
+				
+		int notballvelocity = FixedHypot(t2->momx, t2->momy);
+				
+		if (notballvelocity < 10*mapobjectscale)
+		{
+			int momentumangle = R_PointToAngle2(0, 0, t2->momx, t2->momy);
+			P_Thrust(t2, momentumangle,  10*mapobjectscale - notballvelocity);
+		}
+	}	
+}
+
+void K_GHZBall_BallBounce(mobj_t *t1, mobj_t *t2)			//SCS ADD
+{
+	t1->momx = FixedMul(t1->momx, 92*FRACUNIT/100);
+	t1->momy = FixedMul(t1->momy, 92*FRACUNIT/100);
+	t2->momx = FixedMul(t2->momx, 92*FRACUNIT/100);
+	t2->momy = FixedMul(t2->momy, 92*FRACUNIT/100);
+		
+	int NewX = t1->x - t2->x;
+	int NewY = t1->y - t2->y;
+	int NewZ = FixedMul(NewX, NewX) + FixedMul(NewY, NewY);
+			
+	if (NewZ != 0)
+	{
+		int u1 = FixedDiv(FixedMul(t1->momx , NewX) + FixedMul(t1->momy , NewY) , NewZ);
+		int u2 = FixedDiv(FixedMul(NewX , t1->momy) - FixedMul(NewY , t1->momx) , NewZ);  // Adjust self along tangent
+		int u3 = FixedDiv(FixedMul(t2->momx , NewX) + FixedMul(t2->momy , NewY) , NewZ);
+		int u4 = FixedDiv(FixedMul(NewX , t2->momy) - FixedMul(NewY , t2->momx) , NewZ); // Adjust inflictor along tangent
+
+		// set new velocities
+		t2->momx = FixedMul(NewX , u1) - FixedMul(NewY , u4);
+		t2->momy = FixedMul(NewY , u1) + FixedMul(NewX , u4);
+		t1->momx = FixedMul(NewX , u3) - FixedMul(NewY , u2);
+		t1->momy = FixedMul(NewY , u3) + FixedMul(NewX , u2);
+				
+		int balltwovelocity = FixedHypot(t2->momx, t2->momy);
+				
+		if (balltwovelocity < 5*mapobjectscale)
+		{
+			int momentumangle = R_PointToAngle2(0, 0, t2->momx, t2->momy);
+			P_Thrust(t2, momentumangle,  10*mapobjectscale - balltwovelocity);
+		}
+		
+		int ballonevelocity = FixedHypot(t1->momx, t1->momy);
+				
+		if (ballonevelocity < 5*mapobjectscale)
+		{
+			int momentumangle2 = R_PointToAngle2(0, 0, t1->momx, t1->momy);
+			P_Thrust(t1, momentumangle2,  10*mapobjectscale - ballonevelocity);
+		}
+	}	
+}
+
+boolean K_GHZBallCollide(mobj_t *t1, mobj_t *t2)			//SCS ADD
+{
+	if (((t1->target == t2) || (!(t2->flags & (MF_ENEMY|MF_BOSS)) && (t1->target == t2->target))) && (t1->threshold > 0 || (t2->type != MT_PLAYER && t2->threshold > 0)))
+		return true;
+
+	if (t1->health <= 0 || t2->health <= 0)
+		return true;
+
+	if (t2->player)
+	{
+		int ballvelocity = FixedHypot(t1->momx, t1->momy);
+		//int frontanglerange = ANG1*82;
+		int minsquishspeed = 5;
+		bool balltooslow = (ballvelocity < minsquishspeed * mapobjectscale);
+		//bool behindtheball = (abs(t1->angle - R_PointToAngle2(t1->x, t1->y, t2->x, t2->y)) > frontanglerange);
+		const INT32 oldhitlag = t2->hitlag;
+		
+		//if (behindtheball || balltooslow)
+		if (balltooslow)
+			return false;
+		
+		K_GHZBall_BounceWithOther(t1, t2);
+
+		if (t2->player->flashing)
+			return true;
+
+		if (t2->player->flamedash && t2->player->itemtype == KITEM_FLAMESHIELD)
+		{
+			// Melt item
+			S_StartSound(t2, sfx_mbv92);
+			K_SetHitLagForObjects(t2, t1, t1->target, 3, false);
+		}
+		else if (t2->player->invincibilitytimer || t2->player->overshield || (t2->player->growshrinktimer > 0 && K_IsBigger(t1, t2)))
+		{
+			P_DamageMobj(t1, t2, t2, 50, DMG_NORMAL);
+		}
+		else
+		{
+			// Player Damage
+			if (FixedHypot(t1->momx, t1->momy) > 5*mapobjectscale)
+			{
+				if (R_PointToDist2(0, 0, t1->momx, t1->momy) > FRACUNIT*2)
+				{
+					if (t2->player->squishedtimer || t2->player->growshrinktimer > 0 || K_IsBigger(t2, t1))		//squish smaller/tiny players
+					{
+						t2->player->squishedtimer = 80;
+						RR_PushPlayerInteractionToFeed(t1, t2, ATTACK_PANCAKE, 0);				//SCS ADD
+					}
+					
+					if (P_DamageMobj(t2, t1, t1->target, 1, DMG_TUMBLE))
+					{
+						S_StartSound(t1, sfx_s3k49);
+						mobj_t *bonk = P_SpawnMobj(t1->x/2 + t2->x/2, t1->y/2 + t2->y/2, t1->z/2 + t2->z/2, MT_BUMP);
+						K_FlipFromObject(bonk, t1);
+						bonk->scale = t1->scale;
+						t2->momz += (5*abs(t2->player->rings))/t2->scale;
+					}
+				}
+				else
+				{
+					if (P_DamageMobj(t1, t2, t2, 2, DMG_NORMAL))
+					{
+						mobj_t *bonk = P_SpawnMobj(t1->x/2 + t2->x/2, t1->y/2 + t2->y/2, t1->z/2 + t2->z/2, MT_BUMP);
+						K_FlipFromObject(bonk, t1);
+						bonk->scale = t1->scale;
+						t2->momz += (5*abs(t2->player->rings))/t2->scale;
+					}
+					P_DamageMobj(t2, t1, t1->target, 1, DMG_STUMBLE);
+				}
+			}
+		}
+
+		t1->reactiontime = (t2->hitlag - oldhitlag);
+		//P_DamageMobj(t2, t1, t1, 1, DMG_NORMAL);
+	}
+	else if (t2->type == MT_BANANA || t2->type == MT_BANANA_SHIELD 
+		|| t2->type == MT_ORBINAUT || t2->type == MT_ORBINAUT_SHIELD
+		|| t2->type == MT_JAWZ || t2->type == MT_JAWZ_SHIELD
+		|| t2->type == MT_BALLHOG || t2->type == MT_GACHABOM
+		|| t2->type == MT_AFTERBURNER_JAWZ)							//SCS ADD
+	{
+		if (t2->type == MT_BANANA || t2->type == MT_BANANA_SHIELD) //Speeds it up?
+		{
+			if (P_IsObjectOnGround(t2))
+			{
+				t1->momx *= 2;
+				t1->momy *= 2;
+				
+				P_KillMobj(t2, t1, t1, DMG_NORMAL);
+				if (P_MobjWasRemoved(t2))
+				{
+					t2 = NULL; // handles the arguments to P_KillMobj
+				}
+			}
+			else
+			{
+				P_KillMobj(t2, t1, t1, DMG_NORMAL); //Bananas don't survive even touching this thing
+			}
+			return true;
+		}
+		// Other Item Damage
+		//angle_t bounceangle = K_GetCollideAngle(t1, t2);
+
+		if (t2->eflags & MFE_VERTICALFLIP)
+			t2->z -= t2->height;
+		else
+			t2->z += t2->height;
+
+		P_SpawnMobj(t2->x/2 + t1->x/2, t2->y/2 + t1->y/2, t2->z/2 + t1->z/2, MT_ITEMCLASH);
+
+		S_StartSound(t2, t2->info->deathsound);
+		P_KillMobj(t2, t1, t1, DMG_NORMAL);
+
+		if (P_MobjWasRemoved(t2))
+		{
+			t2 = NULL; // handles the arguments to P_KillMobj
+		}
+		else
+		{
+			t1->reactiontime = t2->hitlag;
+		}
+	}
+	else if (t2->type == MT_GHZBALL)
+	{
+		K_GHZBall_BallBounce(t1, t2);
+		
+		S_StartSound(t1, sfx_s3k49);
+		mobj_t *bonk = P_SpawnMobj(t1->x/2 + t2->x/2, t1->y/2 + t2->y/2, t1->z/2 + t2->z/2, MT_BUMP);
+		K_FlipFromObject(bonk, t1);
+		bonk->scale = t1->scale;
+
+		//P_DamageMobj(t2, t1, t1->target, 1, DMG_NORMAL);
+		//P_DamageMobj(t1, t2, t2->target, 1, DMG_NORMAL);
+	}
+	else if (t2->type == MT_GARDENTOP)
+	{
+		P_SpawnMobj(t2->x/2 + t1->x/2, t2->y/2 + t1->y/2, t2->z/2 + t1->z/2, MT_ITEMCLASH);
+		
+		Obj_WreckingBallDeath(t1);
+		P_KillMobj(t1, t2, t2, DMG_NORMAL);
+		P_KillMobj(t2, t1, t1, DMG_NORMAL);		
+	}
+	else if (t2->type == MT_SSMINE_SHIELD || t2->type == MT_SSMINE || t2->type == MT_LANDMINE || t2->type == MT_PRESSUREMINE)
+	{
+		P_KillMobj(t1, t2, t2, DMG_NORMAL);
+		// Bomb death
+		P_KillMobj(t2, t1, t1, DMG_NORMAL);
+	}
+	else if (t2->flags & MF_SHOOTABLE)
+	{
+		// Shootable damage
+		P_DamageMobj(t2, t1, t1->target, 1, DMG_NORMAL);
+
+		if (P_MobjWasRemoved(t2))
+		{
+			t2 = NULL; // handles the arguments to P_KillMobj
+		}
+		else
+		{
+			t1->reactiontime = t2->hitlag;
+		}
+	}
+
+	return true;
+}
+
+boolean K_RingGunBlastMaxCollide(mobj_t *t1, mobj_t *t2)			//SCS ADD
+{
+	if (((t1->target == t2) || (!(t2->flags & (MF_ENEMY|MF_BOSS)) && (t1->target == t2->target))) && (t1->threshold > 0 || (t2->type != MT_PLAYER && t2->threshold > 0)))
+		return true;
+
+	if (t1->health <= 0 || t2->health <= 0)
+		return true;
+
+	if (t2->player && t2->player->mo != t1->target && t2->player->hyudorotimer <= 0)
+	{
+		P_DamageMobj(t2, t1, t1->target, 1, DMG_NORMAL);
+		t2->player->hyudorotimer = hyudorotime/8;
+		mobj_t *bullet = P_SpawnMobj(t1->x, t1->y, t1->z, MT_RINGGUNBLASTMAX);
+												
+		if (bullet)
+		{
+			P_SetTarget(&bullet->target, t1->target);
+			bullet->color = SKINCOLOR_GOLD;
+			bullet->destscale = t1->destscale;
+			bullet->momx = t1->momx;
+			bullet->momy = t1->momy;
+			bullet->momz = t1->momz;
+		}
+		
+		P_RemoveMobj(t1);
+	}
+
+	return true;
+}
+
+boolean K_MegaChopperCollide(mobj_t *t1, mobj_t *t2)			//SCS ADD
+{
+	if (((t1->target == t2) || (!(t2->flags & (MF_ENEMY|MF_BOSS)) && (t1->target == t2->target))) && (t1->threshold > 0 || (t2->type != MT_PLAYER && t2->threshold > 0)))
+		return true;
+
+	if (t1->health <= 0 || t2->health <= 0)
+		return true;
+
+	if (t2->player && t2->player->mo != t1->target)
+	{
+		//S_StartSound(t1, sfx_s3k49);
+		
+		if (t2->player->invincibilitytimer || t2->player->growshrinktimer > 0)
+		{
+			K_DoInstashield(t2->player);
+			return false;		
+		}
+		
+		if (t2->player->flashing)
+			return true;
+
+		if (t2->player->flamedash && t2->player->itemtype == KITEM_FLAMESHIELD)
+		{
+			// Melt item
+			S_StartSound(t2, sfx_mbv92);
+			K_SetHitLagForObjects(t2, t1->target, t1->target, 3, false);
+		}
+		else if (!t2->player->overshield)
+		{
+			// Player Damage
+			//if (FixedHypot(t1->momx, t1->momy) > 5*mapobjectscale)
+			//{
+				if (P_DamageMobj(t2, t1, t1->target, 1, DMG_NORMAL))
+				{
+					mobj_t *bonk = P_SpawnMobj(t1->x/2 + t2->x/2, t1->y/2 + t2->y/2, t1->z/2 + t2->z/2, MT_BUMP);
+					K_FlipFromObject(bonk, t1);
+					bonk->scale = t1->scale;
+				}					
+			//}
+		}
+		else if (t2->player->overshield)
+		{
+			K_DoInstashield(t2->player);
+			return false;
+		}
+
+		//t1->reactiontime = (t2->hitlag - oldhitlag);
+		//P_DamageMobj(t2, t1, t1, 1, DMG_NORMAL);
+		
+		t2->player->rings = (t2->player->rings - 10);
+		
+		if (t2->player->rings < -20)
+		{
+			t2->player->invincibilitytimer = 0;
+			t2->player->rings = -20;
+			t2->player->masteremeraldinvincibility = false;
+			t2->player->usedmasteremeraldduringringboxaward = false;
+			P_KillMobj(t2->player->mo, NULL, NULL, DMG_NORMAL);					
+		}
+		
+		if (t1->target && t1->target->player)
+		{
+			K_AwardPlayerRings(t1->target->player, 10, true);
+			
+			if (t1->target->player->megachopper != NULL)
+			{
+				t1->target->player->megachoppertimer += 10;
+				
+				if (t1->target->player->megachoppertimer > (itemtime*2))
+					t1->target->player->megachoppertimer = (itemtime*2);
+			}
+			
+		}
+		
+	}
+	else
+	{
+		return true;
 	}
 
 	return true;
@@ -693,6 +1072,26 @@ boolean K_DropTargetCollide(mobj_t *t1, mobj_t *t2)
 	}
 
 	t1->flags |= MF_SHOOTABLE;
+
+	// Radio:
+	// The P_DamageMobj call below changes the owner of the droptarget
+	// so keep track of the original one
+	mobj_t* radio_originaltarget = (t1->target) ? t1->target : NULL;			//SCS - RADIO START
+	playerattacks_t hudfeed_attacktype = ATTACK_DROPTARGET;
+
+	// Set the attack type depending on the drop target's health
+	// This will recolor the graphic in the feed to the appropriate colour
+	switch (t1->health)
+	{
+		case 2:
+			hudfeed_attacktype = ATTACK_DROPTARGET_MEDIUM_HEALTH;
+			break;
+
+		case 1:
+			hudfeed_attacktype = ATTACK_DROPTARGET_LOW_HEALTH;
+			break;
+	}																			//SCS - RADIO END
+
 	// The following sets t1->target to t2, so draggeddroptarget keeps it persisting...
 	P_DamageMobj(t1, t2, (t2->target ? t2->target : t2), 1, DMG_NORMAL);
 
@@ -710,6 +1109,12 @@ boolean K_DropTargetCollide(mobj_t *t1, mobj_t *t2)
 			t1->color = SKINCOLOR_CRIMSON;
 			break;
 	}
+	
+	// Radio: .. and THEN we add it to the feed															//SCS - RADIO
+	// Just use the newtarget, keeping this here in case I want to revert
+	// if (radio_originaltarget) {
+		// RR_PushPlayerInteractionToFeed(radio_originaltarget, t2, hudfeed_attacktype);
+	// }
 
 	t1->flags &= ~MF_SHOOTABLE;
 
@@ -719,8 +1124,13 @@ boolean K_DropTargetCollide(mobj_t *t1, mobj_t *t2)
 	if (!t2->player)
 	{
 		t2->angle += ANGLE_180;
-		if (t2->type == MT_JAWZ)
+		if (t2->type == MT_JAWZ || t2->type == MT_AFTERBURNER_JAWZ)				//SCS EDIT
 			P_SetTarget(&t2->tracer, t2->target); // Back to the source!
+			
+		// Reflected item becomes owned by the DT owner, so it becomes dangerous the the thrower
+		if (t1->target && !P_MobjWasRemoved(t1->target))
+			P_SetTarget(&t2->target, t1->target);
+			
 		t2->threshold = 10;
 	}
 
@@ -734,7 +1144,12 @@ boolean K_DropTargetCollide(mobj_t *t1, mobj_t *t2)
 
 	if (t1->tracer && t1->tracer->player && t2->player && t2->player != t1->tracer->player)
 	{
-		K_SpawnAmps(t1->tracer->player, K_PvPAmpReward(20, t1->tracer->player, t2->player), t1);
+		//K_SpawnAmps(t1->tracer->player, K_PvPAmpReward(20, t1->tracer->player, t2->player), t1);
+		UINT8 dropTargetAmps = K_PvPAmpReward(20, t1->tracer->player, t2->player);					//SCS - RADIO START
+		K_SpawnAmps(t1->tracer->player, dropTargetAmps, t1);
+
+		// Radio
+		RR_PushPlayerInteractionToFeed(t1->tracer, t2, hudfeed_attacktype, dropTargetAmps);			//SCS - RADIO END
 	}
 
 	if (draggeddroptarget && !P_MobjWasRemoved(draggeddroptarget) && draggeddroptarget->player)
@@ -748,6 +1163,96 @@ boolean K_DropTargetCollide(mobj_t *t1, mobj_t *t2)
 
 	return true;
 }
+
+static mobj_t *BlastSource;												//SCS ADD START
+static fixed_t BlastDist;
+
+static inline BlockItReturn_t PIT_ArmageddonShieldAttack(mobj_t *thing)
+{
+	if (BlastSource == NULL || P_MobjWasRemoved(BlastSource))
+	{
+		// Invalid?
+		return BMIT_ABORT;
+	}
+
+	if (thing == NULL || P_MobjWasRemoved(thing))
+	{
+		// Invalid?
+		return BMIT_ABORT;
+	}
+
+	if (thing == BlastSource)
+	{
+		// Don't explode yourself!!
+		return BMIT_CONTINUE;
+	}
+
+	if (thing->health <= 0)
+	{
+		// Dead
+		return BMIT_CONTINUE;
+	}
+
+	if (thing->type != MT_SPB)
+	{
+		if (!(thing->flags & MF_SHOOTABLE) || (thing->flags & MF_SCENERY))
+		{
+			// Not shootable
+			return BMIT_CONTINUE;
+		}
+	}
+
+	if (thing->player && thing->player->spectator)
+	{
+		// Spectator
+		return BMIT_CONTINUE;
+	}
+
+	if (P_AproxDistance(thing->x - BlastSource->x, thing->y - BlastSource->y) > BlastDist + thing->radius)
+	{
+		// Too far away
+		return BMIT_CONTINUE;
+	}
+
+	// see if it went over / under
+	if (BlastSource->z - BlastDist > thing->z + thing->height)
+		return BMIT_CONTINUE; // overhead
+	if (BlastSource->z + BlastSource->height + BlastDist < thing->z)
+		return BMIT_CONTINUE; // underneath
+
+#if 0
+	if (P_CheckSight(BlastSource, thing) == false)
+	{
+		// Not in sight
+		return BMIT_CONTINUE;
+	}
+#endif
+
+	P_DamageMobj(thing, BlastSource, BlastSource, 1, DMG_EXPLODE|DMG_CANTHURTSELF|DMG_WOMBO);
+	
+	RR_PushPlayerInteractionToFeed(BlastSource, thing, ATTACK_ARMA_SHIELD, 10);				//SCS ADD - I think it gives 10 Amps?
+	return BMIT_CONTINUE;
+}
+
+void K_ArmageddonShieldAttack(mobj_t *actor, fixed_t size)
+{
+	INT32 bx, by, xl, xh, yl, yh;
+
+	BlastDist = FixedMul(size, actor->scale);
+	BlastSource = actor;
+
+	// Use blockmap to check for nearby shootables
+	yh = (unsigned)(actor->y + BlastDist - bmaporgy)>>MAPBLOCKSHIFT;
+	yl = (unsigned)(actor->y - BlastDist - bmaporgy)>>MAPBLOCKSHIFT;
+	xh = (unsigned)(actor->x + BlastDist - bmaporgx)>>MAPBLOCKSHIFT;
+	xl = (unsigned)(actor->x - BlastDist - bmaporgx)>>MAPBLOCKSHIFT;
+
+	BMBOUNDFIX (xl, xh, yl, yh);
+
+	for (by = yl; by <= yh; by++)
+		for (bx = xl; bx <= xh; bx++)
+			P_BlockThingsIterator(bx, by, PIT_ArmageddonShieldAttack);
+}																						//SCS ADD END
 
 static mobj_t *lightningSource;
 static fixed_t lightningDist;
@@ -814,6 +1319,9 @@ static inline BlockItReturn_t PIT_LightningShieldAttack(mobj_t *thing)
 #endif
 
 	P_DamageMobj(thing, lightningSource, lightningSource, 1, DMG_VOLTAGE|DMG_CANTHURTSELF|DMG_WOMBO);
+	
+	// Radio: Lightning shield workaround (doesn't grant amps from the looks of it)
+	RR_PushPlayerInteractionToFeed(lightningSource, thing, ATTACK_LIGHTNING_SHIELD, 0);				//SCS - RADIO
 	return BMIT_CONTINUE;
 }
 
@@ -844,6 +1352,16 @@ boolean K_BubbleShieldCanReflect(mobj_t *t1, mobj_t *t2)
 		|| t2->type == MT_SSMINE || t2->type == MT_LANDMINE || t2->type == MT_SINK
 		|| t2->type == MT_GARDENTOP
 		|| t2->type == MT_DROPTARGET
+		|| t2->type == MT_GHZBALL				//SCS ADD
+		|| t2->type == MT_AFTERBURNER_JAWZ		//SCS ADD
+		|| t2->type == MT_PRESSUREMINE			//SCS ADD
+		|| t2->type == MT_XSNAPSHOT				//SCS ADD
+		|| t2->type == MT_XSNAPLASTSHOT			//SCS ADD
+		|| t2->type == MT_RINGGUNBLASTSTRONG	//SCS ADD
+		|| t2->type == MT_RINGGUNBLASTMAX		//SCS ADD
+		|| t2->type == MT_RINGGUNLARGESHOT		//SCS ADD
+		|| t2->type == MT_RINGGUNNORMALSHOT		//SCS ADD
+		|| t2->type == MT_RINGGUNMINISHOT		//SCS ADD
 		|| t2->type == MT_KART_LEFTOVER
 		|| (t2->type == MT_PLAYER && t1->target != t2));
 }
@@ -870,7 +1388,7 @@ boolean K_BubbleShieldReflect(mobj_t *t1, mobj_t *t2)
 			t2->momz = -6*t2->momz;
 			t2->angle += ANGLE_180;
 		}
-		if (t2->type == MT_JAWZ)
+		if (t2->type == MT_JAWZ || t2->type == MT_AFTERBURNER_JAWZ)			//SCS EDIT
 			P_SetTarget(&t2->tracer, t2->target); // Back to the source!
 		P_SetTarget(&t2->target, owner); // Let the source reflect it back again!
 		t2->threshold = 10;
@@ -1021,6 +1539,7 @@ boolean K_InstaWhipCollide(mobj_t *shield, mobj_t *victim)
 				P_PlayVictorySound(victim);
 
 				P_DamageMobj(attacker, attacker, victim, 1, DMG_TUMBLE);
+				// Radio: TODO: leaving this note for later if feed gets used in Battle			//SCS - RADIO
 
 				S_StartSound(victim, sfx_mbv92);
 				K_AddHitLag(attacker, victimHitlag, true);
@@ -1034,7 +1553,10 @@ boolean K_InstaWhipCollide(mobj_t *shield, mobj_t *victim)
 			}
 
 			// if you're here, you're getting hit
-			P_DamageMobj(victim, shield, attacker, 1, DMG_WHUMBLE);
+			boolean hit = P_DamageMobj(victim, shield, attacker, 1, DMG_WHUMBLE);
+
+			if (!hit)
+				return false;
 
 			K_DropPowerUps(victimPlayer);
 
@@ -1102,9 +1624,11 @@ boolean K_InstaWhipCollide(mobj_t *shield, mobj_t *victim)
 			}
 			else
 			{
-				P_DamageMobj(victim, shield, attacker, 1, DMG_NORMAL);
-				K_AddHitLag(attacker, attackerHitlag, false);
-				shield->hitlag = attacker->hitlag;
+				if (P_DamageMobj(victim, shield, attacker, 1, DMG_NORMAL))
+				{
+					K_AddHitLag(attacker, attackerHitlag, false);
+					shield->hitlag = attacker->hitlag;
+				}
 				return true;
 			}
 		}
@@ -1129,6 +1653,11 @@ boolean K_KitchenSinkCollide(mobj_t *t1, mobj_t *t2)
 
 		if (t1->target && !P_MobjWasRemoved(t1->target) && t1->target->player)
 			K_SpawnAmps(t1->target->player, 50, t2);
+		
+		// Radio
+		if (t1->target) {														//SCS - RADIO START
+			RR_PushPlayerInteractionToFeed(t1->target, t2, ATTACK_SNIPE, 50);
+		}																		//SCS - RADIO END
 
 		HU_SetCEchoFlags(0);
 		HU_SetCEchoDuration(5);
@@ -1167,6 +1696,186 @@ boolean K_PvPTouchDamage(mobj_t *t1, mobj_t *t2)
 		// Always regular bumps, no ring toss.
 		return false;
 	}
+	
+	if (t2->player->squishedtimer <= 0 && t1->player->squishedtimer <= 0 && (t1->player->itemtype == KITEM_PICKPOCKETHYU || t2->player->itemtype == KITEM_PICKPOCKETHYU))				//SCS ADD
+	{
+		UINT8 pickpocketamps; 
+
+		if (t2->player->itemtype == KITEM_PICKPOCKETHYU && t1->player->itemtype == KITEM_PICKPOCKETHYU)
+		{
+			K_PickpocketHyuChainDestroy(t1->player);
+			K_PickpocketHyuChainDestroy(t2->player);			
+			t1->player->itemtype = KITEM_KITCHENSINK;
+			t2->player->itemtype = KITEM_KITCHENSINK;
+			S_StartSound(t1, sfx_s3k92);
+			S_StartSound(t2, sfx_s3k92);
+			t1->player->pickpockethyucombo = 0;
+			t2->player->pickpockethyucombo = 0;
+			
+			
+			pickpocketamps = K_PvPAmpReward(5, t1->player, t2->player);
+			K_SpawnAmps(t1->player, pickpocketamps, t1);
+			RR_PushPlayerInteractionToFeed(t1, t2, ATTACK_PICKPOCKETHYU, pickpocketamps);
+			pickpocketamps = K_PvPAmpReward(5, t2->player, t1->player);
+			K_SpawnAmps(t2->player, pickpocketamps, t2);
+			RR_PushPlayerInteractionToFeed(t2, t1, ATTACK_PICKPOCKETHYU, pickpocketamps);
+
+		}
+		else if (t1->player->itemtype == KITEM_PICKPOCKETHYU)
+		{
+			if (t2->player->rings > 0) //Can grab ring awards too, but only once it's started being given to the victim if they have less than or equal to 0 rings. Bit of forgiveness, here.
+			{
+				t1->player->pickpockethyucombo++;				
+							
+				//CONS_Printf(" Pickpocket combo at: %u\n", t1->player->pickpockethyucombo);
+				
+				if (t1->player->pickpockethyucombo > 10)
+					t1->player->pickpockethyucombo = 10;	//We cap out at 10.
+				else
+				{
+					mobj_t *newhyudoro = P_SpawnMobj(t1->player->mo->x, t1->player->mo->y, t1->player->mo->z, MT_MINIHYUDORO);	//only spawn a new mini hyu if we aren't already capped
+					
+					if (newhyudoro)
+					{
+						newhyudoro->target = t1;
+						if (t1->player->lastpickpockethyudoro != NULL)
+						{
+							newhyudoro->tracer = t1->player->lastpickpockethyudoro;
+							newhyudoro->threshold = t1->player->pickpockethyucombo;
+							t1->player->lastpickpockethyudoro = newhyudoro;
+						}
+						else
+						{
+							newhyudoro->tracer = t1;
+							newhyudoro->threshold = t1->player->pickpockethyucombo;
+							t1->player->lastpickpockethyudoro = newhyudoro;
+						}
+					}					
+				}
+				//void K_AddMessageForPlayer(player_t *player, const char *msg, boolean interrupt, boolean persist)
+				//void K_AddMessage			(				   const char *msg, boolean interrupt, boolean persist)
+				
+				//K_AddMessage(va("Pickpocket Combo x%d!", t1->player->pickpockethyucombo), true, false);
+				K_AddMessageForPlayer(t1->player, va("Pickpocket Combo x%d!", t1->player->pickpockethyucombo), true, false);
+				
+				if (t2->player->superring > 0)
+				{
+					K_AwardPlayerRings(t1->player, (t2->player->rings + t2->player->superring)*(t1->player->pickpockethyucombo*t1->player->itemamount), true);
+					t2->player->superring = 0;					
+				}
+				else
+					K_AwardPlayerRings(t1->player, (t2->player->rings)*(t1->player->pickpockethyucombo*t1->player->itemamount), true);
+
+				t2->player->rings = 0;
+				S_StartSound(t2->player->mo, sfx_antiri);
+			}
+			
+			if (t2->player->itemtype != KITEM_NONE)
+			{
+				K_AwardPlayerRings(t1->player, ((10*t1->player->pickpockethyucombo)*t1->player->itemamount), true);
+				t1->player->itemtype = t2->player->itemtype;
+				t1->player->itemamount = t2->player->itemamount;
+				K_StripItems(t2->player);
+				K_PickpocketHyuChainDestroy(t1->player);
+				t2->player->hyudorotimer = hyudorotime;
+			}
+			else
+			{
+				t2->player->hyudorotimer = hyudorotime/3;
+			}
+			
+			S_StartSound(t1->player->mo, sfx_s3k92);
+			t2->player->stealingtimer = hyudorotime;
+			
+			pickpocketamps = K_PvPAmpReward(5, t1->player, t2->player);
+			K_SpawnAmps(t1->player, pickpocketamps, t1);
+			
+			RR_PushPlayerInteractionToFeed(t1, t2, ATTACK_PICKPOCKETHYU, pickpocketamps);				//SCS ADD
+		}
+		else
+		{
+			if (t1->player->rings > 0) //Can grab ring awards too, but only once it's started being given to the victim if they have less than or equal to 0 rings. Bit of forgiveness, here.
+			{
+				t2->player->pickpockethyucombo++;
+							
+				//CONS_Printf(" Pickpocket combo at: %u\n", t1->player->pickpockethyucombo);
+				
+				if (t2->player->pickpockethyucombo > 10)
+					t2->player->pickpockethyucombo = 10;	//We cap out at 10.
+				else
+				{
+					mobj_t *newhyudoro = P_SpawnMobj(t2->player->mo->x, t2->player->mo->y, t2->player->mo->z, MT_MINIHYUDORO);	//only spawn a new mini hyu if we aren't already capped
+					
+					if (newhyudoro)
+					{
+						newhyudoro->target = t2;
+						if (t2->player->lastpickpockethyudoro != NULL)
+						{
+							newhyudoro->tracer = t2->player->lastpickpockethyudoro;
+							newhyudoro->threshold = t2->player->pickpockethyucombo;
+							t2->player->lastpickpockethyudoro = newhyudoro;
+						}
+						else
+						{
+							newhyudoro->tracer = t2;
+							newhyudoro->threshold = t2->player->pickpockethyucombo;
+							t2->player->lastpickpockethyudoro = newhyudoro;
+						}
+					}					
+				}
+				
+				//K_AddMessage(va("Pickpocket Combo x%d!", t2->player->pickpockethyucombo), true, false);
+				K_AddMessageForPlayer(t2->player, va("Pickpocket Combo x%d!", t2->player->pickpockethyucombo), true, false);
+				
+				if (t1->player->superring > 0)
+				{
+					K_AwardPlayerRings(t2->player, (t1->player->rings + t1->player->superring)*(t2->player->pickpockethyucombo*t2->player->itemamount), true);
+					t1->player->superring = 0;					
+				}
+				else
+					K_AwardPlayerRings(t2->player, (t1->player->rings)*(t2->player->pickpockethyucombo*t2->player->itemamount), true);
+				
+				t1->player->rings = 0;
+				S_StartSound(t1->player->mo, sfx_antiri);
+			}
+			
+			if (t1->player->itemtype != KITEM_NONE)
+			{
+				K_AwardPlayerRings(t2->player, ((10*t2->player->pickpockethyucombo)*t2->player->itemamount), true);
+				t2->player->itemtype = t1->player->itemtype;
+				t2->player->itemamount = t1->player->itemamount;
+				K_StripItems(t1->player);
+				K_PickpocketHyuChainDestroy(t2->player);
+				t1->player->hyudorotimer = hyudorotime;
+			}
+			else
+			{
+				t1->player->hyudorotimer = hyudorotime/3;
+			}
+			
+			S_StartSound(t2->player->mo, sfx_s3k92);
+			t1->player->stealingtimer = hyudorotime;
+
+			pickpocketamps = K_PvPAmpReward(5, t2->player, t1->player);
+			K_SpawnAmps(t2->player, pickpocketamps, t2);
+			
+			RR_PushPlayerInteractionToFeed(t2, t1, ATTACK_PICKPOCKETHYU, pickpocketamps);				//SCS ADD
+		}
+		
+		K_AddHitLag(t1, TICRATE/7, false);
+		K_AddHitLag(t2, TICRATE/7, false);
+	}
+	
+	if (t1->player->growshrinktimer > 0 && t2->player->growshrinktimer < 0 && P_IsObjectOnGround(t2) && !t2->player->invincibilitytimer)
+	{
+		t2->player->squishedtimer = 80;
+		RR_PushPlayerInteractionToFeed(t1, t2, ATTACK_PANCAKE, 0);				//SCS ADD
+	}
+	else if (t2->player->growshrinktimer > 0 && t1->player->growshrinktimer < 0 && P_IsObjectOnGround(t1) && !t1->player->invincibilitytimer)
+	{
+		t1->player->squishedtimer = 80;
+		RR_PushPlayerInteractionToFeed(t2, t1, ATTACK_PANCAKE, 0);				//SCS ADD
+	}
 
 	// What the fuck is calling this with stale refs? Whatever, validation's cheap.
 	if (P_MobjWasRemoved(t1) || P_MobjWasRemoved(t2) || !t1->player || !t2->player)
@@ -1195,6 +1904,9 @@ boolean K_PvPTouchDamage(mobj_t *t1, mobj_t *t2)
 		K_DoGuardBreak(t2, t1);
 
 	if (guard1 || guard2)
+		return false;
+	
+	if (t1->type == MT_MEGACHOPPER || t2->type == MT_MEGACHOPPER)
 		return false;
 
 	// Clash instead of damage if both parties have any of these conditions
@@ -1292,12 +2004,17 @@ boolean K_PvPTouchDamage(mobj_t *t1, mobj_t *t2)
 		if (gametyperules & GTR_BUMPERS)
 		{
 			K_StumblePlayer(t2->player);
-			K_SpawnAmps(t1->player, K_PvPAmpReward(20, t1->player, t2->player), t2);
+			//K_SpawnAmps(t1->player, K_PvPAmpReward(20, t1->player, t2->player), t2);
+			UINT8 stumbleAmps = K_PvPAmpReward(20, t1->player, t2->player);					//SCS - RADIO START
+			K_SpawnAmps(t1->player, stumbleAmps, t2);
+			// Radio: Workaround for Grow
+			RR_PushPlayerInteractionToFeed(t1, t2, ATTACK_GROW, stumbleAmps);				//SCS - RADIO END
 		}
 		else
 		{
 			P_DamageMobj(t2, t1, t1, 1, DMG_WHUMBLE);
 		}
+		
 	};
 
 	if (forEither(shouldStumble, doStumble))
@@ -1308,7 +2025,7 @@ boolean K_PvPTouchDamage(mobj_t *t1, mobj_t *t2)
 	// Ring sting, this is a bit more unique
 	auto doSting = [](mobj_t *t1, mobj_t *t2)
 	{
-		if (t2->player->curshield != KSHIELD_NONE)
+		if (t2->player->curshield != KSHIELD_NONE || t2->player->playerringgunpower >= 60)		//SCS EDIT
 		{
 			return false;
 		}

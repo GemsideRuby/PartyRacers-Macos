@@ -94,6 +94,10 @@
 #include "k_director.h"
 #include "m_pw.h"
 
+// Radio
+#include "radioracers/rr_setup.h"							//SCS - RADIO
+#include "radioracers/rr_hud.h"								//SCS - RADIO
+
 #ifdef HWRENDER
 #include "hardware/hw_main.h" // 3D View Rendering
 #endif
@@ -107,17 +111,18 @@ extern "C" consvar_t cv_lua_profile, cv_menuframeskip;
 /* Manually defined asset hashes
  */
 
-#define ASSET_HASH_BIOS_PK3						"5f9093a5c6abfb77ab518ac530312564"
-#define ASSET_HASH_SCRIPTS_PK3					"c3440a9ee57b4d9a81145a09afa0c0d6"
-#define ASSET_HASH_GFX_PK3						"24a59ebaa74f253dbec55b00328accb9"
-#define ASSET_HASH_TEXTURES_GENERAL_PK3			"609b683d3efc291ea28dd4e50d731f34"
-#define ASSET_HASH_TEXTURES_SEGAZONES_PK3		"7ef635c2a5495dad031acf5f0b090045"
-#define ASSET_HASH_TEXTURES_ORIGINALZONES_PK3	"2f3aa120be2dfb1f4fe3e7090fbb0948"
+#define ASSET_HASH_BIOS_PK3						"36201c4690256d133dff7d3879436dff"
+#define ASSET_HASH_SCRIPTS_PK3					"56be3c47192870c3265f19cf024e860e"
+#define ASSET_HASH_GFX_PK3						"3da49ce9d417f564b15939cc22bc8dd1"//"24a59ebaa74f253dbec55b00328accb9" //SCS EDIT This needs to be changed otherwise release EXEs crash?
+#define ASSET_HASH_TEXTURES_GENERAL_PK3			"4f3d2665bb6d734df320e9c34fe9bdcb"
+#define ASSET_HASH_TEXTURES_SEGAZONES_PK3		"05ecca580606e4e631b3149570a7ff78"
+#define ASSET_HASH_TEXTURES_ORIGINALZONES_PK3	"d78b0c80f5128f1ae83b6d7d1058eac8"
 #define ASSET_HASH_CHARS_PK3					"5c8c34c5623acf984e3f654da4509126"
 #define ASSET_HASH_FOLLOWERS_PK3				"4b61428e5f2ec806de398de8a5fba5f0"
-#define ASSET_HASH_MAPS_PK3						"b5af5f4f8bb4380dbf87f91014fca028"
+//#define ASSET_HASH_MAPS_PK3						"fba4799a2df28d9dec21b5ccb6f1c2f7"//"97ded03bb428f32e55fbf1df7b1dd6e9" //SCS - Gotta edit this too now since Joypolis breaks with more than 16 players.
+#define ASSET_HASH_MAPS_PK3						"82e4af69b5afa54f7b596fe41cb71909"
 #define ASSET_HASH_UNLOCKS_PK3					"a4de35ba9f83829ced44dfc1316ba33e"
-#define ASSET_HASH_STAFFGHOSTS_PK3				"04a6ac1e67c95fa356aac8b505749a4a"
+#define ASSET_HASH_STAFFGHOSTS_PK3				"54078aba0e42bfee54640a94c295dd65"
 #define ASSET_HASH_SHADERS_PK3					"bc0b47744d457956db2ee9ea00f59eff"
 #ifdef USE_PATCH_FILE
 #define ASSET_HASH_PATCH_PK3					"00000000000000000000000000000000"
@@ -142,7 +147,9 @@ INT32 window_y;
 // DEMO LOOP
 //
 static size_t num_startupiwads = 0;
+static size_t num_optionalwads = 0;								//SCS - RADIO
 static initmultiplefilesentry_t startupiwads[MAX_WADFILES];
+static initmultiplefilesentry_t optionalwads[MAX_WADFILES];		//SCS - RADIO
 static size_t num_startuppwads = 0;
 static initmultiplefilesentry_t startuppwads[MAX_WADFILES];
 
@@ -343,7 +350,7 @@ void D_ProcessEvents(boolean callresponders)
 	// Update menu CMD
 	for (i = 0; i < MAXSPLITSCREENPLAYERS; i++)
 	{
-		M_UpdateMenuCMD(i, false);
+		M_UpdateMenuCMD(i, false, chat_keydown);
 	}
 }
 
@@ -864,6 +871,7 @@ void D_SRB2Loop(void)
 
 	if (dedicated)
 		server = true;
+	connectedtodedicated = dedicated;
 
 	// Pushing of + parameters is now done back in D_SRB2Main, not here.
 
@@ -1275,6 +1283,10 @@ void D_ClearState(void)
 
 	G_SetGamestate(GS_NULL);
 	wipegamestate = GS_NULL;
+	
+	// RADIO:
+	RR_CleanupEmoteFrames();				//SCS - RADIO START
+	RR_ClearHudFeed();						//SCS - RADIO END
 
 	demo.waitingfortally = false;
 }
@@ -1434,6 +1446,9 @@ static void IdentifyVersion(void)
 	snprintf(configfile, sizeof configfile, "%s" PATHSEP CONFIGFILENAME, srb2waddir);
 	configfile[sizeof configfile - 1] = '\0';
 
+	snprintf(configfile_radio, sizeof configfile_radio, "%s" PATHSEP RADIOCONFIGFILENAME, srb2waddir);						//SCS - RADIO START
+	configfile_radio[sizeof configfile_radio - 1] = '\0';																	//SCS - RADIO END
+
 	D_AddFile(startupiwads, num_startupiwads++, va(spandf,srb2waddir,"data","scripts.pk3"), ASSET_HASH_SCRIPTS_PK3);
 	D_AddFile(startupiwads, num_startupiwads++, va(spandf,srb2waddir,"data","gfx.pk3"), ASSET_HASH_GFX_PK3);
 	D_AddFile(startupiwads, num_startupiwads++, va(spandf,srb2waddir,"data","textures_general.pk3"), ASSET_HASH_TEXTURES_GENERAL_PK3);
@@ -1474,6 +1489,18 @@ static void IdentifyVersion(void)
 	}
 
 #undef MUSICTEST
+
+	// RadioRacers
+	if (FIL_ReadFileOK(va(pandf,srb2path,"radioracers.pk3"))) {														//SCS - RADIO START
+		D_AddFile(optionalwads, num_optionalwads++, va(pandf,srb2path,"radioracers.pk3"), NULL);
+		//D_AddFile(startupiwads, num_startupiwads++, va(spandf,srb2waddir,"data","radioracers.pk3"), NULL);
+		found_radioracers = true;
+	}
+	if (FIL_ReadFileOK(va(pandf,srb2path,"radioracers_plus.pk3"))) {
+		D_AddFile(optionalwads, num_optionalwads++, va(pandf,srb2path,"radioracers_plus.pk3"), NULL);
+		//D_AddFile(startupiwads, num_startupiwads++, va(spandf,srb2waddir,"data","radioracers_plus.pk3"), NULL);
+		found_radioracers_plus = true;
+	}																												//SCS - RADIO END
 }
 
 static void
@@ -1597,6 +1624,7 @@ void D_SRB2Main(void)
 
 	// for dedicated server
 	dedicated = M_CheckParm("-dedicated") != 0;
+	connectedtodedicated = dedicated;
 	if (dedicated)
 	{
 		usedTourney = true;
@@ -1620,10 +1648,16 @@ void D_SRB2Main(void)
 #if ((defined (__unix__) && !defined (MSDOS)) || defined(__APPLE__) || defined (UNIXCOMMON)) && !defined (__CYGWIN__)
 			I_Error("Please set $HOME to your home directory\n");
 #else
-			if (dedicated)
+			/*if (dedicated)
 				snprintf(configfile, sizeof configfile, "d" CONFIGFILENAME);
 			else
+				snprintf(configfile, sizeof configfile, CONFIGFILENAME);*/
+			if (dedicated) {																	//SCS - RADIO START
+				snprintf(configfile, sizeof configfile, "d" CONFIGFILENAME);
+			} else {
 				snprintf(configfile, sizeof configfile, CONFIGFILENAME);
+				snprintf(configfile_radio, sizeof configfile_radio, RADIOCONFIGFILENAME);
+			}																					//SCS - RADIO END
 #endif
 		}
 		else
@@ -1631,10 +1665,16 @@ void D_SRB2Main(void)
 			// use user specific config file
 #ifdef DEFAULTDIR
 			snprintf(srb2home, sizeof srb2home, "%s" PATHSEP DEFAULTDIR, userhome);
-			if (dedicated)
+			/*if (dedicated)
 				snprintf(configfile, sizeof configfile, "%s" PATHSEP "d" CONFIGFILENAME, srb2home);
 			else
+				snprintf(configfile, sizeof configfile, "%s" PATHSEP CONFIGFILENAME, srb2home);*/
+			if (dedicated) {																						//SCS - RADIO START
+				snprintf(configfile, sizeof configfile, "%s" PATHSEP "d" CONFIGFILENAME, srb2home);
+			} else {
 				snprintf(configfile, sizeof configfile, "%s" PATHSEP CONFIGFILENAME, srb2home);
+				snprintf(configfile_radio, sizeof configfile_radio, "%s" PATHSEP RADIOCONFIGFILENAME, srb2home);
+			}																										//SCS - RADIO END
 
 			// can't use sprintf since there is %u in savegamename
 			strcatbf(savegamename, srb2home, PATHSEP);
@@ -1643,10 +1683,16 @@ void D_SRB2Main(void)
 			snprintf(luafiledir, sizeof luafiledir, "%s" PATHSEP "luafiles", srb2home);
 #else // DEFAULTDIR
 			snprintf(srb2home, sizeof srb2home, "%s", userhome);
-			if (dedicated)
+			/*if (dedicated)
 				snprintf(configfile, sizeof configfile, "%s" PATHSEP "d"CONFIGFILENAME, userhome);
 			else
+				snprintf(configfile, sizeof configfile, "%s" PATHSEP CONFIGFILENAME, userhome);*/
+			if (dedicated) {																						//SCS - RADIO START
+				snprintf(configfile, sizeof configfile, "%s" PATHSEP "d"CONFIGFILENAME, userhome);
+			} else {
 				snprintf(configfile, sizeof configfile, "%s" PATHSEP CONFIGFILENAME, userhome);
+				snprintf(configfile_radio, sizeof configfile_radio, "%s" PATHSEP RADIOCONFIGFILENAME, userhome);
+			}																										//SCS - RADIO END
 
 			// can't use sprintf since there is %u in savegamename
 			strcatbf(savegamename, userhome, PATHSEP);
@@ -1657,6 +1703,7 @@ void D_SRB2Main(void)
 		}
 
 		configfile[sizeof configfile - 1] = '\0';
+		configfile_radio[sizeof configfile_radio - 1] = '\0';				//SCS - RADIO
 	}
 
 	// If config isn't writable, tons of behavior will be broken.
@@ -1762,6 +1809,22 @@ void D_SRB2Main(void)
 	D_CleanFile(startupiwads, num_startupiwads);
 	num_startupiwads = 0;
 
+	// Optional wads									//SCS - RADIO START
+	W_InitMultipleFiles(optionalwads, num_optionalwads, false);
+	D_CleanFile(optionalwads, num_optionalwads);
+	
+	UINT16 optionalwads_count = numwadfiles - num_optionalwads;
+	if(found_radioracers)
+	{
+		wadfiles[optionalwads_count++]->important = false;
+	}
+	if(found_radioracers_plus)
+	{
+		wadfiles[optionalwads_count++]->important = false;
+	}													//SCS - RADIO END
+
+	num_optionalwads = 0;
+	
 	// Load credits_def lump
 	F_LoadCreditsDefinitions();
 
@@ -1948,6 +2011,10 @@ void D_SRB2Main(void)
 	CONS_Printf("ACS_Init(): Init Action Code Script VM.\n");
 	ACS_Init();
 	CON_SetLoadingProgress(LOADED_ACSINIT);
+	
+	// RadioRacers: .. right around here
+	RR_Init();														//SCS - RADIO
+	
 
 	//------------------------------------------------ COMMAND LINE PARAMS
 
@@ -2414,5 +2481,6 @@ void D_TakeMapSnapshots(void)
 		setmodeneeded = old_mode + 1;
 		D_Display(true);
 	}
+	g_takemapthumbnail = TMT_NO;
 }
 

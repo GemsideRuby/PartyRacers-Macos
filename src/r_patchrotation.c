@@ -46,7 +46,7 @@ static angle_t R_PlayerSpriteRotation(player_t *player, player_t *viewPlayer)
 
 	mobj_t *top = K_GetGardenTop(player);
 
-	if (player->mo->eflags & MFE_UNDERWATER)
+	if (player->mo->eflags & MFE_UNDERWATER && player->curshield != KSHIELD_BUBBLE)	//SCS ADD
 	{
 		rollAngle -= player->underwatertilt;
 	}

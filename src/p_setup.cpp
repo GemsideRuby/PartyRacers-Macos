@@ -122,6 +122,10 @@
 #include "p_deepcopy.h"
 #include "k_color.h" // K_ColorUsable
 
+#include "radioracers/rr_cvar.h"		//SCS - RADIO START
+#include "radioracers/rr_setup.h"
+#include "radioracers/rr_hud.h"			//SCS - RADIO END
+
 // Replay names have time
 #if !defined (UNDER_CE)
 #include <time.h>
@@ -1977,6 +1981,8 @@ static void ParseTextmapLinedefParameter(UINT32 i, const char *param, const char
 		lines[i].flags |= ML_NOTBOUNCY;
 	else if (fastcmp(param, "transfer") && fastcmp("true", val))
 		lines[i].flags |= ML_TFERLINE;
+	else if (fastcmp(param, "midtexinviswall") && fastcmp("true", val))
+		lines[i].flags |= ML_MIDTEXINVISWALL;
 	// Activation flags
 	else if (fastcmp(param, "repeatspecial") && fastcmp("true", val))
 		lines[i].activation |= SPAC_REPEATSPECIAL;
@@ -2787,6 +2793,8 @@ static void P_WriteTextmap(void)
 			fprintf(f, "notbouncy = true;\n");
 		if (wlines[i].flags & ML_TFERLINE)
 			fprintf(f, "transfer = true;\n");
+		if (wlines[i].flags & ML_MIDTEXINVISWALL)
+			fprintf(f, "midtexinviswall = true;\n");
 		if (wlines[i].activation & SPAC_REPEATSPECIAL)
 			fprintf(f, "repeatspecial = true;\n");
 		if (wlines[i].activation & SPAC_CROSS)
@@ -3370,6 +3378,25 @@ static boolean P_CheckLineSideTripWire(line_t *ld, int p)
 
 	terrain = K_GetTerrainForTextureNum(sda->midtexture);
 	tripwire = terrain && (terrain->flags & TRF_TRIPWIRE);
+	
+	// If we are texture TRIPWIRE and have the ML_MIDTEXINVISWALL, the replace texture with TRIPWLOW
+
+
+	if (tripwire && (ld->flags & ML_MIDTEXINVISWALL)) // if we do backwards compat, update this to also swap for older custom maps without the flag
+	{
+		if (sda->midtexture == R_TextureNumForName("TRIPWIRE"))
+		{
+			sda->midtexture = R_TextureNumForName("TRIPWLOW");
+		}
+		else if (sda->midtexture == R_TextureNumForName("2RIPWIRE"))
+		{
+			sda->midtexture = R_TextureNumForName("2RIPWLOW");
+		}
+		else if (sda->midtexture == R_TextureNumForName("4RIPWIRE"))
+		{
+			sda->midtexture = R_TextureNumForName("4RIPWLOW");
+		}
+	}
 
 	if (tripwire)
 	{
@@ -7722,7 +7749,7 @@ static void P_InitLevelSettings(void)
 		if (multi_speed)
 		{
 			if (cv_kartspeed.value == KARTSPEED_AUTO)
-				gamespeed = ((speedscramble == -1) ? KARTSPEED_NORMAL : (UINT8)speedscramble);
+				gamespeed = ((speedscramble == -1) ? KARTSPEED_EASY : (UINT8)speedscramble);
 			else
 				gamespeed = (UINT8)cv_kartspeed.value;
 		}
@@ -7837,23 +7864,10 @@ static void P_LoadRecordGhosts(void)
 {
 	// see also /menus/play-local-race-time-attack.c's M_PrepareTimeAttack
 	char *gpath;
-	const char *modeprefix = "";
+	const char *modeprefix = M_GetRecordMode();
 	INT32 i;
 
 	gpath = Z_StrDup(va("%s" PATHSEP "media" PATHSEP "replay" PATHSEP "%s" PATHSEP "%s", srb2home, timeattackfolder, G_BuildMapName(gamemap)));
-
-	if (encoremode)
-	{
-		modeprefix = "-spb";
-	}
-	else
-	{
-		const INT32 skinid = R_SkinAvailableEx(cv_skin[0].string, false);
-		if (skinid >= 0 && (skins[skinid]->flags & SF_HIVOLT))
-		{
-			modeprefix = "-hivolt";
-		}
-	}
 
 	enum
 	{
@@ -7879,7 +7893,7 @@ static void P_LoadRecordGhosts(void)
 
 	auto add_ghosts = [gpath](const srb2::String& base, UINT8 bits)
 	{
-		auto load = [base](const char* suffix) { P_TryAddExternalGhost(fmt::format("{}-{}.lmp", base, suffix).c_str()); };
+		auto load = [base](const char* suffix) { P_TryAddExternalGhost(fmt::format("{}{}.lmp", base, suffix).c_str()); };
 
 		if (bits & kTime)
 			load("time-best");
@@ -7897,7 +7911,7 @@ static void P_LoadRecordGhosts(void)
 	if (allGhosts)
 	{
 		for (i = 0; i < numskins; ++i)
-			add_ghosts(fmt::format("{}-{}{}", gpath, skins[i]->name, modeprefix), allGhosts);
+			add_ghosts(fmt::format("{}-{}-{}", gpath, skins[i]->name, modeprefix), allGhosts);
 	}
 
 	if (sameGhosts)
@@ -7905,7 +7919,7 @@ static void P_LoadRecordGhosts(void)
 		INT32 skin = R_SkinAvailableEx(cv_skin[0].string, false);
 		if (skin < 0 || !R_SkinUsable(-1, skin, false))
 			skin = 0; // use default skin
-		add_ghosts(fmt::format("{}-{}{}", gpath, skins[skin]->name, modeprefix), sameGhosts);
+		add_ghosts(fmt::format("{}-{}-{}", gpath, skins[skin]->name, modeprefix), sameGhosts);
 	}
 
 	// Guest ghost
@@ -8387,6 +8401,9 @@ void P_ResetLevelMusic(void)
 	}
 
 	mapmusrng = idx;
+
+	// Radio - we don't care about how many tracks are in a map (yet)
+	radio_mapmusrng = (radio_maxrandompositionmus > 0) ? random % radio_maxrandompositionmus : 0;		//SCS - RADIO
 }
 
 boolean P_UseContinuousLevelMusic(void)
@@ -8483,6 +8500,9 @@ void P_FreeLevelState(void)
 	Patch_FreeTag(PU_PATCH_LOWPRIORITY);
 	Patch_FreeTag(PU_PATCH_ROTATED);
 	Z_FreeTags(PU_LEVEL, PU_PURGELEVEL - 1);
+	
+	R_InitMobjInterpolators();
+	R_InitializeLevelInterpolators();
 }
 
 /** Loads a level from a lump or external wad.
@@ -8497,8 +8517,10 @@ boolean P_LoadLevel(boolean fromnetsave, boolean reloadinggamestate)
 	// use gamemap to get map number.
 	// 99% of the things already did, so.
 	// Map header should always be in place at this point
-	INT32 i, ranspecialwipe = 0;
+	INT32 i;
 	virtlump_t *encoreLump = NULL;
+	
+	boolean fade_shortcircuit = false;
 
 	levelloading = true;
 	g_reloadinggamestate = reloadinggamestate;
@@ -8623,12 +8645,10 @@ boolean P_LoadLevel(boolean fromnetsave, boolean reloadinggamestate)
 	}
 #undef WAIT
 
-	// Special stage & record attack retry fade to white
-	// This is handled BEFORE sounds are stopped.
-	if (G_IsModeAttackRetrying() && !demo.playback && (gametyperules & GTR_BOSS) == 0)
+	if (demo.attract
+	|| (G_IsModeAttackRetrying() && !demo.playback && (gametyperules & GTR_BOSS) == 0))
 	{
-		ranspecialwipe = 2;
-		//wipestyleflags |= (WSF_FADEOUT|WSF_TOWHITE);
+		fade_shortcircuit = true;
 	}
 
 	// Make sure all sounds are stopped before Z_FreeTags.
@@ -8639,8 +8659,7 @@ boolean P_LoadLevel(boolean fromnetsave, boolean reloadinggamestate)
 	if (rendermode != render_none)
 		V_ReloadPalette(); // Set the level palette
 
-	// Let's fade to white here
-	// But only if we didn't do the encore startup wipe
+	// Music set-up
 	if (demo.attract || demo.simplerewind)
 	{
 		// Leave the music alone! We're already playing what we want!
@@ -8650,17 +8669,6 @@ boolean P_LoadLevel(boolean fromnetsave, boolean reloadinggamestate)
 	}
 	else if (!reloadinggamestate)
 	{
-		int wipetype = wipe_level_toblack;
-
-		// TODO: What is this?? This does nothing because P_LoadLevelMusic is gonna halt music, anyway.
-#if 0
-		// Fade out music here. Deduct 2 tics so the fade volume actually reaches 0.
-		// But don't halt the music! S_Start will take care of that. This dodges a MIDI crash bug.
-		if (gamestate == GS_LEVEL)
-			S_FadeMusic(0, FixedMul(
-				FixedDiv((F_GetWipeLength(wipedefs[wipe_level_toblack])-2)*NEWTICRATERATIO, NEWTICRATE), MUSICRATE));
-#endif
-
 		if (K_PodiumSequence())
 		{
 			// mapmusrng is set by local player position in K_ResetCeremony
@@ -8668,7 +8676,7 @@ boolean P_LoadLevel(boolean fromnetsave, boolean reloadinggamestate)
 		}
 		else if (gamestate == GS_LEVEL)
 		{
-			if (ranspecialwipe == 2)
+			if (fade_shortcircuit)
 			{
 				pausedelay = -3; // preticker plus one
 			}
@@ -8682,7 +8690,14 @@ boolean P_LoadLevel(boolean fromnetsave, boolean reloadinggamestate)
 				P_LoadLevelMusic();
 			}
 		}
+	}
 
+	// Let's fade to black or white here
+	// But only if we didn't do the encore startup wipe
+	if (!reloadinggamestate && !demo.simplerewind)
+	{
+		int wipetype = wipe_level_toblack;
+		sfxenum_t fadesound = sfx_None;
 		// Default
 		levelfadecol = 31;
 
@@ -8693,24 +8708,21 @@ boolean P_LoadLevel(boolean fromnetsave, boolean reloadinggamestate)
 		else if (K_PodiumHasEmerald())
 		{
 			// Special Stage out
-			if (ranspecialwipe != 2)
-				S_StartSound(NULL, sfx_s3k6a);
+			fadesound = sfx_s3k6a;
 			levelfadecol = 0;
 			wipetype = wipe_encore_towhite;
 		}
 		else if (gametyperules & GTR_SPECIALSTART)
 		{
 			// Special Stage in
-			if (ranspecialwipe != 2)
-				S_StartSound(NULL, sfx_s3kaf);
+			fadesound = sfx_s3kaf;
 			levelfadecol = 0;
 			wipetype = wipe_encore_towhite;
 		}
 		else if (skipstats == 1 && (gametyperules & GTR_BOSS) == 0)
 		{
 			// MapWarp
-			if (ranspecialwipe != 2)
-				S_StartSound(NULL, sfx_s3k73);
+			fadesound = sfx_s3k73;
 			levelfadecol = 0;
 			wipetype = wipe_encore_towhite;
 		}
@@ -8729,6 +8741,9 @@ boolean P_LoadLevel(boolean fromnetsave, boolean reloadinggamestate)
 		}
 		else
 		{
+			if (!fade_shortcircuit)
+				S_StartSound(NULL, fadesound);
+			
 			if (rendermode != render_none)
 			{
 				F_WipeStartScreen();
@@ -8784,6 +8799,12 @@ boolean P_LoadLevel(boolean fromnetsave, boolean reloadinggamestate)
 
 	K_ClearPersistentMessages();
 
+	// RADIO: Jaden!
+	RR_resetRidersFinishTicker();								//SCS - RADIO START
+	RR_ClearHudFeed();
+	// RR_InitGradeEmoteTally();
+	RR_CleanupEmoteFrames(); // Do this here too, if need be	//SCS - RADIO END
+
 	// internal game map
 	maplumpname = mapheaderinfo[gamemap-1]->lumpname;
 	lastloadedmaplumpnum = mapheaderinfo[gamemap-1]->lumpnum;
@@ -8794,13 +8815,26 @@ boolean P_LoadLevel(boolean fromnetsave, boolean reloadinggamestate)
 
 	if (mapheaderinfo[gamemap-1])
 	{
-		if (encoremode
+		//if (encoremode
+		if (shouldApplyEncore()			//SCS - RADIO
 #ifdef DEVELOP
 				&& cv_kartencoremap.value
 #endif
 				)
 		{
 			encoreLump = vres_Find(curmapvirt, "ENCORE");
+			if(shouldUseHaki()) {										//SCS - RADIO START
+				/// -- radio
+				lumpnum_t grayencore = W_GetNumForName("GRAYENCR");
+				virtlump_t* dummy_vlump = static_cast<virtlump_t*>(Z_Malloc(sizeof(virtlump_t), PU_LEVEL, NULL));
+
+				dummy_vlump->size = W_LumpLength(grayencore);
+				memcpy(dummy_vlump->name, W_CheckNameForNum(grayencore), 8);
+				dummy_vlump->name[8] = '\0';
+				dummy_vlump->data = static_cast<UINT8*>(W_CacheLumpNum(grayencore, PU_LEVEL));
+				/// -- radio
+				encoreLump = dummy_vlump;
+			}															//SCS - RADIO END
 		}
 		else
 		{
@@ -9008,7 +9042,7 @@ boolean P_LoadLevel(boolean fromnetsave, boolean reloadinggamestate)
 		G_StartTitleCard();
 
 		// Can the title card actually run, though?
-		if (WipeStageTitle && ranspecialwipe != 2 && fromnetsave == false)
+		if (WipeStageTitle && !fade_shortcircuit && fromnetsave == false)
 		{
 			G_PreLevelTitleCard();
 		}
@@ -9095,6 +9129,8 @@ void P_PostLoadLevel(void)
 	{
 		marathonmode = static_cast<marathonmode_t>(marathonmode & ~MA_INIT);
 	}
+
+	Music_TuneReset(); // Placed before ACS scripts to allow remaps to occur on level start.
 
 	ACS_RunLevelStartScripts();
 	LUA_HookInt(gamemap, HOOK(MapLoad));
@@ -9561,8 +9597,8 @@ void Command_Platinums(void)
 			else
 			{
 				CONS_Printf(", %s (+%d:%02d:%02d)", stafftime.second.c_str(),
-					G_TicsToMinutes(stafftime.first - platinumtime, true), 
-					G_TicsToSeconds(stafftime.first - platinumtime), 
+					G_TicsToMinutes(stafftime.first - platinumtime, true),
+					G_TicsToSeconds(stafftime.first - platinumtime),
 					G_TicsToCentiseconds(stafftime.first - platinumtime));
 			}
 
@@ -9809,6 +9845,9 @@ UINT16 P_PartialAddWadFile(const char *wadfilename)
 	// extra sprite/skin data
 	//
 	R_LoadSpriteInfoLumps(wadnum, numlumps);
+
+	/** RADIO: Inject */
+	RR_AddAllEmotes(wadnum);		//SCS - RADIO
 
 	// For anything that has to be done over every wadfile at once, see P_MultiSetupWadFiles.
 

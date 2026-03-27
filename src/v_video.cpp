@@ -49,6 +49,8 @@
 #include "i_time.h"
 #include "v_draw.hpp"
 
+#include "radioracers/rr_cvar.h"		//SCS - RADIO
+
 using namespace srb2;
 
 // Each screen is [vid.width*vid.height];
@@ -408,7 +410,8 @@ const char *GetPalette(void)
 	}
 
 	if (gamestate == GS_LEVEL)
-		return R_GetPalname((encoremode ? mapheaderinfo[gamemap-1]->encorepal : mapheaderinfo[gamemap-1]->palette));
+		return R_GetPalname((shouldApplyEncore() ? mapheaderinfo[gamemap-1]->encorepal : mapheaderinfo[gamemap-1]->palette));	//SCS - RADIO
+		//return R_GetPalname((encoremode ? mapheaderinfo[gamemap-1]->encorepal : mapheaderinfo[gamemap-1]->palette));
 
 	return "PLAYPAL";
 }
@@ -753,7 +756,7 @@ static inline UINT8 transmappedpdraw(const UINT8 *dest, const UINT8 *source, fix
 
 UINT32 V_GetHUDTranslucency(INT32 scrn)
 {
-	if (scrn & V_SLIDEIN)
+	/*if (scrn & V_SLIDEIN)					//SCS - RADIO (commented out)
 	{
 		return 10;
 	}
@@ -761,7 +764,7 @@ UINT32 V_GetHUDTranslucency(INT32 scrn)
 	if (scrn & V_SPLITSCREEN)
 	{
 		return FixedMul(10, st_fadein);
-	}
+	}*/
 
 	return st_translucency;
 }
@@ -968,6 +971,21 @@ void V_DrawCroppedPatch(fixed_t x, fixed_t y, fixed_t pscale, INT32 scrn, patch_
 
 	cliprect = oldClip;
 }
+
+/** RADIO: ? */
+void V_DrawCroppedEmotePatch(fixed_t x, fixed_t y, fixed_t pscale, INT32 scrn, patch_t *patch, fixed_t sx, fixed_t sy, fixed_t w, fixed_t h, fixed_t y_offset)		//SCS - RADIO START
+{
+	cliprect_t oldClip = cliprect;
+
+	V_SetClipRect(x, y+y_offset, w, h, scrn);
+	
+	x -= sx;
+	y -= sy;
+
+	V_DrawStretchyFixedPatch(x, y, pscale, pscale, scrn, patch, NULL);
+
+	cliprect = oldClip;
+}																																									//SCS - RADIO END
 
 //
 // V_DrawContinueIcon
@@ -1314,23 +1332,25 @@ void V_DrawFadeFill(INT32 x, INT32 y, INT32 w, INT32 h, INT32 c, UINT16 color, U
 		V_AdjustXYWithSnap(&x, &y, c, dupx, dupy);
 	}
 
-	if (x >= vid.width || y >= vid.height)
-		return; // off the screen
-	if (x < 0) {
-		w += x;
-		x = 0;
-	}
-	if (y < 0) {
-		h += y;
-		y = 0;
-	}
+	if (!IS_WEIRD_RES()) {							//SCS - RADIO
+		if (x >= vid.width || y >= vid.height)
+			return; // off the screen
+		if (x < 0) {
+			w += x;
+			x = 0;
+		}
+		if (y < 0) {
+			h += y;
+			y = 0;
+		}
 
-	if (w <= 0 || h <= 0)
-		return; // zero width/height wouldn't draw anything
-	if (x + w > vid.width)
-		w = vid.width-x;
-	if (y + h > vid.height)
-		h = vid.height-y;
+		if (w <= 0 || h <= 0)
+			return; // zero width/height wouldn't draw anything
+		if (x + w > vid.width)
+			w = vid.width-x;
+		if (y + h > vid.height)
+			h = vid.height-y;
+	}											//SCS - RADIO
 
 	float r;
 	float g;
@@ -2796,6 +2816,7 @@ void V_DrawStringScaled(
 					if (nodanceoverride)
 					{
 						dance = false;
+						cyoff = 0;
 					}
 				}
 				else if (c == V_STRINGDANCE)
@@ -3742,6 +3763,15 @@ void V_Recalc(void)
 	vid.dupx = vid.dupy = (vid.dupx < vid.dupy ? vid.dupx : vid.dupy);
 	vid.fdupx = FixedDiv(vid.width*FRACUNIT, BASEVIDWIDTH*FRACUNIT);
 	vid.fdupy = FixedDiv(vid.height*FRACUNIT, BASEVIDHEIGHT*FRACUNIT);
+	
+	// Credit to Alufolie for this (from Indev450/SRB2Kart-Saturn)
+	if (cv_highreshudscale.value != FRACUNIT && (vid.width > 720) && (vid.height > 1280)) // ehhhh well this thing has so many issues, so ill lock it to higher resolutions instead		//SCS - RADIO START
+	{
+		vid.dupx = FixedDiv(vid.dupx, cv_highreshudscale.value);
+		vid.dupy = FixedDiv(vid.dupy, cv_highreshudscale.value);
+		vid.fdupx = FixedDiv(vid.fdupx, cv_highreshudscale.value);
+		vid.fdupy = FixedDiv(vid.fdupy, cv_highreshudscale.value);
+	}																																													//SCS - RADIO END
 
 #ifdef HWRENDER
 	//if (rendermode != render_opengl && rendermode != render_none) // This was just placing it incorrectly at non aspect correct resolutions in opengl
@@ -3842,3 +3872,48 @@ char *V_ParseText(const char *rawText)
 
 	return Z_StrDup(srb2::Draw::TextElement().parse(rawText).string().c_str());
 }
+
+// Credit to Alufolie for this function (from Indev450/SRB2Kart-Saturn), tweaked slightly for RingRacers purposes		//SCS - RADIO START
+// Draws a patch and tries to always fill the screen with the patch
+void V_DrawAdaptiveScaledFullScreenPatch(patch_t *patch, uint8_t* c, INT32 flags)
+{
+	fixed_t x = 0, y = 0;
+	fixed_t scale = ((vid.width * FRACUNIT) / patch->width); // fit the screen horizontally
+	fixed_t scaled_height = FixedMul(patch->height << FRACBITS, scale);
+
+	// however, if this means the patch doesent fill out the screen vertically then
+	if (scaled_height < (vid.height << FRACBITS))
+	{
+		scale = ((vid.height * FRACUNIT) / patch->height); // scale it to fit the screen vertically
+		x = ((vid.width << FRACBITS) - FixedMul(patch->width << FRACBITS, scale)) / 2;
+	}
+	else
+		y = (vid.height << FRACBITS) - scaled_height;
+
+	V_DrawFixedPatch(x, y, scale, V_NOSCALEPATCH|flags, patch, c);
+}
+
+// Credit to Alufolie for this function (from Indev450/SRB2Kart-Saturn), tweaked slightly for RingRacers purposes
+// Draws a patch and scales it to fill out the screen horizontally
+// centers the patch when its too small to fit the screen vertically
+void V_DrawHorizontallyScaledFullScreenPatch(patch_t *patch)
+{
+	fixed_t scale = ((vid.width * FRACUNIT) / patch->width);
+	fixed_t scaled_height = FixedMul(patch->height << FRACBITS, scale);
+	fixed_t y = (vid.height << FRACBITS) - scaled_height;
+
+	V_DrawFixedPatch(0, 0, scale, V_NOSCALEPATCH, patch, NULL);
+}
+
+// Same as V_DrawAdaptiveScaledFullScreenPatch, but we only need the scale
+void V_DrawAdaptiveScaledPatchWithCoords(fixed_t x, fixed_t y, patch_t *patch, INT32 flags)
+{
+	fixed_t scale = ((vid.width * FRACUNIT) / patch->width); // fit the screen horizontally
+	fixed_t scaled_height = FixedMul(patch->height << FRACBITS, scale);
+
+	// however, if this means the patch doesent fill out the screen vertically then
+	if (scaled_height < (vid.height << FRACBITS))
+		scale = ((vid.height * FRACUNIT) / patch->height); // scale it to fit the screen vertically
+	
+	V_DrawFixedPatch(x, y, scale, flags, patch, NULL);
+}																												//SCS - RADIO END

@@ -53,6 +53,11 @@
 #include "k_hitlag.h" // HITLAGJITTERS
 #include "r_fps.h"
 
+// Radio Racers
+#include "k_kart.h"					//SCS - RADIO START
+#include "radioracers/rr_cvar.h"
+#include "radioracers/rr_util.h"	//SCS - RADIO END
+
 #define MINZ (FRACUNIT*4)
 #define BASEYCENTER (BASEVIDHEIGHT/2)
 
@@ -944,6 +949,18 @@ static void R_DrawVisSprite(vissprite_t *vis)
 	dc.colormap = vis->colormap;
 	dc.fullbright = colormaps;
 	dc.translation = R_GetSpriteTranslation(vis);
+	
+	// RADIO: Can't manipulate the mobj's directly because that'll cause desyncs out the ass
+	boolean ghostMo = RR_ShouldGhostRing(vis->mobj) || RR_ShouldGhostRingboxes(vis->mobj);										//SCS - RADIO START
+	boolean isVoltageAura = RR_ShouldRecolorVoltage(vis->mobj);
+	if (ghostMo || isVoltageAura) {
+		if (ghostMo) {
+			dc.translation = R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_NICKEL), GTC_CACHE);
+		} else if (isVoltageAura) {
+			UINT8 sparkColor = K_DriftSparkColor(stplyr, stplyr->driftcharge);
+			dc.translation = R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(sparkColor), GTC_CACHE);
+		}
+	}																															//SCS - RADIO END
 
 	// Hack: Use a special column function for drop shadows that bypasses
 	// invalid memory access crashes caused by R_ProjectDropShadow putting wrong values
@@ -988,8 +1005,18 @@ static void R_DrawVisSprite(vissprite_t *vis)
 
 	if (encoremap && !vis->mobj->color && !(vis->mobj->flags & MF_DONTENCOREMAP))
 	{
-		dc.colormap += COLORMAP_REMAPOFFSET;
-		dc.fullbright += COLORMAP_REMAPOFFSET;
+		if (shouldUseHaki()){												//SCS - RADIO START
+			if (vis->mobj->tracer) {
+				// Exclude maces
+				if (vis->mobj->tracer->type != MT_CUSTOMMACEPOINT) {		//SCS - RADIO END
+					dc.colormap += COLORMAP_REMAPOFFSET;
+					dc.fullbright += COLORMAP_REMAPOFFSET;
+				}
+			} else {														//SCS - RADIO START
+				dc.colormap += COLORMAP_REMAPOFFSET;
+				dc.fullbright += COLORMAP_REMAPOFFSET;
+			}
+		} 																	//SCS - RADIO END
 	}
 
 	dc.texturemid = vis->texturemid;
@@ -2190,6 +2217,10 @@ static void R_ProjectSprite(mobj_t *thing)
 		sort_x = FixedMul(FixedMul(FixedMul(spritexscale, this_scale), sort_z), FINECOSINE(ang));
 		sort_y = FixedMul(FixedMul(FixedMul(spriteyscale, this_scale), sort_z), FINESINE(ang));
 	}
+	
+	if (RR_ShouldGhostItemCapsuleNumbers(thing)) {		//SCS - RADIO START
+		return;
+	}													//SCS - RADIO END
 
 	if ((thing->flags2 & MF2_LINKDRAW) && thing->tracer) // toast 16/09/16 (SYMMETRY)
 	{
@@ -2299,6 +2330,9 @@ static void R_ProjectSprite(mobj_t *thing)
 		if (trans >= NUMTRANSMAPS)
 			return; // cap
 	}
+
+	if (RR_ShouldGhostRing(thing) || RR_ShouldGhostRingboxes(thing) || RR_ShouldGhostItemCapsuleParts(thing))	//SCS - RADIO
+		trans = (RF_TRANS60 & RF_TRANSMASK) >> RF_TRANSSHIFT;													//SCS - RADIO
 
 	// Check if this sprite needs to be rendered like a shadow
 	shadowdraw = (!!(thing->renderflags & RF_SHADOWDRAW) && !(papersprite || splat));
@@ -3846,12 +3880,16 @@ boolean R_ThingVisible (mobj_t *thing)
 			// Duel hazards
 			case MT_DUELBOMB:
 			case MT_LANDMINE:
+			case MT_PRESSUREMINE:	//SCS ADD
 			case MT_SSMINE:
 			case MT_SSMINE_SHIELD:
 			case MT_MINERADIUS:
 			case MT_POGOSPRING:
+			case MT_YOGOSPRING:		//SCS ADD
+			case MT_BOGOSPRING:		//SCS ADD
 			case MT_DROPTARGET:
 			case MT_HYUDORO:
+			case MT_BHYUDORO:		//SCS ADD
 			case MT_SHADOW: // hyuu fake shadow
 			// Checkpoints
 			case MT_CHECKPOINT_END:

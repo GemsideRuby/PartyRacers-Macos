@@ -45,6 +45,7 @@
 #include "discord.h" // DRPC_UpdatePresence
 #endif
 #include "i_net.h" // doomcom
+#include "k_follower.h"			//SCS ADD
 
 extern "C" consvar_t cv_forcebots;
 
@@ -55,30 +56,16 @@ extern "C" consvar_t cv_forcebots;
 --------------------------------------------------*/
 void K_SetNameForBot(UINT8 newplayernum, const char *realname)
 {
-	UINT8 ix = MAXPLAYERS;
-
 	// These names are generally sourced from skins.
 	I_Assert(MAXPLAYERNAME >= SKINNAMESIZE+2);
 
+	boolean canApplyNameChange = true;
 	if (netgame == true)
 	{
-		// Check if a player is currently using the name, case-insensitively.
-		// We only do this if online, because it doesn't matter if there are multiple Eggrobo *off*line.
-		// See also EnsurePlayerNameIsGood
-		for (ix = 0; ix < MAXPLAYERS; ix++)
-		{
-			if (ix == newplayernum)
-				continue;
-			if (playeringame[ix] == false)
-				continue;
-			if (strcasecmp(realname, player_names[ix]) != 0)
-				continue;
-
-			break;
-		}
+		canApplyNameChange = IsPlayerNameUnique(realname, newplayernum);
 	}
 
-	if (ix == MAXPLAYERS)
+	if (canApplyNameChange)
 	{
 		// No conflict detected!
 		sprintf(player_names[newplayernum], "%s", realname);
@@ -108,6 +95,9 @@ void K_SetNameForBot(UINT8 newplayernum, const char *realname)
 --------------------------------------------------*/
 void K_SetBot(UINT8 newplayernum, UINT16 skinnum, UINT8 difficulty, botStyle_e style)
 {
+	INT32 botfollower = -1;
+	UINT16 botfollowercolor = SKINCOLOR_NONE;
+	
 	CONS_Debug(DBG_NETPLAY, "addbot: %d\n", newplayernum);
 
 	G_AddPlayer(newplayernum, newplayernum);
@@ -134,6 +124,20 @@ void K_SetBot(UINT8 newplayernum, UINT16 skinnum, UINT8 difficulty, botStyle_e s
 	players[newplayernum].spectator = grandprixinfo.gp && grandprixinfo.initalize && K_BotDefaultSpectator();
 
 	skincolornum_t color = static_cast<skincolornum_t>(skins[skinnum]->prefcolor);
+	
+	if (P_RandomRange(PR_BOTS, 0, 5) > 2)
+	{
+		color = static_cast<skincolornum_t>(P_RandomRange(PR_ITEM_SPAWNER, 1, FIRSTSUPERCOLOR-1));								//SCS ADD - TESTTTTTTT
+	}
+	if (P_RandomRange(PR_BOTS, 0, 7) > 4)
+	{
+		botfollower = P_RandomRange(PR_DECORATION, 1, numfollowers);
+		
+		if (P_RandomRange(PR_BOTS, 0, 10) > 6)
+			botfollowercolor = P_RandomRange(PR_ITEM_RINGS, 1, FIRSTSUPERCOLOR-1);	
+		
+	}
+	
 	const char *realname = skins[skinnum]->realname;
 	if (tutorialchallenge == TUTORIALSKIP_INPROGRESS)
 	{
@@ -186,8 +190,8 @@ void K_SetBot(UINT8 newplayernum, UINT16 skinnum, UINT8 difficulty, botStyle_e s
 
 	players[newplayernum].prefcolor = color;
 	players[newplayernum].prefskin = skinnum;
-	players[newplayernum].preffollower = -1;
-	players[newplayernum].preffollowercolor = SKINCOLOR_NONE;
+	players[newplayernum].preffollower = botfollower;//-1;
+	players[newplayernum].preffollowercolor = botfollowercolor;//SKINCOLOR_NONE;
 	G_UpdatePlayerPreferences(&players[newplayernum]);
 
 	if (netgame)
@@ -241,7 +245,7 @@ void K_UpdateMatchRaceBots(void)
 {
 	const UINT16 defaultbotskin = R_BotDefaultSkin();
 	UINT8 difficulty;
-	UINT8 pmax = (dedicated ? MAXPLAYERS-1 : MAXPLAYERS);
+	UINT8 pmax = (InADedicatedServer() ? MAXPLAYERS-1 : MAXPLAYERS);
 	UINT8 numplayers = 0;
 	UINT8 numbots = 0;
 	UINT8 numwaiting = 0;
@@ -357,12 +361,7 @@ void K_UpdateMatchRaceBots(void)
 	if (numbots < wantedbots)
 	{
 		// We require MORE bots!
-		UINT8 newplayernum = 0;
-
-		if (dedicated)
-		{
-			newplayernum = 1;
-		}
+		UINT8 newplayernum = InADedicatedServer() ? 1 : 0;
 
 		// Rearrange usable bot skins list to prevent gaps for randomised selection
 		if (tutorialchallenge == TUTORIALSKIP_INPROGRESS)
@@ -472,6 +471,11 @@ boolean K_BotCanTakeCut(const player_t *player)
 		|| player->itemtype == KITEM_SNEAKER
 		|| player->itemtype == KITEM_ROCKETSNEAKER
 		|| player->itemtype == KITEM_INVINCIBILITY
+		|| player->itemtype == KITEM_POGOSPRING				//SCS ADD START
+		|| player->itemtype == KITEM_YOGOSPRING
+		|| player->itemtype == KITEM_BOGOSPRING
+		|| player->itemtype == KITEM_MASTEREMERALD
+		|| player->itemtype == KITEM_ARMASHIELD				//SCS ADD END
 		)
 	{
 		return true;
@@ -543,6 +547,9 @@ static fixed_t K_BotSpeedScaled(const player_t *player, fixed_t speed)
 			result = FixedMul(result, (FRACUNIT>>1) + (slopeMul >> 1));
 		}
 	}
+	
+	if (player->inkblotchtimer)		//SCS ADD - have to give them SOME kind of penalty for hitting an ink bubble
+		result = (UINT16)result / 2;
 
 	return result;
 }
@@ -2197,7 +2204,7 @@ void K_UpdateBotGameplayVars(player_t *player)
 
 boolean K_BotUnderstandsItem(kartitems_t item)
 {
-	if (item == KITEM_BALLHOG)
-		return false; // Sorry. MRs welcome!
+	//if (item == KITEM_BALLHOG)
+		//return false; // Sorry. MRs welcome!
 	return true;
 }

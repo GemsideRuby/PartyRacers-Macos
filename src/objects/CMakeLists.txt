@@ -70,6 +70,12 @@ target_sources(SRB2SDL2 PRIVATE
 	toxomister.cpp
 	ancient-gear.c
 	mushroom-hill-pole.c
+	wreckingball.c
+	masteremerald.c
+	normal-shield.cpp
+	megachopper.c
+	armageddon-shield.cpp
+	afterburner-jawz.c
 )
 
 add_subdirectory(versus)

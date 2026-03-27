@@ -37,11 +37,11 @@ Make sure this matches the actual number of states
 #define SHRINK_PHYSICS_SCALE (3*FRACUNIT/4)
 
 #define INSTAWHIP_DURATION (12)
-#define INSTAWHIP_CHARGETIME (3*TICRATE/4)
-#define INSTAWHIP_RINGDRAINEVERY (TICRATE/2)
+#define INSTAWHIP_CHARGETIME (3*TICRATE/5)			//SCS make the Insta-Whip charge faster, because it takes FOREVER normally. It feels SO CLUNKY.
+#define INSTAWHIP_RINGDRAINEVERY (TICRATE)		//SCS trying to salvage ring drain for Insta-Whip. Ring drain just makes this objectively unfun to ever use. But maybe if it drained slower it might be more usable...?
 #define INSTAWHIP_HOLD_DELAY (TICRATE*2)
 // MUST be longer or equal to INSTAWHIP_CHARGETIME.
-#define INSTAWHIP_TETHERBLOCK (TICRATE*4)
+#define INSTAWHIP_TETHERBLOCK (3*TICRATE/4)
 #define PUNISHWINDOW (G_CompatLevel(0x0010) ? 7*TICRATE/10 : 10*TICRATE/10)
 
 #define BAIL_MAXCHARGE (84) // tics to bail when in painstate nad in air, on ground is half, if you touch this, also update Obj_BailChargeThink synced animation logic
@@ -49,13 +49,15 @@ Make sure this matches the actual number of states
 #define BAIL_BOOST (6*FRACUNIT/5) // How fast bail itself is
 #define BAIL_CREDIT_DEBTRINGS (true)
 #define BAIL_DROPFREQUENCY (2) // How quickly the rings spill out
-#define BAILSTUN (TICRATE*6) // The fixed length of stun after baildrop is over
+#define BAILSTUN (TICRATE*5) // The fixed length of stun after baildrop is over			SCS - Lowering this by one
 
 #define MAXCOMBOTHRUST (mapobjectscale*20)
 #define MAXCOMBOFLOAT (mapobjectscale*10)
 #define MINCOMBOTHRUST (mapobjectscale*2)
 #define MINCOMBOFLOAT (mapobjectscale*1)
 #define MAXCOMBOTIME (TICRATE*4)
+
+#define STARTBOOST_DURATION (125)
 
 #define TIMEATTACK_START (TICRATE*10)
 
@@ -78,6 +80,18 @@ Make sure this matches the actual number of states
 
 #define TRIPWIRE_OK_SOUND (sfx_sonbo2)
 #define TRIPWIRE_NG_SOUND (sfx_gshaf)
+#define SUPERJACKPOT_SOUND (sfx_mycwin)			//SCS ADD
+#define TIMESTONEUSED_SOUND (sfx_cdfm72)		//SCS ADD
+#define NORMALSHIELDCHARGE_SOUND (sfx_s1c9)		//SCS ADD
+#define NORMALSHIELDRELEASE_SOUND (sfx_cdfm35)	//SCS ADD
+#define MEGACHOPPERDASH_SOUND (sfx_3db16)		//SCS ADD
+#define MEGACHOPPERIDLE_SOUND (sfx_s25d)		//SCS ADD
+#define ARMASHIELDBOOST_SOUND (sfx_s3k85)		//SCS ADD
+#define AFTERBURNERJAWZBOOST_SOUND (sfx_s1bc)	//SCS ADD
+#define CHAMBLASTRELOAD_SOUND (sfx_cblrld)		//SCS ADD
+
+
+#define PLAYEREMERALDRINGDRAIN (TICRATE/2)		//SCS ADD
 
 // 2023-08-26 +ang20 to Sal's OG values to make them friendlier - Tyron
 #define STUMBLE_STEEP_VAL (ANG60 + ANG20)
@@ -122,6 +136,11 @@ Make sure this matches the actual number of states
 // is detected.
 #define AUTORESPAWN_TIME (10*TICRATE)
 #define AUTORESPAWN_THRESHOLD (7*TICRATE)
+
+UINT8 K_SetPlayerItemAmount(player_t *player, INT32 amount);
+UINT8 K_SetPlayerBackupItemAmount(player_t *player, INT32 amount);
+UINT8 K_AdjustPlayerItemAmount(player_t *player, INT32 amount);
+UINT8 K_AdjustPlayerBackupItemAmount(player_t *player, INT32 amount);
 
 angle_t K_ReflectAngle(angle_t angle, angle_t against, fixed_t maxspeed, fixed_t yourspeed);
 
@@ -222,6 +241,10 @@ void K_RunFinishLineBeam(void);
 UINT16 K_DriftSparkColor(player_t *player, INT32 charge);
 void K_SpawnBoostTrail(player_t *player);
 void K_SpawnSparkleTrail(mobj_t *mo);
+void K_SpawnSparkleTrail_OLD(mobj_t *mo);		//SCS ADD
+void K_SpawnTimeStoneSparkles(mobj_t *mo);		//SCS ADD
+void K_SpawnSuperFormSparkle(mobj_t *mo);		//SCS ADD
+UINT32 K_CalcRingBoxAward(player_t *player, UINT32 Multiplier, boolean IsSuperJackpot);		//SCS ADD
 void K_SpawnWipeoutTrail(mobj_t *mo);
 void K_SpawnFireworkTrail(mobj_t *mo);
 void K_SpawnDraftDust(mobj_t *mo);
@@ -233,6 +256,7 @@ mobj_t *K_ThrowKartItem(player_t *player, boolean missile, mobjtype_t mapthing, 
 void K_PuntMine(mobj_t *mine, mobj_t *punter);
 void K_DoSneaker(player_t *player, INT32 type);
 void K_DoPogoSpring(mobj_t *mo, fixed_t vertispeed, UINT8 sound);
+void K_DoYellowPogoSpring(mobj_t *mo, fixed_t vertispeed, UINT8 sound);
 void K_DoInvincibility(player_t *player, tic_t time);
 void K_KillBananaChain(mobj_t *banana, mobj_t *inflictor, mobj_t *source);
 void K_UpdateHnextList(player_t *player, boolean clean);
@@ -258,10 +282,12 @@ mobj_t *K_CreatePaperItem(fixed_t x, fixed_t y, fixed_t z, angle_t angle, SINT8 
 mobj_t *K_FlingPaperItem(fixed_t x, fixed_t y, fixed_t z, angle_t angle, SINT8 flip, UINT8 type, UINT16 amount);
 void K_DropPaperItem(player_t *player, UINT8 itemtype, UINT16 itemamount);
 void K_PopPlayerShield(player_t *player);
+void K_PickpocketHyuChainDestroy(player_t *player);					//SCS ADD
 void K_DropItems(player_t *player);
 void K_DropRocketSneaker(player_t *player);
 void K_DropKitchenSink(player_t *player);
 void K_StripItems(player_t *player);
+void K_StripItemsExceptBackup(player_t *player);
 void K_StripOther(player_t *player);
 void K_MomentumToFacing(player_t *player);
 boolean K_ApplyOffroad(const player_t *player);
@@ -295,12 +321,21 @@ boolean K_PlayerEBrake(const player_t *player);
 boolean K_PlayerGuard(const player_t *player);
 SINT8 K_Sliptiding(const player_t *player);
 boolean K_FastFallBounce(player_t *player);
+void K_DappleEmployment(player_t *player);
 fixed_t K_PlayerBaseFriction(const player_t *player, fixed_t original);
 void K_AdjustPlayerFriction(player_t *player);
 void K_MoveKartPlayer(player_t *player, boolean onground);
 void K_CheckSpectateStatus(boolean considermapreset);
 UINT8 K_GetInvincibilityItemFrame(void);
+UINT8 K_GetMasterEmeraldItemFrame(void); //SCS ADD
+UINT8 K_GetPickpocketHyudoroItemFrame(void); //SCS ADD
+UINT8 K_GetTimeStoneItemFrame(void);		//SCS ADD
 UINT8 K_GetOrbinautItemFrame(UINT8 count);
+UINT8 K_GetBananaItemFrame(UINT8 count);	//SCS ADD
+UINT8 K_GetSneakerItemFrame(UINT8 count);	//SCS ADD
+UINT8 K_GetJawzItemFrame(UINT8 count);	//SCS ADD
+
+UINT8 GetTotalInGameRacers(void);	//SCS ADD
 boolean K_IsSPBInGame(void);
 void K_KartEbrakeVisuals(player_t *p);
 void K_HandleDirectionalInfluence(player_t *player);
@@ -365,6 +400,29 @@ fixed_t K_TeamComebackMultiplier(player_t *player);
 void K_ApplyStun(player_t *player, mobj_t *inflictor, mobj_t *source, INT32 damage, UINT8 damagetype);
 
 boolean K_CanSuperTransfer(player_t *player);
+
+fixed_t K_GetGradingFactorMinMax(player_t *player, boolean max);																//SCS - RADIO START
+UINT16 K_GetEXP(player_t *player);
+
+UINT32 K_GetNumGradingPoints(void);
+
+boolean K_LegacyRingboost(const player_t *player);
+
+void K_BotHitPenalty(player_t *player);
+
+boolean K_IsPickMeUpItem(mobjtype_t type);
+
+boolean K_TryPickMeUp(mobj_t *m1, mobj_t *m2, boolean allowHostile);
+
+fixed_t K_TeamComebackMultiplier(player_t *player);
+
+void K_ApplyStun(player_t *player, mobj_t *inflictor, mobj_t *source, INT32 damage, UINT8 damagetype);
+
+boolean K_CanSuperTransfer(player_t *player);
+
+// RadioRacers: This only works for single-player, no splitscreen. But it can be adapted to work WITH splitscreen easily.
+extern boolean localPlayerJustBootyBounced;
+extern boolean localPlayerJustWavedashed;																					//SCS - RADIO END
 
 #ifdef __cplusplus
 } // extern "C"

@@ -16,6 +16,7 @@
 
 #include "k_kart.h"
 #include "k_rank.h"
+#include "k_color.h"			//SCS - RADIO
 #include "k_grandprix.h"
 #include "k_battle.h"
 #include "k_boss.h"
@@ -36,6 +37,11 @@
 #include "r_fps.h"
 #include "g_party.h"
 #include "g_input.h"
+
+// Radio
+#include "radioracers/rr_cvar.h"		//SCS - RADIO START
+#include "radioracers/rr_hud.h"
+#include "radioracers/rr_setup.h"		//SCS - RADIO END
 #include "k_objects.h"
 #include "k_director.h"
 
@@ -182,6 +188,23 @@ void level_tally_t::DetermineStatistics(void)
 	}
 }
 
+// RADIO
+static inline fixed_t CalculateExpBonus(UINT16 exp, UINT16 totalExp) {			//SCS - RADIO START
+	return (exp * FRACUNIT) / std::max(1, static_cast<int>(totalExp));
+}
+
+static inline boolean IsPerfectRace(fixed_t percent) {
+	return percent == FRACUNIT;
+}
+
+static inline boolean IsPerfectExpBonus(UINT16 exp, UINT16 totalExp) {
+	return CalculateExpBonus(exp, totalExp) == FRACUNIT;
+}
+
+static inline boolean IsNearlyPerfectExpBonus(UINT16 exp, UINT16 totalExp) {
+	return CalculateExpBonus(exp, totalExp) >= FloatToFixed(0.98f); //118
+}																				//SCS - RADIO END
+
 INT32 level_tally_t::CalculateGrade(void)
 {
 	static const fixed_t gradePercents[GRADE_A] = {
@@ -245,6 +268,9 @@ INT32 level_tally_t::CalculateGrade(void)
 			case TALLY_BONUS_RING:
 			{
 				ours += (rings * bonusWeights[i]) / 20;
+
+				// Radio hook
+				perfectRingBonus = ((rings * bonusWeights[i]) / 20) == 20;		//SCS - RADIO
 				break;
 			}
 			case TALLY_BONUS_EXP:
@@ -256,6 +282,9 @@ INT32 level_tally_t::CalculateGrade(void)
 			case TALLY_BONUS_PRISON:
 			{
 				ours += (prisons * bonusWeights[i]) / std::max(1, static_cast<int>(totalPrisons));
+
+				// Radio hook 
+				perfectPrisonBonus = (prisons == static_cast<int>(totalPrisons));		//SCS - RADIO
 				break;
 			}
 			case TALLY_BONUS_SCORE:
@@ -287,6 +316,43 @@ INT32 level_tally_t::CalculateGrade(void)
 			break;
 		}
 	}
+
+	// RADIO!
+
+	// Purely cosmetic feature for the stplyr - the final "rank" is the only information passed from the tally
+
+	// Check for any "PERFECT!" bonuses after a race (i.e, lap bonuses)
+	if (UseBonuses() == true) {														//SCS - RADIO START
+
+		// Races
+		// if (totalLaps > 0) {
+			/**
+			 * Ring bonuses take *more* precedence since they 
+			 * are an incentive for the player to acquire more lives in Grand Prix.
+			 * 
+			 * If the player achieves an actually perfect race (perfect ring bonus + perfect lap bonus), check for that first.
+			 * Then check for the lap bonus.
+			 */
+			nearlyPerfectExpBonus = IsNearlyPerfectExpBonus(exp, totalExp);
+			perfectExpBonus = IsPerfectExpBonus(exp, totalExp);
+			boolean perfectRaceBonuses = nearlyPerfectExpBonus;
+	
+			// If it's a grand prix, check if the ring bonus is perfect too. 
+			// That's more of an incentive in single-player (e.g. lives)
+			// And no one's getting perfect ring bonuses in multiplayer...
+			if (grandprixinfo.gp == true) {
+				perfectRaceBonuses = (nearlyPerfectExpBonus && perfectRingBonus);
+			}
+
+			perfectRace = IsPerfectRace(percent) || perfectRaceBonuses;
+		// }
+
+		// Prisons
+		if (totalPrisons > 0) {
+			perfectRace = perfectPrisonBonus;
+		}
+
+	}																				//SCS - RADIO END
 
 	return retGrade;
 }
@@ -320,6 +386,16 @@ void level_tally_t::Init(player_t *player)
 	releasedFastForward = false;
 
 	rank = GRADE_INVALID;
+	
+	// Radio hook
+	perfectRace = false;					//SCS - RADIO START
+	perfectExpBonus = false;
+	nearlyPerfectExpBonus = false;
+	perfectRingBonus = false;
+	perfectPrisonBonus = false;
+	expBonusEvaulated = false;
+	ringBonusEvaluated = false;
+	prisonBonusEvaluated = false;			//SCS - RADIO END
 
 	if (player->spectator == false && player->bot == false && game_over == false)
 	{
@@ -345,13 +421,10 @@ void level_tally_t::Init(player_t *player)
 			}
 		}
 
-		if ((gametypes[gt]->rules & GTR_CIRCUIT) == GTR_CIRCUIT)
+		if ((gametypes[gt]->rules & GTR_CIRCUIT) == GTR_CIRCUIT && K_GetNumGradingPoints() > 0) // EXP should be a rule type, but here we are
 		{
-			if (player->exp)
-			{
-				exp = player->exp;
-				totalExp = EXP_TARGET;
-			}
+			exp = static_cast<UINT16>(std::max<fixed_t>(player->exp, 0)); // The scoring calc doesn't subtract anymore, so using 0 is okay and will not wrap
+			totalExp = EXP_TARGET;
 		}
 
 		if (battleprisons)
@@ -533,6 +606,11 @@ void level_tally_t::Init(player_t *player)
 		{
 			gradeVoice = skins[skinid]->soundsid[S_sfx[sfx_kwin].skinsound];
 		}
+
+		// Radio:
+		if (cv_show_s_ranks.value && perfectRace && radio_s_rank_voiceline != sfx_None)			//SCS - RADIO START
+			gradeVoice = radio_s_rank_voiceline;
+		RR_PushGlobalGradeEventToFeed(player, static_cast<gp_rank_e>(rank), perfectRace);		//SCS - RADIO END
 	}
 
 	delay = K_TallyDelay(); // sync up with musiccountdown
@@ -644,6 +722,12 @@ boolean level_tally_t::IncrementLine(void)
 
 		count--;
 	}
+	
+	// Radio hook
+	// Prevent confusion with the total ring bonus from the stats
+	boolean isRingTallyBonus = false;										//SCS - RADIO START
+	boolean isExpTallyBonus = false;
+	boolean isPrisonBonus = false;											//SCS - RADIO END
 
 	for (int i = 0; i < TALLY_WINDOW_SIZE; i++)
 	{
@@ -666,16 +750,19 @@ boolean level_tally_t::IncrementLine(void)
 				dest = rings;
 				amount = 1;
 				freq = 1;
+				isRingTallyBonus = true;	//SCS - RADIO
 				break;
 			case TALLY_BONUS_EXP:
 				dest = exp;
 				amount = 20;
 				freq = 1;
+				isExpTallyBonus = true;		//SCS - RADIO
 				break;
 			case TALLY_BONUS_PRISON:
 				dest = prisons;
 				amount = 1;
 				freq = 4;
+				isPrisonBonus = true;		//SCS - RADIO
 				break;
 			case TALLY_BONUS_SCORE:
 				dest = points;
@@ -708,6 +795,19 @@ boolean level_tally_t::IncrementLine(void)
 	if (*value == dest)
 	{
 		// We've reached our destination
+
+		// Radio hook
+		// Show the "PERFECT" text (if need be) after the laps have been evaluated
+		if (isExpTallyBonus && !expBonusEvaulated) {									//SCS - RADIO START
+			expBonusEvaulated = true;
+		} else if (isRingTallyBonus && !ringBonusEvaluated) {
+			// or after the ring bonus has been evaluated
+			ringBonusEvaluated = true;
+		} else if (isPrisonBonus && !prisonBonusEvaluated) {
+			// or after the prison bonus has been evaluated
+			prisonBonusEvaluated = true;
+		}																				//SCS - RADIO END
+		
 		return true;
 	}
 
@@ -909,6 +1009,8 @@ void level_tally_t::Tick(void)
 			if (playSounds)
 			{
 				S_StartSound(NULL, sfx_rank);
+				if (cv_show_s_ranks.value && perfectRace)	//SCS - RADIO
+					S_StartSound(NULL, sfx_srank);			//SCS - RADIO
 			}
 			state = TALLY_ST_GRADE_VOICE;
 			delay = TICRATE/2;
@@ -1123,6 +1225,9 @@ void level_tally_t::Draw(void)
 		);
 
 		UINT8 displayLines = lines;
+		
+		// Radio hook
+		const boolean showPerfectBonuses = cv_show_s_ranks.value && !r_splitscreen && !demo.playback;		//SCS - RADIO
 
 		for (int b = 0;	b < numBoxes; b++)
 		{
@@ -1358,6 +1463,16 @@ void level_tally_t::Draw(void)
 								.x(197.0 * frac)
 								.align(srb2::Draw::Align::kCenter)
 								.text(va("%d / 20", displayBonus[i]));
+
+							// Radio hook
+							if (showPerfectBonuses && (ringBonusEvaluated || state == TALLY_ST_DONE)  && perfectRingBonus) {		//SCS - RADIO START
+								drawer_text
+									.x(197.0 * frac)
+									.y(3.0 * frac)
+									.align(srb2::Draw::Align::kCenter)
+									.font(srb2::Draw::Font::kMenu)
+									.text((leveltime/2 % 2) ? "PERFECT!" : "\x82PERFECT!");
+							}																										//SCS - RADIO END
 							break;
 						}
 						case TALLY_BONUS_EXP:
@@ -1366,6 +1481,16 @@ void level_tally_t::Draw(void)
 								.x(197.0 * frac)
 								.align(srb2::Draw::Align::kCenter)
 								.text(va("%d / %d", displayBonus[i], totalExp));
+
+							// Radio hook
+							if (showPerfectBonuses && (expBonusEvaulated || state == TALLY_ST_DONE) && perfectExpBonus) {		//SCS - RADIO START
+								drawer_text
+									.x(197.0 * frac)
+									.y(3.0 * frac)
+									.align(srb2::Draw::Align::kCenter)
+									.font(srb2::Draw::Font::kMenu)
+									.text((leveltime/2 % 2) ? "PERFECT!" : "\x82PERFECT!");
+							}																									//SCS - RADIO END
 							break;
 						}
 						case TALLY_BONUS_PRISON:
@@ -1374,6 +1499,16 @@ void level_tally_t::Draw(void)
 								.x(197.0 * frac)
 								.align(srb2::Draw::Align::kCenter)
 								.text(va("%d / %d", displayBonus[i], totalPrisons));
+
+							// Radio hook
+							if (showPerfectBonuses && (prisonBonusEvaluated || state == TALLY_ST_DONE)  && perfectPrisonBonus) {		//SCS - RADIO START
+								drawer_text
+									.x(197.0 * frac)
+									.y(3.0 * frac)
+									.align(srb2::Draw::Align::kCenter)
+									.font(srb2::Draw::Font::kMenu)
+									.text((leveltime/2 % 2) ? "PERFECT!" : "\x82PERFECT!");
+							}																											//SCS - RADIO END
 							break;
 						}
 						case TALLY_BONUS_SCORE:
@@ -1432,11 +1567,19 @@ void level_tally_t::Draw(void)
 		|| state == TALLY_ST_DONE)
 	{
 		char grade_letter = K_GetGradeChar( static_cast<gp_rank_e>(rank) );
+		skincolornum_t grade_rank_colormap = static_cast<skincolornum_t>(K_GetGradeColor( static_cast<gp_rank_e>(rank) ));		//SCS - RADIO START
+
+		// Radio hook
+		if (cv_show_s_ranks.value && perfectRace) {
+			grade_letter = 'S';
+			grade_rank_colormap = static_cast<skincolornum_t>(K_RainbowColor(leveltime/2));
+		}																														//SCS - RADIO END
 
 		patch_t *grade_img = static_cast<patch_t*>( W_CachePatchName(va("R_FINR%c%c", (r_splitscreen ? 'S' : 'N'), grade_letter), PU_CACHE) );
 		srb2::Draw grade_drawer = drawer
 			.xy(v_width * 0.5, v_height - (2.0 * frac) - (grade_img->height * 0.5))
-			.colormap( static_cast<skincolornum_t>(K_GetGradeColor( static_cast<gp_rank_e>(rank) )) );
+						.colormap(grade_rank_colormap);															//SCS - RADIO
+			//.colormap( static_cast<skincolornum_t>(K_GetGradeColor( static_cast<gp_rank_e>(rank) )) );
 
 		float sc = 1.0;
 		if (state == TALLY_ST_GRADE_APPEAR)

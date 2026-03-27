@@ -19,6 +19,7 @@
 #include "../r_main.h"
 #include "../tables.h"
 #include "../s_sound.h"
+#include "../k_kart.h"
 
 /* An object may not be visible on the same tic:
    1) that it spawned
@@ -78,14 +79,14 @@ bool award_target(mobj_t* mobj)
 		return true;
 	}
 
-	if ((player->itemtype == KITEM_GACHABOM || player->itemtype == KITEM_NONE) && !player->itemRoulette.active && !player->instaWhipCharge)
+	if ((player->itemtype == KITEM_GACHABOM || player->itemtype == KITEM_NONE) && !player->itemRoulette.active && !player->instaWhipCharge)		//SCS EDIT
 	{
 		rebound_timer(mobj)--;
 
 		if (rebound_timer(mobj) < 1)
 		{
 			player->itemtype = KITEM_GACHABOM;
-			player->itemamount++;
+			K_AdjustPlayerItemAmount(player, 1);
 			if (player->roundconditions.gachabom_miser == 1)
 				player->roundconditions.gachabom_miser = 0;
 
@@ -94,6 +95,23 @@ bool award_target(mobj_t* mobj)
 
 			return true;
 		}
+	}
+	else if ((player->backupitemtype == KITEM_NONE || player->backupitemtype == KITEM_GACHABOM) && !player->instaWhipCharge)
+	{
+		rebound_timer(mobj)--;
+
+		if (rebound_timer(mobj) < 1)
+		{
+			player->backupitemtype = KITEM_GACHABOM;
+			K_AdjustPlayerBackupItemAmount(player, 1);
+			if (player->roundconditions.gachabom_miser == 1)
+				player->roundconditions.gachabom_miser = 0;
+
+			//S_StartSoundAtVolume(target, sfx_grbnd3, 255/3);
+			S_StartSound(target, sfx_mbs54);
+
+			return true;
+		}		
 	}
 
 	return false;

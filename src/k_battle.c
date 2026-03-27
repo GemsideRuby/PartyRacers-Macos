@@ -35,6 +35,8 @@
 #include "k_endcam.h"
 #include "p_tick.h"
 
+#include "radioracers/rr_util.h"			//SCS - RADIO
+
 #define BARRIER_MIN_RADIUS (768 * mapobjectscale)
 
 // Battle overtime info
@@ -269,6 +271,12 @@ void K_CheckEmeralds(player_t *player)
 
 	if (!P_MobjWasRemoved(player->mo))
 	{
+		/**
+		 * RadioRacers: The spinning camera at the end of a round is nice. 
+		 * But you don't really know who won until you look at the rankings.
+		 */
+		RR_AnnounceBattleWinner(player, BATTLE_WIN_EMERALDS);					//SCS - RADIO
+
 		K_StartRoundWinCamera(
 			player->mo,
 			player->angleturn + ANGLE_180,
@@ -740,8 +748,11 @@ static void K_SpawnOvertimeLaser(fixed_t x, fixed_t y, fixed_t scale)
 				case 0:
 					P_SetMobjState(mo, S_OVERTIME_BULB1);
 
-					if (leveltime & 1)
-						mo->frame += 1;
+					if (!cv_reducevfx.value)
+					{
+						if (leveltime & 1)
+							mo->frame += 1;
+					}
 
 					//P_SetScale(mo, mapobjectscale);
 					zpos += 35 * mo->scale * flip;
@@ -749,10 +760,13 @@ static void K_SpawnOvertimeLaser(fixed_t x, fixed_t y, fixed_t scale)
 				case 1:
 					P_SetMobjState(mo, S_OVERTIME_LASER);
 
-					if (leveltime & 1)
-						mo->frame += 3;
-					else
-						mo->frame += (leveltime / 2) % 3;
+					if (!cv_reducevfx.value)
+					{
+						if (leveltime & 1)
+							mo->frame += 3;
+						else
+							mo->frame += (leveltime / 2) % 3;
+					}
 
 					//P_SetScale(mo, scale);
 					zpos += 346 * mo->scale * flip;
@@ -763,8 +777,11 @@ static void K_SpawnOvertimeLaser(fixed_t x, fixed_t y, fixed_t scale)
 				case 2:
 					P_SetMobjState(mo, S_OVERTIME_BULB2);
 
-					if (leveltime & 1)
-						mo->frame += 1;
+					if (!cv_reducevfx.value)
+					{
+						if (leveltime & 1)
+							mo->frame += 1;
+					}
 
 					//P_SetScale(mo, mapobjectscale);
 					break;
@@ -1029,6 +1046,8 @@ boolean K_EndBattleRound(player_t *victor)
 			// exiting, the round has already ended.
 			return false;
 		}
+		
+		UINT32 topscore = 0;
 
 		if (gametyperules & GTR_POINTLIMIT)
 		{
@@ -1037,7 +1056,27 @@ boolean K_EndBattleRound(player_t *victor)
 			// TODO: a "won the round" bool used for sorting
 			// position / intermission, so we aren't completely
 			// clobbering the individual scoring.
-			victor->roundscore = 100;
+			
+			// This isn't quite the above TODO but it's something?
+			// For purposes of score-to-EXP conversion, we need to not lock the winner to an arbitrarily high score.
+			// Instead, let's find the highest score, and if they're not the highest scoring player,
+			// give them a bump so they *are* the highest scoring player.
+			for (INT32 i = 0; i < MAXPLAYERS; i++)
+			{
+				if (!playeringame[i] || players[i].spectator)
+				{
+					continue;
+				}
+				
+				if ((&players[i])->roundscore > topscore)
+				{
+					topscore = (&players[i])->roundscore;
+				}
+			}
+			if (victor->roundscore <= topscore)
+			{
+				victor->roundscore = topscore + 3;
+			}
 
 			if (G_GametypeHasTeams() == true && victor->team != TEAM_UNASSIGNED)
 			{

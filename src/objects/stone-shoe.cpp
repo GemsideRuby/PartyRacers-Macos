@@ -88,7 +88,7 @@ struct Shoe : Mobj
 	bool valid() const { return Mobj::valid(follow()) && follow()->valid() && Mobj::valid(chain()); }
 
 	Fixed minDist() const { return 200 * mapobjectscale; }
-	Fixed maxDist() const { return 800 * mapobjectscale; }
+	Fixed maxDist() const { return 800 * mapobjectscale; }		//SCS EDIT - yeah, we're not changing this. Too much fun lol
 
 	angle_t followAngle() const { return R_PointToAngle2(x, y, follow()->x, follow()->y); }
 	Fixed followDistance() const { return FixedHypot(x - follow()->x, y - follow()->y); }
@@ -115,7 +115,7 @@ struct Shoe : Mobj
 		shoe->dir(0);
 		shoe->fuse = 15 * TICRATE;
 
-		INT32 numLinks = 8;
+		INT32 numLinks = 8;//5;			//Should this really be changed? SCS - maybe worth changing it back. More chaos hahaha
 		Chain* link = nullptr;
 
 		for (INT32 i = 0; i < numLinks; ++i)
@@ -237,7 +237,7 @@ private:
 				}
 			}
 
-			thrust(a, 8 * mapobjectscale);
+			thrust(a, 10 * mapobjectscale);
 
 			Fixed maxSpeed = 32 * mapobjectscale;
 			Fixed speed = FixedHypot(momx, momy);
@@ -342,6 +342,17 @@ player_t *Obj_StoneShoeOwnerPlayer(mobj_t *shoe)
 {
 	return static_cast<Shoe*>(shoe)->ownerPlayer();
 }
+
+// Radio																	//SCS - RADIO START
+player_t* Obj_StoneShoeChainShoeFollowPlayer(mobj_t *chain)
+{
+	return static_cast<Chain*>(chain)->shoe()->follow()->player;
+}
+
+player_t *Obj_StoneShoeFollowPlayer(mobj_t *shoe)
+{
+	return static_cast<Shoe*>(shoe)->follow()->player;
+}																			//SCS - RADIO END
 
 void Obj_CollideStoneShoe(mobj_t *mover, mobj_t *mobj)
 {

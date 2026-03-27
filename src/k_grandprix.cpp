@@ -60,7 +60,7 @@ INT16 K_CalculateGPRankPoints(UINT16 exp, UINT8 position, UINT8 numplayers)
 {
 	INT16 points;
 
-	if (position >= numplayers || position == 0)
+	if (position > numplayers || position == 0)
 	{
 		// Invalid position, no points
 		return 0;
@@ -244,11 +244,11 @@ void K_InitGrandPrixBots(void)
 		grabskins[usableskins] = usableskins;
 	}
 	grabskins[usableskins] = MAXSKINS;
-
+/*
 #if MAXPLAYERS != 16
-	I_Error("GP bot difficulty levels need rebalanced for the new player count!\n");
+	I_Error("GP bot difficulty levels need rebalanced for the new player count!\n");		//SCS EDIT - Are you serious right now? "If the max players isn't 16, CRASH THE GAME". Yeah, real cool.
 #endif
-
+*/
 	if (grandprixinfo.masterbots)
 	{
 		// Everyone is max difficulty!!
@@ -858,7 +858,12 @@ void K_RetireBots(void)
 	std::stable_sort(humans.begin(), humans.end(), CompareReplacements);
 	std::stable_sort(bots.begin(), bots.end(), CompareReplacements);
 
-	if (G_GametypeHasSpectators() == true && grandprixinfo.gp == false && cv_shuffleloser.value != 0)
+	// If a player spectated mid-race or mid-duel, they will be placed in-game by K_CheckSpectateStatus,
+	// and their position will be set to 0. Since we're only replacing one player as of now, there's no need
+	// to do anything; a player has already been replaced.
+	bool player_already_joined = (!humans.empty() && humans[0]->position == 0);
+
+	if (G_GametypeHasSpectators() == true && grandprixinfo.gp == false && !player_already_joined && cv_shuffleloser.value != 0)
 	{
 		// While joiners and players still exist, insert joiners.
 
@@ -1088,6 +1093,8 @@ void K_FakeBotResults(player_t *bot)
 	// hey, you "won"
 	bot->exiting = 1;
 	bot->realtime += (bot->distancetofinish / distfactor);
+	bot->gradingpointnum = K_GetNumGradingPoints();					//SCS ADD - Merge request
+	bot->exp = K_GetEXP(bot);
 	bot->distancetofinish = 0;
 	K_IncreaseBotDifficulty(bot);
 }

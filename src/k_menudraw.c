@@ -92,6 +92,11 @@ int	snprintf(char *str, size_t n, const char *fmt, ...);
 #include "discord.h"
 #endif
 
+// Radio
+#include "d_clisrv.h"										//SCS - RADIO START
+#include "radioracers/rr_cvar.h"
+#include "radioracers/rr_hud.h"								//SCS - RADIO END
+
 fixed_t M_TimeFrac(tic_t tics, tic_t duration)
 {
 	return tics < duration ? (tics * FRACUNIT + rendertimefrac_unpaused) / duration : FRACUNIT;
@@ -272,7 +277,10 @@ void M_UpdateMenuBGImage(boolean forceReset)
 
 	if (forceReset == false && strcmp(bgImageName, oldName))
 	{
-		bgImageScroll = (3 * BASEVIDWIDTH) * (FRACUNIT / 4);
+		//bgImageScroll = (3 * BASEVIDWIDTH) * (FRACUNIT / 4);
+		// Radio
+		const INT32 VID_WIDTH = IS_WEIRD_RES() ? vid.width : BASEVIDWIDTH;		//SCS - RADIO
+		bgImageScroll = (3 * VID_WIDTH) * (FRACUNIT / 4);						//SCS - RADIO
 	}
 
 	if (forceReset == true)
@@ -299,16 +307,28 @@ void M_DrawMenuBackground(void)
 	{
 		bgMapImage = W_CachePatchName("MENUBG4", PU_CACHE);
 	}
+	
+	if (IS_WEIRD_RES()) {																															//SCS - RADIO START
+		V_DrawAdaptiveScaledFullScreenPatch(bgMapImage, R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_SLATE, GTC_MENUCACHE), 0);
+		V_DrawAdaptiveScaledFullScreenPatch(W_CachePatchName("MENUCUTD", PU_CACHE), NULL, V_ADD);
+		V_DrawAdaptiveScaledFullScreenPatch(W_CachePatchName("MENUCUT", PU_CACHE), NULL, 0);
 
-	V_DrawFixedPatch(0, 0, FRACUNIT, 0, bgMapImage, R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_SLATE, GTC_MENUCACHE));
-	V_DrawFixedPatch(0, 0, FRACUNIT, V_ADD, W_CachePatchName("MENUCUTD", PU_CACHE), NULL);
-	V_DrawFixedPatch(0, 0, FRACUNIT, 0, W_CachePatchName("MENUCUT", PU_CACHE), NULL);
+		V_DrawAdaptiveScaledPatchWithCoords(-bgImageScroll, 0, W_CachePatchName("MENUBG1", PU_CACHE), V_NOSCALEPATCH);
+		V_DrawAdaptiveScaledPatchWithCoords(-bgImageScroll, 0, W_CachePatchName(bgImageName, PU_CACHE), V_NOSCALEPATCH);
 
-	V_DrawFixedPatch(-bgImageScroll, 0, FRACUNIT, 0, W_CachePatchName("MENUBG1", PU_CACHE), NULL);
-	V_DrawFixedPatch(-bgImageScroll, 0, FRACUNIT, 0, W_CachePatchName(bgImageName, PU_CACHE), NULL);
+		V_DrawFixedPatch(0, (BASEVIDHEIGHT + 16) * FRACUNIT, FRACUNIT, V_SUBTRACT|V_NOSCALEPATCH, W_CachePatchName("MENUBG2", PU_CACHE), NULL);
+	} else {																																		//SCS - RADIO END
+		V_DrawFixedPatch(0, 0, FRACUNIT, 0, bgMapImage, R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_SLATE, GTC_MENUCACHE));
+		V_DrawFixedPatch(0, 0, FRACUNIT, V_ADD, W_CachePatchName("MENUCUTD", PU_CACHE), NULL);
+		V_DrawFixedPatch(0, 0, FRACUNIT, 0, W_CachePatchName("MENUCUT", PU_CACHE), NULL);
 
-	V_DrawFixedPatch(0, (BASEVIDHEIGHT + 16) * FRACUNIT, FRACUNIT, V_SUBTRACT, W_CachePatchName("MENUBG2", PU_CACHE), NULL);
+		V_DrawFixedPatch(-bgImageScroll, 0, FRACUNIT, 0, W_CachePatchName("MENUBG1", PU_CACHE), NULL);
+		V_DrawFixedPatch(-bgImageScroll, 0, FRACUNIT, 0, W_CachePatchName("MENUBG1", PU_CACHE), NULL);		//SCS - RADIO
+		V_DrawFixedPatch(-bgImageScroll, 0, FRACUNIT, 0, W_CachePatchName(bgImageName, PU_CACHE), NULL);
 
+		V_DrawFixedPatch(0, (BASEVIDHEIGHT + 16) * FRACUNIT, FRACUNIT, V_SUBTRACT, W_CachePatchName("MENUBG2", PU_CACHE), NULL);
+	}		//SCS - RADIO
+	
 	V_DrawFixedPatch(8 * FRACUNIT, -bgText1Scroll,
 		FRACUNIT, V_SUBTRACT, text1, NULL);
 	V_DrawFixedPatch(8 * FRACUNIT, -bgText1Scroll + text1loop,
@@ -332,7 +352,12 @@ void M_DrawMenuBackground(void)
 
 	if (bgImageScroll > 0)
 	{
-		bgImageScroll -= (MENUBG_IMAGESCROLL*renderdeltatics);
+		//bgImageScroll -= (MENUBG_IMAGESCROLL*renderdeltatics);
+		INT32 bgImageScrollAmount = MENUBG_IMAGESCROLL;									//SCS - RADIO START
+		if (IS_WEIRD_RES())
+			bgImageScrollAmount = (MENUBG_IMAGESCROLL * (int)(vid.width/BASEVIDWIDTH));
+		
+		bgImageScroll -= (bgImageScrollAmount*renderdeltatics);							//SCS - RADIO END
 		if (bgImageScroll < 0)
 		{
 			bgImageScroll = 0;
@@ -343,7 +368,12 @@ void M_DrawMenuBackground(void)
 void M_DrawExtrasBack(void)
 {
 	patch_t *bg = W_CachePatchName("M_XTRABG", PU_CACHE);
-	V_DrawFixedPatch(0, 0, FRACUNIT, 0, bg, NULL);
+
+	if (IS_WEIRD_RES()) {													//SCS - RADIO START
+		V_DrawAdaptiveScaledFullScreenPatch(bg, NULL, V_NOSCALEPATCH);
+	} else {																//SCS - RADIO END
+		V_DrawFixedPatch(0, 0, FRACUNIT, 0, bg, NULL);
+	}																		//SCS - RADIO
 }
 
 UINT16 M_GetCvPlayerColor(UINT8 pnum)
@@ -375,6 +405,8 @@ static void M_DrawMenuParty(void)
 	INT32 skin;
 	UINT16 color;
 	UINT8 *colormap;
+	
+	const INT32 partyflags = IS_WEIRD_RES() ? V_SNAPTOBOTTOM|V_SNAPTOLEFT : 0;		//SCS - RADIO
 
 	if (setup_numplayers == 0 || currentMenu == &PLAY_CharSelectDef || currentMenu == &OPTIONS_GameplayItemsDef || currentMenu == &MISC_ChallengesDef)
 	{
@@ -401,66 +433,80 @@ static void M_DrawMenuParty(void)
 		case 1:
 		{
 			x -= 8;
-			V_DrawScaledPatch(x, y, 0, small);
+			//V_DrawScaledPatch(x, y, 0, small);
+			V_DrawScaledPatch(x, y, partyflags, small);		//SCS - RADIO
 
 			grab_skin_and_colormap(0);
 
-			V_DrawMappedPatch(x + 22, y + 8, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			//V_DrawMappedPatch(x + 22, y + 8, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			V_DrawMappedPatch(x + 22, y + 8, partyflags, faceprefix[skin][FACE_MINIMAP], colormap);		//SCS - RADIO
 			break;
 		}
 		case 2:
 		{
 			x -= 8;
 			V_DrawScaledPatch(x, y, 0, small);
-			V_DrawScaledPatch(x + PLATTER_OFFSET, y - PLATTER_STAGGER, 0, small);
+			//V_DrawScaledPatch(x + PLATTER_OFFSET, y - PLATTER_STAGGER, 0, small);
+			V_DrawScaledPatch(x + PLATTER_OFFSET, y - PLATTER_STAGGER, partyflags, small);	//SCS - RADIO
 
 			grab_skin_and_colormap(1);
 
-			V_DrawMappedPatch(x + PLATTER_OFFSET + 22, y - PLATTER_STAGGER + 8, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			//V_DrawMappedPatch(x + PLATTER_OFFSET + 22, y - PLATTER_STAGGER + 8, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			V_DrawMappedPatch(x + PLATTER_OFFSET + 22, y - PLATTER_STAGGER + 8, partyflags, faceprefix[skin][FACE_MINIMAP], colormap);	//SCS - RADIO
 
 			grab_skin_and_colormap(0);
 
-			V_DrawMappedPatch(x + 22, y + 8, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			//V_DrawMappedPatch(x + 22, y + 8, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			V_DrawMappedPatch(x + 22, y + 8, partyflags, faceprefix[skin][FACE_MINIMAP], colormap);	//SCS - RADIO
 			break;
 		}
 		case 3:
 		{
 			V_DrawScaledPatch(x, y, 0, large);
-			V_DrawScaledPatch(x + PLATTER_OFFSET, y - PLATTER_STAGGER, 0, small);
+			//V_DrawScaledPatch(x + PLATTER_OFFSET, y - PLATTER_STAGGER, 0, small);
+			V_DrawScaledPatch(x + PLATTER_OFFSET, y - PLATTER_STAGGER, partyflags, small);	//SCS - RADIO
 
 			grab_skin_and_colormap(1);
 
-			V_DrawMappedPatch(x + PLATTER_OFFSET + 22, y - PLATTER_STAGGER + 8, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			//V_DrawMappedPatch(x + PLATTER_OFFSET + 22, y - PLATTER_STAGGER + 8, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			V_DrawMappedPatch(x + PLATTER_OFFSET + 22, y - PLATTER_STAGGER + 8, partyflags, faceprefix[skin][FACE_MINIMAP], colormap);	//SCS - RADIO
 
 			grab_skin_and_colormap(0);
 
-			V_DrawMappedPatch(x + 12, y - 2, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			//V_DrawMappedPatch(x + 12, y - 2, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			V_DrawMappedPatch(x + 12, y - 2, partyflags, faceprefix[skin][FACE_MINIMAP], colormap);	//SCS - RADIO
 
 			grab_skin_and_colormap(2);
 
-			V_DrawMappedPatch(x + 22, y + 8, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			//V_DrawMappedPatch(x + 22, y + 8, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			V_DrawMappedPatch(x + 22, y + 8, partyflags, faceprefix[skin][FACE_MINIMAP], colormap);		//SCS - RADIO
 			break;
 		}
 		case 4:
 		{
 			V_DrawScaledPatch(x, y, 0, large);
-			V_DrawScaledPatch(x + PLATTER_OFFSET, y - PLATTER_STAGGER, 0, large);
+			//V_DrawScaledPatch(x + PLATTER_OFFSET, y - PLATTER_STAGGER, 0, large);
+			V_DrawScaledPatch(x + PLATTER_OFFSET, y - PLATTER_STAGGER, partyflags, large);	//SCS - RADIO
 
 			grab_skin_and_colormap(1);
 
-			V_DrawMappedPatch(x + PLATTER_OFFSET + 12, y - PLATTER_STAGGER - 2, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			//V_DrawMappedPatch(x + PLATTER_OFFSET + 12, y - PLATTER_STAGGER - 2, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			V_DrawMappedPatch(x + PLATTER_OFFSET + 12, y - PLATTER_STAGGER - 2, partyflags, faceprefix[skin][FACE_MINIMAP], colormap);	//SCS - RADIO
 
 			grab_skin_and_colormap(0);
 
-			V_DrawMappedPatch(x + 12, y - 2, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			//V_DrawMappedPatch(x + 12, y - 2, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			V_DrawMappedPatch(x + 12, y - 2, partyflags, faceprefix[skin][FACE_MINIMAP], colormap);	//SCS - RADIO
 
 			grab_skin_and_colormap(3);
 
-			V_DrawMappedPatch(x + PLATTER_OFFSET + 22, y - PLATTER_STAGGER + 8, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			//V_DrawMappedPatch(x + PLATTER_OFFSET + 22, y - PLATTER_STAGGER + 8, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			V_DrawMappedPatch(x + PLATTER_OFFSET + 22, y - PLATTER_STAGGER + 8, partyflags, faceprefix[skin][FACE_MINIMAP], colormap);	//SCS - RADIO
 
 			grab_skin_and_colormap(2);
 
-			V_DrawMappedPatch(x + 22, y + 8, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			//V_DrawMappedPatch(x + 22, y + 8, 0, faceprefix[skin][FACE_MINIMAP], colormap);
+			V_DrawMappedPatch(x + 22, y + 8, partyflags, faceprefix[skin][FACE_MINIMAP], colormap);	//SCS - RADIO
 			break;
 		}
 		default:
@@ -473,7 +519,8 @@ static void M_DrawMenuParty(void)
 
 	x += PLATTER_WIDTH;
 	y += small->height;
-	V_DrawScaledPatch(x + 16, y - 12, 0, W_CachePatchName(va("OPPRNK0%d", setup_numplayers % 10), PU_CACHE));
+	//V_DrawScaledPatch(x + 16, y - 12, 0, W_CachePatchName(va("OPPRNK0%d", setup_numplayers % 10), PU_CACHE));
+	V_DrawScaledPatch(x + 16, y - 12, partyflags, W_CachePatchName(va("OPPRNK0%d", setup_numplayers % 10), PU_CACHE));	//SCS - RADIO
 }
 
 void M_DrawMenuForeground(void)
@@ -487,7 +534,10 @@ void M_DrawMenuForeground(void)
 	if ((!menuactive || currentMenu != &PAUSE_PlaybackMenuDef) && // this obscures replay menu and I want to put in minimal effort to fix that
 		((vid.width % BASEVIDWIDTH != 0) || (vid.height % BASEVIDHEIGHT != 0)))
 	{
-		V_DrawFixedPatch(0, 0, FRACUNIT, 0, W_CachePatchName("WEIRDRES", PU_CACHE), NULL);
+		// Radio: What if...
+		// Egg TV workaround
+		if (cv_highreshudscale_temp.value != 0 || cv_highreshudscale.value == FRACUNIT)			//SCS - RADIO
+			V_DrawFixedPatch(0, 0, FRACUNIT, 0, W_CachePatchName("WEIRDRES", PU_CACHE), NULL);
 	}
 }
 
@@ -500,8 +550,16 @@ static void M_DrawMenuTooltips(void)
 {
 	if (currentMenu->menuitems[itemOn].tooltip != NULL)
 	{
-		V_DrawFixedPatch(0, 0, FRACUNIT, 0, W_CachePatchName("MENUHINT", PU_CACHE), NULL);
-		V_DrawCenteredThinString(BASEVIDWIDTH/2, 12, 0, currentMenu->menuitems[itemOn].tooltip);
+		if (IS_WEIRD_RES()) {																					//SCS - RADIO START
+			// V_DrawHorizontallyScaledFullScreenPatch(W_CachePatchName("MENUHINT", PU_CACHE));
+			V_DrawFixedPatch(0, 0, FRACUNIT, V_SNAPTOTOP, W_CachePatchName("MENUHINT", PU_CACHE), NULL);
+			V_DrawCenteredThinString(BASEVIDWIDTH/2, 12, V_SNAPTOTOP, currentMenu->menuitems[itemOn].tooltip);
+
+		} else {																								//SCS - RADIO END
+			V_DrawFixedPatch(0, 0, FRACUNIT, 0, W_CachePatchName("MENUHINT", PU_CACHE), NULL);
+			V_DrawCenteredThinString(BASEVIDWIDTH/2, 12, 0, currentMenu->menuitems[itemOn].tooltip);
+
+		}																										//SCS - RADIO
 	}
 }
 
@@ -787,7 +845,8 @@ static void M_DrawPauseRoundQueue(INT16 offset, boolean canqueue)
 		standings.showrank = true;
 	}
 
-	Y_RoundQueueDrawer(&standings, offset, false, false, canqueue);
+	//Y_RoundQueueDrawer(&standings, offset, false, false, canqueue);
+	Y_RoundQueueDrawer(&standings, offset, false, IS_WEIRD_RES(), canqueue);	//SCS - RADIO
 }
 
 // Draw the message popup submenu
@@ -922,6 +981,8 @@ static void M_DrawPausedText(INT32 x)
 	patch_t *pausetext = W_CachePatchName("M_PAUSET", PU_CACHE);
 
 	INT32 snapFlags = menuactive ? 0 : (V_SNAPTOLEFT|V_SNAPTOTOP);
+	if (menuactive && IS_WEIRD_RES())								//SCS - RADIO
+		snapFlags = (V_SNAPTOLEFT|V_SNAPTOTOP);						//SCS - RADIO
 
 	V_DrawFixedPatch(x, -5*FRACUNIT, FRACUNIT, snapFlags|V_ADD, pausebg,   NULL);
 	V_DrawFixedPatch(x, -5*FRACUNIT, FRACUNIT, snapFlags,       pausetext, NULL);
@@ -1073,6 +1134,7 @@ static const char *M_CreateSecretMenuOption(const char *str)
 void M_DrawGenericMenu(void)
 {
 	INT32 x = currentMenu->x, y = currentMenu->y, w, i, cursory = 0;
+	const INT32 highresflags = IS_WEIRD_RES() ? V_SNAPTOTOP : 0;
 
 	M_DrawMenuTooltips();
 
@@ -1115,10 +1177,14 @@ void M_DrawGenericMenu(void)
 				if (i == itemOn)
 					cursory = y;
 
-				if ((currentMenu->menuitems[i].status & IT_DISPLAY)==IT_STRING)
+				/*if ((currentMenu->menuitems[i].status & IT_DISPLAY)==IT_STRING)
 					V_DrawMenuString(x, y, 0, currentMenu->menuitems[i].text);
 				else
-					V_DrawMenuString(x, y, highlightflags, currentMenu->menuitems[i].text);
+					V_DrawMenuString(x, y, highlightflags, currentMenu->menuitems[i].text);*/
+				if ((currentMenu->menuitems[i].status & IT_DISPLAY)==IT_STRING)							//SCS - RADIO START
+					V_DrawMenuString(x, y, highresflags, currentMenu->menuitems[i].text);
+				else
+					V_DrawMenuString(x, y, highlightflags|highresflags, currentMenu->menuitems[i].text);	//SCS - RADIO END
 
 				// Cvar specific handling
 				switch (currentMenu->menuitems[i].status & IT_TYPE)
@@ -1153,13 +1219,16 @@ void M_DrawGenericMenu(void)
 							default:
 								w = V_MenuStringWidth(cv->string, 0);
 								V_DrawMenuString(BASEVIDWIDTH - x - w, y,
-									((cv->flags & CV_CHEAT) && !CV_IsSetToDefault(cv) ? warningflags : highlightflags), cv->string);
+								((cv->flags & CV_CHEAT) && !CV_IsSetToDefault(cv) ? warningflags|highresflags : highlightflags|highresflags), cv->string);	//SCS - RADIO
+									//((cv->flags & CV_CHEAT) && !CV_IsSetToDefault(cv) ? warningflags : highlightflags), cv->string);
 								if (i == itemOn)
 								{
 									V_DrawMenuString(BASEVIDWIDTH - x - 10 - w - (skullAnimCounter/5), y,
-											highlightflags, "\x1C"); // left arrow
+											highlightflags|highresflags, "\x1C"); // left arrow // left arrow					//SCS - RADIO
+											//highlightflags, "\x1C"); // left arrow
 									V_DrawMenuString(BASEVIDWIDTH - x + 2 + (skullAnimCounter/5), y,
-											highlightflags, "\x1D"); // right arrow
+											highlightflags|highresflags, "\x1D"); // right arrow					//SCS - RADIO
+											//highlightflags, "\x1D"); // right arrow
 								}
 								break;
 						}
@@ -1211,14 +1280,17 @@ void M_DrawGenericMenu(void)
 	if (((currentMenu->menuitems[itemOn].status & IT_DISPLAY) == IT_PATCH)
 		|| ((currentMenu->menuitems[itemOn].status & IT_DISPLAY) == IT_NOTHING))
 	{
-		V_DrawScaledPatch(currentMenu->x + SKULLXOFF, cursory - 5, 0,
+		//V_DrawScaledPatch(currentMenu->x + SKULLXOFF, cursory - 5, 0,
+		V_DrawScaledPatch(currentMenu->x + SKULLXOFF, cursory - 5, highresflags,	//SCS - RADIO
 			W_CachePatchName("M_CURSOR", PU_CACHE));
 	}
 	else
 	{
-		V_DrawScaledPatch(currentMenu->x - 24, cursory, 0,
+		//V_DrawScaledPatch(currentMenu->x - 24, cursory, 0,
+		V_DrawScaledPatch(currentMenu->x - 24, cursory, highresflags,	//SCS - RADIO
 			W_CachePatchName("M_CURSOR", PU_CACHE));
-		V_DrawMenuString(currentMenu->x, cursory, highlightflags, currentMenu->menuitems[itemOn].text);
+		//V_DrawMenuString(currentMenu->x, cursory, highlightflags, currentMenu->menuitems[itemOn].text);
+		V_DrawMenuString(currentMenu->x, cursory, highlightflags|highresflags, currentMenu->menuitems[itemOn].text);		//SCS - RADIO
 	}
 }
 
@@ -1952,6 +2024,13 @@ static void M_DrawCharSelectSprite(UINT8 num, INT16 x, INT16 y, boolean charflip
 		p->mdepth == CSSTEP_ASKCHANGES ? V_TRANSLUCENT : 0, colormap);
 }
 
+// Radio
+static boolean M_IsSkinValid(setup_player_t *p)										//SCS - RADIO START
+{
+	return (p->clonenum < setup_chargrid[p->gridx][p->gridy].numskins
+		&& setup_chargrid[p->gridx][p->gridy].skinlist[p->clonenum] < numskins);
+}																					//SCS - RADIO END
+
 static void M_DrawCharSelectPreview(UINT8 num)
 {
 	INT16 x = 11, y = 5;
@@ -1970,6 +2049,11 @@ static void M_DrawCharSelectPreview(UINT8 num)
 	if (p->mdepth >= CSSTEP_CHARS || p->mdepth == CSSTEP_ASKCHANGES)
 	{
 		M_DrawCharSelectSprite(num, x+32, y+75, charflip);
+
+		// Radio
+		if (M_IsSkinValid(p))																										//SCS - RADIO START
+			V_DrawCenteredThinString(x+32, y+85, 0, skins[setup_chargrid[p->gridx][p->gridy].skinlist[p->clonenum]]->realname);		//SCS - RADIO END
+
 		M_DrawCharSelectCircle(p, x+32, y+64);
 	}
 
@@ -2315,17 +2399,77 @@ static void M_DrawCharSelectCursor(UINT8 num)
 	}
 	else if (p->mdepth > CSSTEP_CHARS)
 	{
-		V_DrawMappedPatch(x, y, 0, W_CachePatchName(selectframesa[setup_animcounter % SELECTLEN], PU_CACHE), colormap);
-		if (selectframesb[(setup_animcounter-1) % SELECTLEN] != NULL)
-			V_DrawMappedPatch(x, y, V_TRANSLUCENT, W_CachePatchName(selectframesb[(setup_animcounter-1) % SELECTLEN], PU_CACHE), colormap);
+		if (cv_reducevfx.value)
+		{
+			V_DrawMappedPatch(x, y, 0, W_CachePatchName(selectframesa[0], PU_CACHE), colormap);
+		}
+		else
+		{
+			V_DrawMappedPatch(x, y, 0, W_CachePatchName(selectframesa[setup_animcounter % SELECTLEN], PU_CACHE), colormap);
+			if (selectframesb[(setup_animcounter-1) % SELECTLEN] != NULL)
+				V_DrawMappedPatch(x, y, V_TRANSLUCENT, W_CachePatchName(selectframesb[(setup_animcounter-1) % SELECTLEN], PU_CACHE), colormap);
+		}
 	}
 	else
 	{
-		V_DrawMappedPatch(x, y, 0, W_CachePatchName(idleframes[setup_animcounter % IDLELEN], PU_CACHE), colormap);
+		if (cv_reducevfx.value)
+			V_DrawMappedPatch(x, y, 0, W_CachePatchName(idleframes[0], PU_CACHE), colormap);
+		else
+			V_DrawMappedPatch(x, y, 0, W_CachePatchName(idleframes[setup_animcounter % IDLELEN], PU_CACHE), colormap);
 	}
 
 	if (p->mdepth < CSSTEP_READY)
 		V_DrawMappedPatch(x, y, 0, W_CachePatchName(va("CSELH%c", letter), PU_CACHE), colormap);
+	
+	// Radio 
+	if (p->showextra == false)													//SCS - RADIO START
+	{
+		INT32 randomskin = 0; 
+
+		// Lifted straight from M_DrawCharSelectPreview
+		if (p->clonenum < setup_chargrid[p->gridx][p->gridy].numskins
+			&& setup_chargrid[p->gridx][p->gridy].skinlist[p->clonenum] < numskins)
+		{
+			randomskin = (skins[setup_chargrid[p->gridx][p->gridy].skinlist[p->clonenum]]->flags & SF_IRONMAN);
+		}
+		const char current_class = ('A' + R_GetEngineClass(p->gridx+1, p->gridy+1, randomskin));
+
+		const char* grid_speed = Z_StrDup(va("%d", p->gridx + 1));
+		const char* grid_weight = Z_StrDup(va("%d", p->gridy + 1));
+
+		if (randomskin & SF_IRONMAN) {
+			grid_speed = "?";
+			grid_weight = "?";
+		}
+
+		// (speed, weight)
+		V_DrawStringScaled(
+			(x + 13) << FRACBITS,
+			(y) << FRACBITS,
+			((4*FRACUNIT)/5), // 80% scale
+			FRACUNIT,
+			FRACUNIT,
+			V_20TRANS|V_YELLOWMAP,
+			NULL,
+			TINY_FONT,
+			va("(%s, %s)", grid_speed, grid_weight)
+		);
+
+		// (Class A)
+		V_DrawStringScaled(
+			(x + 11) << FRACBITS,
+			(y + 30) << FRACBITS,
+			((4*FRACUNIT)/5), // 80% scale
+			FRACUNIT,
+			FRACUNIT,
+			V_20TRANS|V_YELLOWMAP,
+			NULL,
+			TINY_FONT,
+			va("Class %c", current_class)
+		);
+	}																		//SCS - RADIO END
+	
+	
 }
 
 #undef IDLE
@@ -2485,6 +2629,13 @@ void M_DrawCharacterSelect(void)
 		if (!optionsmenu.profile) // Does nothing on this screen
 		{
 			K_DrawGameControl(BASEVIDWIDTH/2, kTop, pid, "<r_animated> Info   <c_animated> Default", 1, TINY_FONT, 0);
+			
+			// Radio
+			const INT32 pageButtonX = (BASEVIDWIDTH/2) - 5;																							//SCS - RADIO START
+			const INT32 pageNumberY = kTop + 175;
+			// K_drawButton((pageButtonX) * FRACUNIT, (pageNumberY) * FRACUNIT, 0, kp_button_l, M_MenuButtonPressed(pid, MBT_L));
+
+			K_DrawGameControl(pageButtonX, pageNumberY, pid, va("<l_animated> Page %d of %d", setup_page + 1, setup_maxpage + 1), 1, TINY_FONT, 0);	//SCS - RADIO END
 		}
 		else
 		{
@@ -2799,6 +2950,12 @@ static void M_DrawCupPreview(INT16 y, levelsearch_t *baselevelsearch)
 	UINT8 starti = i;
 
 	patch_t *staticpat = unvisitedlvl[cupgrid.previewanim % 4];
+	
+	INT32 bufferspace = 0;											//SCS - RADIO START
+	if (IS_WEIRD_RES()) {
+		// Many, many thanks to Toaster. (Y_RoundQueueDrawer)
+		bufferspace = ((vid.width/vid.dupx) - BASEVIDWIDTH) / 2;
+	}																//SCS - RADIO END
 
 	if (baselevelsearch->cup && maxlevels > 0)
 	{
@@ -2819,8 +2976,10 @@ static void M_DrawCupPreview(INT16 y, levelsearch_t *baselevelsearch)
 			add--;
 		}
 
-		x = -(x % fracstep);
-		while (x < BASEVIDWIDTH * FRACUNIT)
+		//x = -(x % fracstep);
+		//while (x < BASEVIDWIDTH * FRACUNIT)
+		x = -(x % (fracstep)) - (bufferspace * FRACUNIT);		//SCS - RADIO
+		while (x < (BASEVIDWIDTH + bufferspace) * FRACUNIT)		//SCS - RADIO
 		{
 			if (map >= nummapheaders)
 			{
@@ -2847,7 +3006,8 @@ static void M_DrawCupPreview(INT16 y, levelsearch_t *baselevelsearch)
 					NULL);
 			}
 
-			x += fracstep;
+			//x += fracstep;
+			x += (fracstep);	//SCS - RADIO
 
 			map = M_GetNextLevelInList(map, &i, &locklesslevelsearch);
 		}
@@ -2857,8 +3017,10 @@ static void M_DrawCupPreview(INT16 y, levelsearch_t *baselevelsearch)
 		unsignedportion = (cupgrid.previewanim % ustep);
 		x = (unsignedportion * FRACUNIT) + rendertimefrac_unpaused;
 
-		x = -(x % fracstep);
-		while (x < BASEVIDWIDTH * FRACUNIT)
+		//x = -(x % fracstep);
+		//while (x < BASEVIDWIDTH * FRACUNIT)
+		x = -(x % (fracstep)) - (bufferspace * FRACUNIT);		//SCS - RADIO
+		while (x < (BASEVIDWIDTH + bufferspace) * FRACUNIT)		//SCS - RADIO
 		{
 			V_DrawFixedPatch(x + FRACUNIT, (y+2) * FRACUNIT, FRACUNIT, 0, staticpat, NULL);
 			x += fracstep;
@@ -3326,9 +3488,31 @@ void M_DrawCupSelect(void)
 	INT16 ty = M_EaseWithTransition(Easing_Linear, 5 * 24);
 	y = 146 + ty;
 	V_DrawFill(0, y, BASEVIDWIDTH, 54, 31);
+
+	if (IS_WEIRD_RES()) {														//SCS - RADIO START
+		// Draw some black rectangles to fill in the buffer space
+		const INT32 bufferspace = ((vid.width/vid.dupx) - BASEVIDWIDTH) / 2;
+		V_DrawFill(-bufferspace, y-20, bufferspace, 74, 31);
+		V_DrawFill(BASEVIDWIDTH, y-20, bufferspace, 74, 31);
+	}																			//SCS - RADIO END
 	M_DrawCupPreview(y, &templevelsearch);
 
 	M_DrawCupTitle(120 - ty, &templevelsearch);
+	
+	const char *worktext = "Undo";
+	
+	if (menuqueue.size)
+		worktext = "Undo";
+	else if (roundqueue.size)
+		worktext = "Clear Queue";
+	
+	if (levellist.canqueue)
+	{
+		K_DrawGameControl(BASEVIDWIDTH/2, 6-ty, 0, va("%s Queue Cup<white>   %s %s",
+			(templevelsearch.cup && templevelsearch.cup != &dummy_lostandfound && !roundqueue.size) ? "<z_animated>" : "<z_pressed><gray>",
+			(roundqueue.size || menuqueue.size) ? "<c_animated>" : "<c_pressed><gray>",
+		worktext), 1, TINY_FONT, 0);
+	}
 
 	if (templevelsearch.grandprix == false && templevelsearch.cup != NULL)
 	{
@@ -3808,13 +3992,21 @@ void M_DrawSealedBack(void)
 			return;
 	}
 
-	V_DrawFixedPatch(
-		0, 0,
-		FRACUNIT,
-		translucencylevel << V_ALPHASHIFT,
-		W_CachePatchName("MENUI008", PU_CACHE),
-		R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_BLACK, GTC_CACHE)
-	);
+	if (IS_WEIRD_RES()) {											//SCS - RADIO START
+		V_DrawAdaptiveScaledFullScreenPatch(
+			W_CachePatchName("MENUI008", PU_CACHE), 
+			R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_BLACK, GTC_CACHE), 
+			(translucencylevel << V_ALPHASHIFT)|V_NOSCALEPATCH
+		);
+	} else {														//SCS - RADIO END
+		V_DrawFixedPatch(
+			0, 0,
+			FRACUNIT,
+			translucencylevel << V_ALPHASHIFT,
+			W_CachePatchName("MENUI008", PU_CACHE),
+			R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_BLACK, GTC_CACHE)
+		);
+	}			//SCS - RADIO
 }
 
 void M_DrawTimeAttack(void)
@@ -4055,6 +4247,7 @@ void M_DrawMasterServerReminder(void)
 	// Did you change the Server Browser address? Have a little reminder.
 
 	INT32 mservflags = 0;
+	INT32 mservfadeflags = 0;	//SCS - RADIO
 	if (CV_IsSetToDefault(&cv_masterserver))
 		mservflags = highlightflags;
 	else
@@ -4062,7 +4255,13 @@ void M_DrawMasterServerReminder(void)
 
 	INT32 y = BASEVIDHEIGHT - 10;
 
-	V_DrawFadeFill(0, y-1, BASEVIDWIDTH, 10+1, 0, 31, 5);
+	//V_DrawFadeFill(0, y-1, BASEVIDWIDTH, 10+1, 0, 31, 5);
+	if (IS_WEIRD_RES()) {													//SCS - RADIO START
+		mservflags |= V_SNAPTOBOTTOM;
+		mservfadeflags = V_SNAPTOBOTTOM;
+	}
+
+	V_DrawFadeFill(0, y-1, BASEVIDWIDTH, 10+1, mservfadeflags, 31, 5);		//SCS - RADIO END
 	V_DrawCenteredThinString(BASEVIDWIDTH/2, y,
 		mservflags, va("List via \"%s\"", cv_masterserver.string));
 }
@@ -4367,9 +4566,13 @@ void M_DrawMPRoomSelect(void)
 		colormap_r = R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_GREY, GTC_CACHE);
 
 	// Draw the 2 sides of the background
-	V_DrawFixedPatch(0, 0, FRACUNIT, 0, bg_l, colormap_l);
-	V_DrawFixedPatch(0, 0, FRACUNIT, 0, bg_r, colormap_r);
-
+	if (IS_WEIRD_RES()) {															//SCS - RADIO START
+		V_DrawAdaptiveScaledFullScreenPatch(bg_l, colormap_l, V_NOSCALEPATCH);
+		V_DrawAdaptiveScaledFullScreenPatch(bg_r, colormap_r, V_NOSCALEPATCH);
+	} else {																		//SCS - RADIO END
+		V_DrawFixedPatch(0, 0, FRACUNIT, 0, bg_l, colormap_l);
+		V_DrawFixedPatch(0, 0, FRACUNIT, 0, bg_r, colormap_r);
+	}																				//SCS - RADIO
 
 	// Draw the black split:
 	V_DrawFixedPatch(160<<FRACBITS, 0, FRACUNIT, 0, split, NULL);
@@ -4383,16 +4586,24 @@ void M_DrawMPRoomSelect(void)
 
 
 	// Draw buttons:
+	INT32 menuhintflags = 0;			//SCS - RADIO START
+	if (IS_WEIRD_RES())
+		menuhintflags = V_SNAPTOTOP;	//SCS - RADIO END
 
 	V_DrawFixedPatch(160<<FRACBITS, 90<<FRACBITS, FRACUNIT, mpmenu.room ? (5<<V_ALPHASHIFT) : 0, butt1[(mpmenu.room) ? 1 : 0], NULL);
 
 	V_DrawFixedPatch(160<<FRACBITS, 90<<FRACBITS, FRACUNIT, (!mpmenu.room) ? (5<<V_ALPHASHIFT) : 0, butt2[(!mpmenu.room) ? 1 : 0], NULL);
 
-	V_DrawFixedPatch(0, 0, FRACUNIT, 0, W_CachePatchName("MENUHINT", PU_CACHE), NULL);
+	/*V_DrawFixedPatch(0, 0, FRACUNIT, 0, W_CachePatchName("MENUHINT", PU_CACHE), NULL);
 
 	V_DrawCenteredMenuString(BASEVIDWIDTH/2, 24, 0, "\xA3  Select a Room  \xA2");
 
-	V_DrawCenteredThinString(BASEVIDWIDTH/2, 12, 0, (mpmenu.room) ? "Play with community maps, characters, and gametypes. (Expect additional downloads!)" : "Jump into a standard game of Ring Racers.");
+	V_DrawCenteredThinString(BASEVIDWIDTH/2, 12, 0, (mpmenu.room) ? "Play with community maps, characters, and gametypes. (Expect additional downloads!)" : "Jump into a standard game of Ring Racers.");*/
+	V_DrawFixedPatch(0, 0, FRACUNIT, menuhintflags, W_CachePatchName("MENUHINT", PU_CACHE), NULL);																														//SCS - RADIO START
+
+	V_DrawCenteredMenuString(BASEVIDWIDTH/2, 24, menuhintflags, "\xA3  Select a Room  \xA2");
+
+	V_DrawCenteredThinString(BASEVIDWIDTH/2, 12, menuhintflags, (mpmenu.room) ? "Play with community maps, characters, and gametypes. (Expect additional downloads!)" : "Jump into a standard game of Ring Racers.");	//SCS - RADIO END
 
 	M_DrawMasterServerReminder();
 }
@@ -4405,6 +4616,8 @@ static void M_DrawServerCountAndHorizontalBar(void)
 
 	const char throbber[4] = {'-', '\\', '|', '/'};
 	UINT8 throbindex = (mpmenu.ticker/4) % 4;
+	
+	const INT32 highresflags = IS_WEIRD_RES() ? V_SNAPTOTOP : 0;
 
 	switch (M_GetWaitingMode())
 	{
@@ -4440,7 +4653,8 @@ static void M_DrawServerCountAndHorizontalBar(void)
 		V_DrawRightAlignedMenuString(
 			BASEVIDWIDTH - currentMenu->x,
 			y,
-			highlightflags,
+			//highlightflags,
+			highlightflags|highresflags,	//SCS - RADIO
 			text
 		);
 	}
@@ -4448,17 +4662,322 @@ static void M_DrawServerCountAndHorizontalBar(void)
 	{
 		V_DrawRightAlignedMenuString(
 			BASEVIDWIDTH - currentMenu->x - 12, y,
-			highlightflags,
+			//highlightflags,
+			highlightflags|highresflags,	//SCS - RADIO
 			text
 		);
 
 		V_DrawCenteredString( // Only clean way to center the throbber without exposing character width
 			BASEVIDWIDTH - currentMenu->x - 4, y,
-			highlightflags,
+			//highlightflags,
+			highlightflags|highresflags,	//SCS - RADIO
 			va("%c", throbber[throbindex])
 		);
 	}
 }
+
+// Radio
+
+static inline INT32 getScaledWidthForServerBrowser(const char* txt) {								//SCS - RADIO START
+	return (V_StringScaledWidth(FRACUNIT/2, FRACUNIT, FRACUNIT, 0, HU_FONT, txt)) >> FRACBITS;
+}
+
+static inline void drawAsterisk(INT32 x, INT32 y, INT32 transflag) {
+	V_DrawStringScaled(
+		(x) << FRACBITS,
+		(y) << FRACBITS,
+		FRACUNIT/2,
+		FRACUNIT,
+		FRACUNIT,
+		transflag | V_GRAYMAP,
+		NULL,
+		HU_FONT,
+		"*"
+	);
+}
+
+static void drawServerPeek(INT32 basex, INT32 basey, INT32 transflag) {
+	const INT32 highresflags = IS_WEIRD_RES() ? V_SNAPTOTOP : 0;
+	const INT32 baseflags = transflag|(highresflags);
+	const INT32 peekx = basex + 9;
+	const INT32 peeky = basey + 5;
+
+	// Background
+	V_DrawFill(
+		basex + 7,
+		basey,
+		275,
+		mpmenu.serverslide_y,
+		31 | baseflags
+	);
+
+	// Clipping
+	V_SetClipRect(
+		(basex) << FRACBITS, 
+		(basey) << FRACBITS,
+		275<<FRACBITS,
+		(mpmenu.serverslide_y)<<FRACBITS, highresflags
+	);
+
+	// --- EVERYTHING IN BETWEEN
+
+	// Map
+	patch_t *thumbnail = unvisitedlvl[mpmenu.ticker % 4];
+
+	if (mpmenu.serverpreview_mapchecked) {
+		K_DrawMapThumbnail(
+			(peekx) << FRACBITS, 
+			(peeky) << FRACBITS,
+			48<<FRACBITS,
+			baseflags,
+			mpmenu.serverpreview_map-1, // One-off system???
+			NULL
+		);
+	} else {
+		V_DrawFixedPatch(
+			(peekx) << FRACBITS, (peeky) << FRACBITS,
+			FloatToFixed(0.6f), baseflags, thumbnail, NULL
+		);
+	}
+
+	// Power Type/Rank
+
+	INT32 powertype_x = (peekx+48);
+	INT32 powertype_y = (peeky+22);
+	const float powertype_sc = 0.56f;
+	
+	char powertypepatchname[8];
+	char powertypestr[8];
+	UINT16 powertypecm = SKINCOLOR_NONE;
+	UINT16 powertype_sticker_cm = SKINCOLOR_NONE;
+	if (serverlist[mpmenu.servernum].info.avgpwrlv == -1) {
+		// EXP
+		sprintf(powertypepatchname, "K_STEXP");
+		sprintf(powertypestr, "EXP");
+		powertypecm = SKINCOLOR_MUSTARD;
+		powertype_sticker_cm = SKINCOLOR_MUSTARD;
+	} else {
+		// Mobiums
+		powertype_sticker_cm = SKINCOLOR_TEA;
+		sprintf(powertypestr, "MOBIUMS");
+		sprintf(powertypepatchname, "K_STMOB");
+	}
+
+	const UINT8* powertype_sticker_gfx_cm = R_GetTranslationColormap(TC_RAINBOW, powertype_sticker_cm, GTC_CACHE);
+	patch_t *powertype = W_CachePatchName(powertypepatchname, PU_CACHE);
+	const INT32	powertype_str_w = V_StringScaledWidth(
+		FloatToFixed(powertype_sc), FRACUNIT, FRACUNIT, baseflags,
+		TINY_FONT, powertypestr
+	) >> FRACBITS;
+
+	// Sticker
+	patch_t	*stickerTail = 		W_CachePatchName("INT_STK1", PU_CACHE);
+	patch_t	*stickerMiddle = 	W_CachePatchName("INT_STK2", PU_CACHE);
+	patch_t	*stickerHead = 		W_CachePatchName("INT_STK3", PU_CACHE);
+
+	const INT32 powertype_w = (int)(powertype->width * powertype_sc);
+	const INT32 sticker_middle_r = powertype_x - (int)(stickerHead->width * powertype_sc);
+	const INT32 sticker_middle_l = powertype_x - powertype_w - powertype_str_w - 6;
+
+	// Sticker Head
+	V_DrawFixedPatch(
+		(sticker_middle_r) << FRACBITS, (powertype_y) << FRACBITS,
+		FloatToFixed(powertype_sc), 
+		baseflags, 
+		stickerHead, 
+		powertype_sticker_gfx_cm
+	);
+
+	// Sticker Middle
+	V_DrawStretchyFixedPatch(
+		sticker_middle_l << FRACBITS,
+		(powertype_y) << FRACBITS,
+		((sticker_middle_r - sticker_middle_l) << FRACBITS) / stickerMiddle->width + 1,
+		FloatToFixed(powertype_sc),
+		baseflags, stickerMiddle, powertype_sticker_gfx_cm
+	);
+
+	// Sticker Tail
+	const INT32 sticker_tail_w = (int)(stickerTail->width * powertype_sc);
+	const INT32 sticker_tail_x = sticker_middle_l - sticker_tail_w;
+	V_DrawFixedPatch(
+		(sticker_tail_x) << FRACBITS, (powertype_y) << FRACBITS,
+		FloatToFixed(powertype_sc), 
+		baseflags, 
+		stickerTail, 
+		powertype_sticker_gfx_cm
+	);
+
+	// Power Type
+	// - Icon
+	const INT32 powertype_h = (int)(powertype->height * powertype_sc);
+	const INT32 powertype_p_x = (powertype_x - powertype_w - 5);
+	V_DrawFixedPatch(
+		(powertype_p_x) << FRACBITS, ((powertype_y + 1) - (powertype_h/2)) << FRACBITS,
+		FloatToFixed(powertype_sc), 
+		baseflags, 
+		powertype, 
+		R_GetTranslationColormap(TC_RAINBOW, powertypecm, GTC_CACHE)
+	);
+
+	// - Name
+	V_DrawStringScaled(
+		(powertype_p_x - powertype_str_w - 1)<<FRACBITS, 
+		(powertype_y + 1)<<FRACBITS, 
+		FloatToFixed(powertype_sc),
+		FRACUNIT, FRACUNIT, baseflags, NULL, TINY_FONT, powertypestr
+	);
+
+	// Map Titty
+	const INT16 maptitle_y = (peeky) + 33;
+	const char* maptitle = serverlist[mpmenu.servernum].info.maptitle;
+	
+	char maptitlebuffer[40]; 
+	if (mpmenu.serverpreview_mapchecked) {
+		// 33 (d_clisrv.h) + " Zone" + "\0"
+		const boolean isValidMapNum = mpmenu.serverpreview_map > nummapheaders || !mapheaderinfo[mpmenu.serverpreview_map];
+		char* actualmaptitle = NULL;
+		if(isValidMapNum) {
+			actualmaptitle = G_BuildMapTitle(mpmenu.serverpreview_map);
+		}
+		if (actualmaptitle == NULL) {
+			snprintf(maptitlebuffer, sizeof(maptitlebuffer), "%s", maptitle);
+		} else {
+			snprintf(maptitlebuffer, sizeof(maptitlebuffer), "%s", actualmaptitle);
+		}
+		V_DrawStringScaled(
+			peekx<<FRACBITS, maptitle_y<<FRACBITS, FloatToFixed(0.6f),
+			FRACUNIT, FRACUNIT, baseflags, NULL, TINY_FONT, maptitlebuffer
+		);
+		Z_Free(actualmaptitle);
+	} else {
+		V_DrawStringScaled(
+			peekx<<FRACBITS, maptitle_y<<FRACBITS, FloatToFixed(0.6f),
+			FRACUNIT, FRACUNIT, baseflags, NULL, TINY_FONT, "???"
+		);
+	}
+
+	// Level time
+	const INT16 leveltime_y = maptitle_y + 6;
+	RR_DrawMiniTimestamp(
+		serverlist[mpmenu.servernum].info.leveltime,
+		peekx,
+		leveltime_y,
+		baseflags,
+		0.5f
+	);
+
+	// Players
+	const INT16 plr_placeholder_w = 30;
+	const UINT8 servermaxplayers = serverlist[mpmenu.servernum].info.maxplayer;
+	const fixed_t longestname_default = (plr_placeholder_w + 5)*FRACUNIT;
+	fixed_t longestname = longestname_default;
+	const fixed_t playernamesc = FloatToFixed(0.8f);
+	
+	serverextrainfo_t si = serverextrainfo[serverlist[mpmenu.servernum].node];
+	const INT16 plrinfo_y_default = (basey + 3);
+	INT16 plrinfo_y = plrinfo_y_default;
+	INT16 plrinfo_x = (peekx + 54);
+	
+	INT16 playercount = 0;
+	if (mpmenu.serverpreview_mapchecked) {
+		// Invalid players can be out of order (player 1 can be valid, player 2 can be invalid, etc)
+		// So place "valid" players into a different array
+		int validplayers[MAXPLAYERS];
+		int validplayerscount = 0;
+	
+		// Valid
+		const UINT8 actualplayers = serverlist[mpmenu.servernum].info.numberofplayer;
+		const boolean isdedicated = serverlist[mpmenu.servernum].info.kartvars & SV_DEDICATED;
+
+		for (int v = 0; v <= servermaxplayers; v++) {
+			if(
+				(!isdedicated && si.playerinfo[v].num != 255) || 
+				(isdedicated && (si.playerinfo[v].num != 255 && si.playerinfo[v].num != 0))) {
+				validplayers[validplayerscount++] = v;
+			}
+		}
+	
+		// Invalid
+		if (validplayerscount != servermaxplayers) {
+			for(int k = validplayerscount; k <= servermaxplayers; k++) {
+				validplayers[k] = 255;
+			}
+		}
+
+		// And draw
+		for (UINT8 i = 0; i < servermaxplayers; i++) {
+			// New list every 5 players
+			if (playercount > 0 && playercount % 5 == 0) {
+				plrinfo_y = plrinfo_y_default;
+				plrinfo_x += (longestname>>FRACBITS) + 10;
+				longestname = longestname_default;
+				playercount = 0;
+			}
+
+			if(validplayers[i] != 255) {			
+				// Assume it's a bot
+				boolean isBot = (actualplayers == 0) || (i > actualplayers);
+				const char* name = si.playerinfo[validplayers[i]].name;
+
+				fixed_t playernamew = V_StringScaledWidth(
+					playernamesc, FRACUNIT, FRACUNIT, baseflags, TINY_FONT, name
+				);
+				if (playernamew > longestname)
+					longestname = playernamew;
+			
+					
+				const INT16 spectating = si.playerinfo[validplayers[i]].team == 255 ? V_GRAYMAP : 0;
+
+				if (isBot) {
+					V_DrawFixedPatch(
+						(plrinfo_x-1) << FRACBITS,
+						(plrinfo_y + 2) << FRACBITS,
+						FloatToFixed(0.4f),
+						baseflags,
+						faceprefix[R_SkinAvailable("eggrobo")][FACE_MINIMAP],
+						R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_RED, GTC_CACHE)
+					);
+				} else {
+					V_DrawFixedPatch(
+						(plrinfo_x) << FRACBITS,
+						(plrinfo_y + 1) << FRACBITS,
+						FloatToFixed(0.6f),
+						baseflags,
+						W_CachePatchName("K_BLNA", PU_CACHE),
+						R_GetTranslationColormap(TC_RAINBOW, spectating ? SKINCOLOR_GREY : SKINCOLOR_NONE, GTC_CACHE)
+					);
+				}
+
+				V_DrawStringScaled(
+					(plrinfo_x + 5)<<FRACBITS, plrinfo_y<<FRACBITS, playernamesc,
+					FRACUNIT, FRACUNIT, baseflags|spectating, NULL, TINY_FONT, name
+				);
+
+				plrinfo_y += 10;
+			} else {
+				V_DrawFill(plrinfo_x, plrinfo_y, plr_placeholder_w, 8, 25|baseflags);
+				plrinfo_y += 10;
+			}
+			playercount++;
+		}
+	}
+
+	// Horizontal line
+	V_DrawFill(peekx + 2, leveltime_y + 9, 273, 1, 21|baseflags);
+
+	// Connect prompt
+	K_DrawGameControl(
+		290, basey + (SERVERPREVIEWHEIGHT - 15),
+		2, "<a> Connect",
+		2, TINY_FONT, baseflags
+	);
+
+	// --- EVERYTHING IN BETWEEN
+
+	// End Clipping
+	V_ClearClipRect();
+}																//SCS - RADIO END
 
 void M_DrawMPServerBrowser(void)
 {
@@ -4489,11 +5008,16 @@ void M_DrawMPServerBrowser(void)
 
 	const UINT8 startx = 18;
 	const UINT8 basey = 56;
-	const INT32 starty = basey - 18*mpmenu.scrolln + mpmenu.slide;
+	//const INT32 starty = basey - 18*mpmenu.scrolln + mpmenu.slide;
+	const INT32 starty = basey - (SERVERSPACE)*mpmenu.scrolln + mpmenu.slide;		//SCS - RADIO
 	INT32 ypos = 0;
 
 	// background stuff
-	V_DrawFixedPatch(0, 0, FRACUNIT, 0, W_CachePatchName(header[mode][1], PU_CACHE), NULL);
+	if (IS_WEIRD_RES()) {																									//SCS - RADIO START
+		V_DrawAdaptiveScaledFullScreenPatch(W_CachePatchName(header[mode][1], PU_CACHE), NULL, V_NOSCALEPATCH);
+	} else {																												//SCS - RADIO END
+		V_DrawFixedPatch(0, 0, FRACUNIT, 0, W_CachePatchName(header[mode][1], PU_CACHE), NULL);
+	}																														//SCS - RADIO
 
 	V_DrawFixedPatch(0, (BASEVIDHEIGHT + 16) * FRACUNIT, FRACUNIT, V_TRANSLUCENT, W_CachePatchName("MENUBG2", PU_CACHE), NULL);
 
@@ -4530,6 +5054,9 @@ void M_DrawMPServerBrowser(void)
 		if (transflag >= 0 && transflag < 10)
 		{
 			transflag = transflag << V_ALPHASHIFT;	// shift the translucency flag.
+			
+			if (IS_WEIRD_RES())					//SCS - RADIO
+				transflag |= V_SNAPTOTOP;		//SCS - RADIO
 
 			if (serverlist[i].cachedgtcalc < 3)
 			{
@@ -4574,6 +5101,113 @@ void M_DrawMPServerBrowser(void)
 			}
 			V_DrawRightAlignedThinString(startx + 276, starty + ypos, transflag, pwrtext);
 
+			// Radio														//SCS - RADIO START
+
+			// Background
+			INT32 extrainfo_y = starty + ypos + 16;
+			INT32 extrainfo_x = startx + 10;
+			
+			// test
+			if (mpmenu.servernum == i && mpmenu.serverpreview) {
+
+				drawServerPeek(startx, extrainfo_y, transflag);
+
+				extrainfo_y += mpmenu.serverslide_y;
+			}			
+
+			V_DrawFill(
+				startx + 7,
+				extrainfo_y,
+				275,
+				6,
+				31 | transflag
+			);
+
+			// Now for the text
+			extrainfo_y += 1;
+
+			const boolean modded = serverlist[i].info.modifiedgame;
+			const boolean isdedicated = serverlist[i].info.kartvars & SV_DEDICATED;
+
+			// Dedicated server?
+			const char* dedicatedstr = "Listen Server";
+			INT32 dedicatedflag = transflag | V_ORANGEMAP;
+			
+			if (isdedicated) {
+				dedicatedstr = "Dedicated Server";
+				dedicatedflag = transflag | V_GREENMAP;
+			}
+
+			V_DrawStringScaled(
+				(extrainfo_x) << FRACBITS,
+				(extrainfo_y) << FRACBITS,
+				FRACUNIT/2,
+				FRACUNIT,
+				FRACUNIT,
+				dedicatedflag,
+				NULL,
+				HU_FONT,
+				dedicatedstr
+			);
+
+			// Modded server
+			if (modded) {
+				// *
+				extrainfo_x += getScaledWidthForServerBrowser(dedicatedstr) + 3;
+				drawAsterisk(extrainfo_x, extrainfo_y, transflag);
+				extrainfo_x += getScaledWidthForServerBrowser("*") + 3;
+
+				// Has HTTP source?
+				boolean hashttpsource = serverlist[i].info.httpsource[0] != '\0';
+				const char* httpbadge = "NO HTTP";
+				INT32 httpsourceflag = transflag | V_REDMAP;
+
+				if (hashttpsource) {
+					httpbadge = "HTTP";
+					httpsourceflag = transflag | V_GREENMAP;
+				}
+
+				V_DrawStringScaled(
+					(extrainfo_x) << FRACBITS,
+					(extrainfo_y) << FRACBITS,
+					FRACUNIT/2,
+					FRACUNIT,
+					FRACUNIT,
+					httpsourceflag,
+					NULL,
+					HU_FONT,
+					httpbadge
+				);
+
+				extrainfo_x += getScaledWidthForServerBrowser(httpbadge) + 3;
+
+				// *
+				drawAsterisk(extrainfo_x, extrainfo_y, transflag);
+				extrainfo_x += getScaledWidthForServerBrowser("*") + 3;
+
+				// Addon size
+				if (serverextrainfo[serverlist[i].node].downloadsize) {
+					boolean lotsofaddons = serverlist[i].info.kartvars & SV_LOTSOFADDONS;
+					INT32 addonsizeflag = transflag | V_GREENMAP;
+	
+					// Just to hammer home how much you'll need to (potentially) download
+					if (lotsofaddons)
+						addonsizeflag = transflag | V_REDMAP;
+	
+					V_DrawStringScaled(
+						(extrainfo_x) << FRACBITS,
+						(extrainfo_y) << FRACBITS,
+						FRACUNIT/2,
+						FRACUNIT,
+						FRACUNIT,
+						addonsizeflag,
+						NULL,
+						HU_FONT,
+						serverextrainfo[serverlist[i].node].downloadsize
+					);
+				}
+			}														//SCS - RADIO END
+
 			// game speed if applicable:
 			if (serverlist[i].cachedgtcalc != GTCALC_BATTLE)
 			{
@@ -4588,18 +5222,36 @@ void M_DrawMPServerBrowser(void)
 			// voice chat enabled
 			if (serverlist[i].info.kartvars & SV_VOICEENABLED)
 			{
-				V_DrawFixedPatch((startx - 3) * FRACUNIT, (starty + ypos + 2) * FRACUNIT, FRACUNIT, 0, voicepat, NULL);
+				//V_DrawFixedPatch((startx - 3) * FRACUNIT, (starty + ypos + 2) * FRACUNIT, FRACUNIT, 0, voicepat, NULL);
+				V_DrawFixedPatch((startx - 3) * FRACUNIT, (starty + ypos + 2) * FRACUNIT, FRACUNIT, IS_WEIRD_RES() ? V_SNAPTOTOP : 0, voicepat, NULL);	//SCS - RADIO
 			}
 		}
-		ypos += SERVERSPACE;
+		//ypos += SERVERSPACE;
+		ypos += (SERVERSPACE + ((mpmenu.servernum == i && mpmenu.serverpreview) ? mpmenu.serverslide_y : 0));		//SCS - RADIO
 	}
 
 	// Draw genericmenu ontop!
-	V_DrawFill(0, 0, 320, 52, 31);
+	INT32 gamemodeflags = 0;						//SCS - RADIO START
+	if (IS_WEIRD_RES()) 
+		gamemodeflags = V_SNAPTOTOP;
+	
+	/*V_DrawFill(0, 0, 320, 52, 31);
 	V_DrawFill(0, 53, 320, 1, 31);
-	V_DrawFill(0, 55, 320, 1, 31);
+	V_DrawFill(0, 55, 320, 1, 31);*/
+	V_DrawFill(0, 0, 320, 52, 31|gamemodeflags);	
+	V_DrawFill(0, 53, 320, 1, 31|gamemodeflags);
+	V_DrawFill(0, 55, 320, 1, 31|gamemodeflags);	//SCS - RADIO END
 
-	V_DrawCenteredGamemodeString(160, 2, 0, 0, header[mode][0]);
+	//V_DrawCenteredGamemodeString(160, 2, 0, 0, header[mode][0]);
+	V_DrawCenteredGamemodeString(160, 2, gamemodeflags, 0, header[mode][0]);		//SCS - RADIO START
+
+	// Radio
+	const INT16 gamemode_w = V_GamemodeStringWidth(header[mode][0], gamemodeflags)/2;
+	K_DrawGameControl(
+		(160 + gamemode_w + 4), 20,
+		0, "<l_animated> Peek",
+		0, TINY_FONT, gamemodeflags
+	);																				//SCS - RADIO END
 
 	// normal menu options
 	M_DrawGenericMenu();
@@ -4634,15 +5286,23 @@ void M_DrawOptionsCogs(void)
 
 		if (optionsmenu.fade)
 		{
-			c2 = R_GetTranslationColormap(TC_DEFAULT, optionsmenu.lastcolour, GTC_CACHE);
-			V_DrawFixedPatch(0, 0, FRACUNIT, 0, back, c2);
+			c2 = R_GetTranslationColormap(TC_DEFAULT, optionsmenu.lastcolour, GTC_CACHE);		//SCS - RADIO START
+			if (IS_WEIRD_RES()) {
+				V_DrawAdaptiveScaledFullScreenPatch(back, c2, V_NOSCALEPATCH);
+			} else {																			//SCS - RADIO END
+				V_DrawFixedPatch(0, 0, FRACUNIT, 0, back, c2);
+			}																					//SCS - RADIO
 
 			// prepare fade flag:
 			tflag = min(V_90TRANS, (optionsmenu.fade)<<V_ALPHASHIFT);
 
 		}
 		c = R_GetTranslationColormap(TC_DEFAULT, optionsmenu.currcolour, GTC_CACHE);
-		V_DrawFixedPatch(0, 0, FRACUNIT, tflag, back, c);
+		if (IS_WEIRD_RES()) {																	//SCS - RADIO START
+			V_DrawAdaptiveScaledFullScreenPatch(back, c, V_NOSCALEPATCH|tflag);
+		} else {																				//SCS - RADIO START
+			V_DrawFixedPatch(0, 0, FRACUNIT, tflag, back, c);
+		}																						//SCS - RADIO
 	}
 	else
 	{
@@ -4719,8 +5379,11 @@ void M_DrawOptionsColorProfile(void)
 
 void M_DrawOptionsMovingButton(void)
 {
+	const boolean isRadio = OPTIONS_MainDef.lastOn == OPTIONS_MainDef.numitems-1;	//SCS - RADIO
+
 	patch_t *butt = W_CachePatchName("OPT_BUTT", PU_CACHE);
-	UINT8 *c = R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_PLAGUE, GTC_CACHE);
+	//UINT8 *c = R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_PLAGUE, GTC_CACHE);
+	UINT8 *c = R_GetTranslationColormap(TC_RAINBOW, isRadio ? SKINCOLOR_MUSTARD : SKINCOLOR_PLAGUE, GTC_CACHE);	//SCS - RADIO
 	fixed_t t = M_DueFrac(optionsmenu.topt_start, M_OPTIONS_OFSTIME);
 	fixed_t z = Easing_OutSine(M_DueFrac(optionsmenu.offset.start, M_OPTIONS_OFSTIME), optionsmenu.offset.dist * FRACUNIT, 0);
 	fixed_t tx = Easing_OutQuad(t, optionsmenu.optx * FRACUNIT, optionsmenu.toptx * FRACUNIT) + z;
@@ -4760,6 +5423,8 @@ void M_DrawOptions(void)
 	patch_t *buttback = W_CachePatchName("OPT_BUTT", PU_CACHE);
 
 	UINT8 *c = NULL;
+	UINT8 *patch_colormap = NULL;	//SCS - RADIO
+	UINT8 *text_colormap = NULL;	//SCS - RADIO
 
 	for (i=0; i < currentMenu->numitems; i++)
 	{
@@ -4767,6 +5432,8 @@ void M_DrawOptions(void)
 		fixed_t px = x - tx;
 		INT32 tflag = 0;
 
+		// RadioRacers: BRANDING
+		const boolean isRadio = (i == (currentMenu->numitems - 1));	//SCS - RADIO
 		if (i == itemOn)
 			c = R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_PLAGUE, GTC_CACHE);
 		else
@@ -4775,9 +5442,23 @@ void M_DrawOptions(void)
 		if (currentMenu->menuitems[i].status & IT_TRANSTEXT)
 			tflag = V_TRANSLUCENT;
 
+		if (isRadio)													//SCS - RADIO START
+		{
+			UINT16 color = SKINCOLOR_MUSTARD;
+			UINT16 patch_color = SKINCOLOR_BLACK;
+			if (i == itemOn) {
+				tflag |= V_STRINGDANCE;
+				color = SKINCOLOR_YELLOW;
+				patch_color = SKINCOLOR_YELLOW;
+			}
+			patch_colormap = R_GetTranslationColormap(TC_RAINBOW, patch_color, GTC_CACHE);
+			text_colormap = R_GetTranslationColormap(TC_RAINBOW, color, GTC_CACHE);
+		}																//SCS - RADIO END
+
 		if (!(menutransition.tics != menutransition.dest && i == itemOn))
 		{
-			V_DrawFixedPatch(px, py, FRACUNIT, 0, buttback, c);
+			//V_DrawFixedPatch(px, py, FRACUNIT, 0, buttback, c);
+			V_DrawFixedPatch(px, py, FRACUNIT, 0, buttback, isRadio ? patch_colormap : c);	//SCS - RADIO
 
 			const char *s = currentMenu->menuitems[i].text;
 			fixed_t w = V_StringScaledWidth(
@@ -4795,7 +5476,8 @@ void M_DrawOptions(void)
 				FRACUNIT,
 				FRACUNIT,
 				tflag,
-				(i == itemOn ? c : NULL),
+				//(i == itemOn ? c : NULL),
+				isRadio ? text_colormap : (i == itemOn ? c : NULL),		//SCS - RADIO
 				GM_FONT,
 				s
 			);
@@ -5659,22 +6341,25 @@ void M_DrawProfileControls(void)
 					help = va("6Bt. (Auto): Tries to guess your 6-button pad's layout.");
 					break;
 				case 4:
-					help = va("6Bt. (A): Saturn buttons, Retro-Bit Wired DInput layout.");
+					help = va("6Bt. (A): Saturn (Retro-Bit Wired DInput) - C/Z = RB/RT");
 					break;
 				case 5:
-					help = va("6Bt. (B): Saturn buttons, Retro-Bit Wireless DInput layout.");
+					help = va("6Bt. (B): Saturn (Retro-Bit Wireless DInput) - C/Z = LB/RB");
 					break;
 				case 6:
-					help = va("6Bt. (C): Saturn buttons, Retro-Bit XInput layout.");
+					help = va("6Bt. (C): Saturn (Retro-Bit XInput) - C/Z = RT/LT");
 					break;
 				case 7:
-					help = va("6Bt. (D): Saturn buttons, arcade/8BitDo layout. (C/Z = RT/RB)");
+					help = va("6Bt. (D): Saturn (arcade / 8BitDo) - C/Z = RT/RB");
 					break;
 				case 8:
-					help = va("6Bt. (E): Saturn buttons, Hori/M30X layout. (LB/LT = LS/RS)");
+					help = va("6Bt. (E): Saturn (Hori/M30X) - C/Z = RT/RB, LB/LT = LS/RS");
 					break;
 				case 9:
-					help = va("6Bt. (F): Saturn buttons, Mayflash layout. (C/Z = RS/LS)");
+					help = va("6Bt. (F): Saturn (Mayflash) - C/Z = RS/LS");
+					break;
+				case 10:
+					help = va("6Bt. (G): Saturn (orig M30) -  C/Z = RB/LB");
 					break;
 			}
 
@@ -5844,8 +6529,8 @@ void M_DrawItemToggles(void)
 	memset(black, 16, 256);
 
 	const INT32 edges = 8;
-	const INT32 height = 4;
-	const INT32 spacing = 35;
+	const INT32 height = 5;					//SCS EDIT - was 4
+	const INT32 spacing = 26;				//SCS EDIT - was 35
 	const INT32 column = itemOn/height;
 	const INT32 row = itemOn%height;
 	INT32 leftdraw, rightdraw, totaldraw;
@@ -5882,6 +6567,8 @@ void M_DrawItemToggles(void)
 	patch_t *isbgd = W_CachePatchName("K_ISBGD", PU_CACHE);
 	patch_t *ismul = W_CachePatchName("K_ISMUL", PU_CACHE);
 	patch_t *isstrk = W_CachePatchName("K_ISSTRK", PU_CACHE);
+	
+	x -= 8;		//SCS ADD
 
 	for (i = leftdraw; i <= rightdraw; i++)
 	{
@@ -6092,6 +6779,14 @@ static char *M_GetGameplayMode(void)
 		return va("Relaxed");
 	}
 
+	if (franticitems)
+	{
+		if (cv_4thgear.value)
+			return va("4th Gear! Frantic!");
+		else
+			return va("Gear %d - Frantic\n", gamespeed+1);
+	}
+	
 	if (cv_4thgear.value)
 		return va("4th Gear!");
 
@@ -6210,7 +6905,8 @@ void M_DrawPause(void)
 	}
 
 	// Vertical Strip:
-	V_DrawFixedPatch((230 + offset)<<FRACBITS, 0, FRACUNIT, V_ADD, vertbg, NULL);
+	//V_DrawFixedPatch((230 + offset)<<FRACBITS, 0, FRACUNIT, V_ADD, vertbg, NULL);
+	V_DrawFixedPatch((230 + offset)<<FRACBITS, 0, FRACUNIT, V_ADD|(IS_WEIRD_RES() ? V_SNAPTOTOP : 0), vertbg, NULL);	//SCS - RADIO
 
 	// Okay that's cool but which icon do we draw first? let's roll back from itemOn!
 	// At most we'll draw 7 items, 1 in the center, 3 above, 3 below.
@@ -6453,6 +7149,7 @@ void M_DrawPause(void)
 
 	if (gamestate != GS_INTERMISSION && roundqueue.size > 0)
 	{
+		INT32 roundinfoflags = (IS_WEIRD_RES()) ? V_SNAPTOBOTTOM : 0;
 		if (roundqueue.position > 0 && roundqueue.position <= roundqueue.size)
 		{
 			patch_t *smallroundpatch = ST_getRoundPicture(true);
@@ -6461,13 +7158,15 @@ void M_DrawPause(void)
 			{
 				V_DrawMappedPatch(
 					24, 145 + offset/2,
-					0,
+					//0,
+					roundinfoflags,			//SCS - RADIO
 					smallroundpatch,
 					NULL);
 			}
 		}
 
-		V_DrawCenteredMenuString(24, 167 + offset/2, V_YELLOWMAP, M_GetGameplayMode());
+		//V_DrawCenteredMenuString(24, 167 + offset/2, V_YELLOWMAP, M_GetGameplayMode());
+		V_DrawCenteredMenuString(24, 167 + offset/2, V_YELLOWMAP|roundinfoflags, M_GetGameplayMode());	//SCS - RADIO
 
 		drawqueue = true;
 	}
@@ -6554,12 +7253,49 @@ void M_DrawKickHandler(void)
 				),
 				player_names[i]
 			);
+	
+	
+			// RadioRacers: Draw a different tooltip next to the player depending on purpose
+			switch(playerkickmenu.purpose) 														//SCS - RADIO START
+			{
+				case PKM_KICK:																	//SCS - RADIO END
+					V_DrawRightAlignedThinString(x+118, y-2, 0,
+						(players[i].spectator) ? "SPECTATOR" : "PLAYING"
+					);
+					break;																		//SCS - RADIO START
+				case PKM_MUTE:
+					if (P_IsMachineLocalPlayer(&players[i]))
+						break;
+						
+					if (players[i].bot) {
+						V_DrawRightAlignedThinString(x+116, y-4, 0, "\x88IT'S A BOT");
+					} else {
+						INT32 speechBubbleStart = 103;
+						boolean isMuted = IsPlayerMuted(i);
+						// Speech bubble
+						V_DrawMappedPatch(x+speechBubbleStart, y+8, 
+							(isMuted) ? V_TRANSLUCENT : 0, 
+							W_CachePatchName("K_TALK", PU_CACHE), 
+							NULL);
 
-			V_DrawRightAlignedThinString(
-				x+118, y-2,
-				0,
-				(players[i].spectator) ? "SPECTATOR" : "PLAYING"
-			);
+						patch_t *typingDot = W_CachePatchName("K_TYPDOT", PU_CACHE); // Typing dot
+						if (!isMuted) {
+							int speechBubbleTicker = (playerkickmenu.ticker % (8*3)) / 3;
+							if (speechBubbleTicker >= 2) {
+								V_DrawMappedPatch(x+(speechBubbleStart+3), y+8, 0, typingDot, NULL);
+								if (speechBubbleTicker >= 4) {
+									V_DrawMappedPatch(x+(speechBubbleStart+6), y+8, 0, typingDot, NULL);
+									if (speechBubbleTicker >= 6) {
+										V_DrawMappedPatch(x+(speechBubbleStart+9), y+8, 0, typingDot, NULL);
+									}
+								}
+							}
+						}
+					}					
+					break;
+				default:
+					break;
+			}																				//SCS - RADIO END
 		}
 
 		if (i == playerkickmenu.player)
@@ -6586,13 +7322,32 @@ void M_DrawKickHandler(void)
 	//V_DrawFill(32 + (playerkickmenu.player & 8), 32 + (playerkickmenu.player & 7)*8, 8, 8, playeringame[playerkickmenu.player] ? 0 : 16);
 
 	V_DrawFixedPatch(0, 0, FRACUNIT, 0, W_CachePatchName("MENUHINT", PU_CACHE), NULL);
-	K_DrawGameControl(
+	/*K_DrawGameControl(
 		BASEVIDWIDTH/2, 12, 0,
 		(playerkickmenu.adminpowered)
 			? "You are using <red>Admin Tools<white>.  <a> Kick  <c> Ban"
 			: K_GetMidVoteLabel(menucallvote),
 		1, TINY_FONT, 0
-	);
+	);*/
+	// RadioRacers: Draw a different title depending on the kick menu purpose
+	const char *kickMenuTitle = NULL;													//SCS - RADIO START
+	switch(playerkickmenu.purpose) {
+		case PKM_KICK:
+			kickMenuTitle = (playerkickmenu.adminpowered)
+				? "You are using <red>Admin Tools<white>.  <a> Kick  <c> Ban"
+				: K_GetMidVoteLabel(menucallvote);
+			break;
+		case PKM_MUTE:
+			kickMenuTitle = "Mute Players - <a> to toggle.";
+			break;
+		default:
+			kickMenuTitle = "Player Menu";
+	}
+
+	K_DrawGameControl(
+		BASEVIDWIDTH/2, 12, 0, kickMenuTitle,
+		1, TINY_FONT, 0
+	);																					//SCS - RADIO END
 }
 
 void M_DrawPlaybackMenu(void)
@@ -8347,6 +9102,8 @@ void M_DrawChallenges(void)
 	INT16 i, j;
 	const char *str;
 	INT16 offset;
+	INT32 bufferspace = IS_WEIRD_RES() ? ((vid.width/vid.dupx) - BASEVIDWIDTH) / 2 : 0;			//SCS - RADIO
+
 
 	{
 #define questionslow 4 // slows down the scroll by this factor
@@ -8358,21 +9115,37 @@ void M_DrawChallenges(void)
 
 		questionoffset_f = fmod(challengesmenu.ticker + FixedToFloat(rendertimefrac), questionloop);
 		questionoffset = floor(questionoffset_f);
+		
+		if(IS_WEIRD_RES()) {																	//SCS - RADIO START
+			V_DrawAdaptiveScaledFullScreenPatch(bg, NULL, V_NOSCALEPATCH);
+			V_DrawAdaptiveScaledPatchWithCoords(
+				-((160 + questionoffset)*FRACUNIT)/questionslow,
+				-(4*FRACUNIT) - (245*(FixedDiv((questionloop - questionoffset)*FRACUNIT, questionloop*FRACUNIT))),
+				qm,
+				V_MODULATE|V_NOSCALEPATCH
+			);
+		} else {																				//SCS - RADIO END
+			// Background gradient
+			V_DrawFixedPatch(0, 0, FRACUNIT, 0, bg, NULL);
 
-		// Background gradient
-		V_DrawFixedPatch(0, 0, FRACUNIT, 0, bg, NULL);
-
-		// Scrolling question mark overlay
-		V_DrawFixedPatch(
-			-((160 + questionoffset)*FRACUNIT)/questionslow,
-			-(4*FRACUNIT) - (245*(FixedDiv((questionloop - questionoffset)*FRACUNIT, questionloop*FRACUNIT))),
-			FRACUNIT,
-			V_MODULATE,
-			qm,
-			NULL);
+			// Scrolling question mark overlay
+			V_DrawFixedPatch(
+				-((160 + questionoffset)*FRACUNIT)/questionslow,
+				-(4*FRACUNIT) - (245*(FixedDiv((questionloop - questionoffset)*FRACUNIT, questionloop*FRACUNIT))),
+				FRACUNIT,
+				V_MODULATE,
+				qm,
+				NULL);
+		}																						//SCS - RADIO
 #undef questionslow
 #undef questionloop
 	}
+
+
+	if (IS_WEIRD_RES()) {																													//SCS - RADIO START
+		V_DrawFadeFill(-bufferspace, 9, bufferspace, (challengesgridstep * CHALLENGEGRIDHEIGHT) + 2, 0, 31, challengetransparentstrength);
+		V_DrawFadeFill(BASEVIDWIDTH, 9, bufferspace, (challengesgridstep * CHALLENGEGRIDHEIGHT) + 2, 0, 31, challengetransparentstrength);
+	}																																		//SCS - RADIO END
 
 	// Do underlay for everything else early so the bottom of the reticule doesn't get shaded over.
 	if (challengesmenu.currentunlock < MAXUNLOCKABLES)
@@ -8384,6 +9157,11 @@ void M_DrawChallenges(void)
 			W_CachePatchName("MENUHINT", PU_CACHE));
 
 		V_DrawFadeFill(0, y+27, BASEVIDWIDTH, BASEVIDHEIGHT - (y+27), 0, 31, challengetransparentstrength);
+
+		if (IS_WEIRD_RES()) {																										//SCS - RADIO START
+			V_DrawFadeFill(-bufferspace ,y+6, bufferspace, BASEVIDHEIGHT - (y+6), 0, 31, challengetransparentstrength);
+			V_DrawFadeFill(BASEVIDWIDTH, y+6, bufferspace, BASEVIDHEIGHT - (y+6), 0, 31, challengetransparentstrength);
+		}																															//SCS - RADIO END
 	}
 
 	if (gamedata->challengegrid == NULL || challengesmenu.extradata == NULL)

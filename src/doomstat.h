@@ -220,6 +220,7 @@ extern boolean imcontinuing; // Temporary flag while continuing
 #define ATTACKING_LAP	(1<<1)
 #define ATTACKING_SPB	(1<<2)
 extern UINT8 modeattacking;
+const char *M_GetRecordMode(void);
 
 // menu demo things
 extern UINT8  numDemos;
@@ -889,7 +890,7 @@ extern struct maplighting
 extern UINT8 numlaps;
 extern UINT8 gamespeed;
 extern boolean franticitems;
-extern boolean encoremode, prevencoremode;
+extern boolean encoremode, prevencoremode, localencore, hakimode; // RadioRacers: localencore, hakimode			//SCS - RADIO
 extern boolean g_teamplay;
 extern boolean g_duelpermitted;
 
@@ -998,6 +999,7 @@ extern consvar_t cv_jointimeout;
 extern ticcmd_t netcmds[BACKUPTICS][MAXPLAYERS];
 extern INT32 serverplayer;
 extern INT32 adminplayers[MAXPLAYERS];
+extern INT32 mutedplayers[MAXPLAYERS]; // RadioRacers: Array to store nodes of muted players in netgames		//SCS - RADIO
 
 /// \note put these in d_clisrv outright?
 

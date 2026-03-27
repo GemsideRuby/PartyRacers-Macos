@@ -45,6 +45,9 @@
 // SRB2Kart
 #include "r_fps.h" // R_GetFramerateCap
 
+// RadioRacers
+#include "radioracers/rr_video.h"			//SCS - RADIO
+
 #if defined (USEASM) && !defined (NORUSEASM)//&& (!defined (_MSC_VER) || (_MSC_VER <= 1200))
 #define RUSEASM //MSC.NET can't patch itself
 #endif
@@ -531,6 +534,20 @@ void SCR_DisplayTicRate(void)
 	UINT32 cap = R_GetFramerateCap();
 	UINT32 benchmark = (cap == 0) ? I_GetRefreshRate() : cap;
 	INT32 x = 317;
+	const boolean isActuallyDrawingInput = isDrawingInput && cv_inputdisplaytogglesize.value;	//SCS - RADIO START?
+	const boolean isDrawingPing = isPingDrawn && r_splitscreen == 0;
+
+	if (isDrawingPing)
+	{
+		x = 297;
+		// if (isDrawingInput)
+		// 	x -= 10;
+	}
+	
+	if (isActuallyDrawingInput)
+	{
+		x -= (isDrawingPing) ? 28 : 27;
+	}																							//SCS - RADIO END?
 	double fps = round(averageFPS);
 
 	if (fps > (benchmark * 0.9))
@@ -581,9 +598,17 @@ void SCR_DisplayLocalPing(void)
 	UINT32 ping = playerpingtable[consoleplayer];
 	UINT32 pl = playerpacketlosstable[consoleplayer];
 
-	INT32 dispy = cv_ticrate.value ? 170 : 181;
+	//INT32 dispy = cv_ticrate.value ? 170 : 181;
+	// RADIO: To the side looks cleaner then showing it vertically
+	// INT32 dispy = cv_ticrate.value ? 170 : 181;
+	INT32 dispy = 189;																							//SCS - RADIO START
+	INT32 dispx = 298;
 
-	HU_drawPing(307 * FRACUNIT, dispy * FRACUNIT, ping, mindelay, pl, V_SNAPTORIGHT | V_SNAPTOBOTTOM, 0);
+	if (isDrawingInput && cv_inputdisplaytogglesize.value)
+		dispx = 270;
+
+	HU_drawPing(dispx * FRACUNIT, dispy * FRACUNIT, ping, mindelay, pl, V_SNAPTORIGHT | V_SNAPTOBOTTOM, 1);		//SCS - RADIO END
+	//HU_drawPing(307 * FRACUNIT, dispy * FRACUNIT, ping, mindelay, pl, V_SNAPTORIGHT | V_SNAPTOBOTTOM, 0);
 }
 
 

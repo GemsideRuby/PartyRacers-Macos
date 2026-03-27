@@ -1557,6 +1557,17 @@ sfxinfo_t S_sfx[NUMSFX] =
 
   // Ancient Gear
   {"gotgea", false,  64,  0, -1, NULL, 0,        -1,  -1, LUMPERROR, ""},
+  
+   // Super Jackpot scream
+  {"mycwin", false, 64,  0, -1, NULL, 0,        -1,  -1, LUMPERROR, "SUPER JACKPOT!!!"},		//SCS ADD
+  
+  // Gun Item sounds
+  {"cblsht", false, 64,  0, -1, NULL, 0,        -1,  -1, LUMPERROR, ""},		//SCS ADD
+  {"cblbsh", false, 64,  0, -1, NULL, 0,        -1,  -1, LUMPERROR, ""},
+  {"cblded", false, 64,  0, -1, NULL, 0,        -1,  -1, LUMPERROR, ""},
+  {"cblemp", false, 64,  0, -1, NULL, 0,        -1,  -1, LUMPERROR, ""},
+  {"cblrld", false, 64,  0, -1, NULL, 0,        -1,  -1, LUMPERROR, ""},
+  {"hmgsht", false, 64,  0, -1, NULL, 0,        -1,  -1, LUMPERROR, ""},
 
   // SRB2kart - Skin sounds
   {"kwin",   false,  64, 96, -1, NULL, 0,   SKSKWIN,  -1, LUMPERROR, ""},
@@ -1638,6 +1649,7 @@ sfxenum_t S_AddSoundFx(const char *name, boolean singular, INT32 flags, boolean 
 	if (i < NUMSFX)
 	{
 		strncpy(freeslotnames[i-sfx_freeslot0], name, 6);
+		freeslotnames[i - sfx_freeslot0][6] = '\0'; // to avoid a crash with a lot of loaded characters			//SCS ADD - Implementation for merge request "Implement fix for crash when roughly 750+ skins are loaded at once"
 		S_sfx[i].singularity = singular;
 		S_sfx[i].priority = 60;
 		S_sfx[i].pitch = flags;

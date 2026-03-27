@@ -580,6 +580,7 @@ typedef enum
 	mpause_discordrequests,
 #endif
 	mpause_admin,
+	mpause_muteplayers, // RadioRacers: Yeah.			//SCS - RADIO
 	mpause_callvote,
 
 	mpause_giveup,
@@ -748,7 +749,7 @@ void M_SetMenuDelay(UINT8 i);
 
 void M_SortServerList(void);
 
-void M_UpdateMenuCMD(UINT8 i, boolean bailrequired);
+void M_UpdateMenuCMD(UINT8 i, boolean bailrequired, boolean chat_open);
 boolean M_Responder(event_t *ev);
 boolean M_MenuButtonPressed(UINT8 pid, UINT32 bt);
 boolean M_MenuButtonHeld(UINT8 pid, UINT32 bt);
@@ -961,6 +962,11 @@ void M_MenuToLevelPreamble(UINT8 ssplayers, boolean nowipe);
 void M_LevelSelected(INT16 add, boolean menuupdate);
 boolean M_LevelSelectCupSwitch(boolean next, boolean skipones);
 
+
+void M_LevelConfirmHandler(void);
+void M_ClearQueueHandler(void);
+void M_CupQueueHandler(cupheader_t *cup);
+
 // dummy consvars for GP & match race setup
 extern consvar_t cv_dummygpdifficulty;
 extern consvar_t cv_dummykartspeed;
@@ -978,8 +984,10 @@ void M_DifficultySelectInputs(INT32 choice);
 // Keep track of multiplayer menu related data
 // We'll add more stuff here as we need em...
 
-#define SERVERSPERPAGE 8
-#define SERVERSPACE 18
+// Radio
+#define SERVERSPERPAGE 2								//SCS - RADIO START
+#define SERVERSPACE 23
+#define SERVERPREVIEWHEIGHT 75							//SCS - RADIO END
 
 extern struct mpmenu_s {
 	UINT8 modechoice;
@@ -995,6 +1003,14 @@ extern struct mpmenu_s {
 	// max scrolln is always going to be serverlistcount-4 as we can display 8 servers at any time and we start scrolling at half.
 
 	INT16 slide;
+	
+	// Radio - Server peeking				//SCS - RADIO START
+	tic_t serverslide_tic;
+	INT16 serverslide_y;
+	INT32 serverpreview_map;
+	boolean serverpreview_mapchecked;
+	boolean serverpreview_done;
+	boolean serverpreview;					//SCS - RADIO END
 
 } mpmenu;
 
@@ -1276,14 +1292,29 @@ void M_QuitPauseMenu(INT32 choice);
 boolean M_PauseInputs(INT32 ch);
 void M_PauseTick(void);
 
+/**
+ * RadioRacers: Extending this struct by adding another struct which controls the purpose of the kick menu.
+ * Can't think of a solution of reusing the code M_DrawKickHandler without it being needlessly complex or
+ * disgustingly ugly.
+ * 
+ * Better to add edge-cases as and when.
+ * */ 
+typedef enum																			//SCS - RADIO START
+{
+	PKM_KICK = 0,	// Kick another player in the server
+	PKM_MUTE		// (Locally) mute another player in the server
+} playerkickmenu_purpose;																//SCS - RADIO END
+
 extern struct playerkickmenu_s {
 	tic_t ticker;
 	UINT8 player;
 	UINT8 poke;
 	boolean adminpowered;
+	playerkickmenu_purpose purpose; // RadioRacers: By default, the purpose is to kick someone.	//SCS - RADIO
 } playerkickmenu;
 
 void M_KickHandler(INT32 choice);
+void M_MuteHandler(INT32 choice); // RadioRacers: Handler for muting players		//SCS - RADIO
 
 extern consvar_t cv_dummymenuplayer;
 extern consvar_t cv_dummyspectator;

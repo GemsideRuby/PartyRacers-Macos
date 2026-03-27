@@ -850,6 +850,7 @@ static UINT8 GetUFODamage(mobj_t *inflictor, UINT8 damageType)
 				break;
 			}
 			case MT_JAWZ:
+			case MT_AFTERBURNER_JAWZ:				//SCS ADD
 			{
 				// Thrown Jawz deal a bit extra.
 				targetdamaging = UFOD_JAWZ;
@@ -1299,7 +1300,7 @@ static mobj_t *InitSpecialUFO(waypoint_t *start)
 	// (...Except if you're on Master difficulty!)
 	if (grandprixinfo.gp && grandprixinfo.specialDamage && grandprixinfo.masterbots == false)
 	{
-		ufo->health -= min(2*(UINT32)mobjinfo[MT_SPECIAL_UFO].spawnhealth/10, grandprixinfo.specialDamage/12);
+		ufo->health -= min(2*(UINT32)mobjinfo[MT_SPECIAL_UFO].spawnhealth/10, grandprixinfo.specialDamage/6);		//SCS reverting UFO damage carryover, because WTF it was already so low to begin with
 		// Use this if you want to spy on what the health ends up being:
 		//CONS_Printf("the UFO weeps: %d hp\n", ufo->health );
 	}

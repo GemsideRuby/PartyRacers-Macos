@@ -102,6 +102,11 @@ UINT8 K_HogChargeToHogCount(INT32 charge, UINT8 cap)
 	return std::clamp<UINT8>((charge / BALLHOGINCREMENT), 0, cap);
 }
 
+UINT8 K_NormShieldChargeToNormShieldBoostCount(INT32 charge, UINT8 cap)					//SCS ADD - stupid-ass hack, putting this here. Need the std thing for the Norm Shield
+{
+	return std::clamp<UINT8>((charge / NORMSHIELDINCREMENT), 0, cap);
+}
+
 static boolean HogReticuleEmulate(mobj_t *mobj)
 {
 	fixed_t x, y, z;

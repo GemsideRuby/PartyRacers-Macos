@@ -35,6 +35,10 @@
 #include "m_fixed.h" // FRACUNIT
 #include "r_skins.h" // DEFAULTSKIN
 
+// RadioRacers
+#include "radioracers/rr_cvar.h"										//SCS - RADIO START
+#include "radioracers/rr_hud.h"											//SCS - RADIO END
+
 // There is a memset in one of consvar_t's constructors. It
 // SHOULD be safe if there is no polymorphism, but just
 // double-checking.
@@ -165,6 +169,12 @@ struct consvar_t::Builder
 		var_.func = fn;
 		return *this;
 	}
+
+	Builder& radio()										//SCS - RADIO START
+	{
+		var_.is_radio_cvar = true;
+		return *this;
+	}														//SCS - RADIO END
 
 private:
 	Builder& combine_values(values_list_t a, values_list_t b)
@@ -420,7 +430,11 @@ consvar_t cv_bgaudio = Player("bgaudio", "Nothing").onchange_noinit(BGAudio_OnCh
 	{0, "Nothing"},
 	{1, "Music"},
 	{2, "Sounds"},
+	{4, "Voices"},
 	{3, "Music&Sounds"},
+	{5, "Music&Voices"},
+	{6, "Sounds&Voices"},
+	{7, "MusicSounds&Voices"}
 });
 
 // Pause game upon window losing focus
@@ -495,7 +509,221 @@ consvar_t precachesound = Player("precachesound", "Off").on_off();
 consvar_t stereoreverse = Player("stereoreverse", "Off").on_off();
 
 
+/**																										//SCS - RADIO START
+ * RadioRacers: cvars for custom miscellanous functionalities
+ */
+// Backport of accessibility option from SRB2Kart.
+consvar_t cv_translucenthud = Player("translucenthud", "10").min_max(0, 10).radio();
 
+consvar_t cv_toggle_nametags = Player("nametags", "On").on_off().radio();
+consvar_t cv_driftsparkrate_size = Player("driftsparkpulsesize", "2.95").floating_point().min_max(1, 30*FRACUNIT).step_amount(FRACUNIT).save().radio();
+
+// Precise countdown
+consvar_t cv_precise_countdown = Player("precisecountdown", "On").on_off().radio();
+
+// Vote Snitch
+consvar_t cv_votesnitch = Player("votesnitch", "On").on_off().radio();
+
+// Local Encore Mode Palettes
+consvar_t cv_applylocalencore = Player("localencore", "Off").values({{0, "Off"}, {1, "On"}}).dont_save().onchange_noinit(KartLocalEncore_OnChange).radio();
+
+// Observation Haki
+consvar_t cv_applyhaki = Player("hakimode", "Off").values({{0, "Off"}, {1, "On"}}).dont_save().onchange_noinit(KartHaki_OnChange).radio();
+
+// Show 'S' ranks in the tally and player standings
+consvar_t cv_show_s_ranks = Player("showperfectranks", "On").on_off().radio();
+
+// Rings Ghost Accessibility
+consvar_t cv_accessibility_rings_hide = Player("ringsaccessibility", "On").on_off().radio();
+
+// Hudfeed
+consvar_t cv_hudfeed_enabled = Player("hudfeed", "Yes").yes_no().onchange_noinit(RR_Hudfeed_OnChange).radio();
+consvar_t cv_hudfeed_show_faults = Player("hudfeed_show_faults", "Yes").yes_no().radio();
+consvar_t cv_hudfeed_show_grades = Player("hudfeed_show_grades", "Yes").yes_no().radio();
+consvar_t cv_hudfeed_show_snipes = Player("hudfeed_show_snipes", "Yes").yes_no().radio();
+consvar_t cv_hudfeed_show_amps = Player("hudfeed_show_amps", "Yes").yes_no().radio();
+consvar_t cv_hudfeed_position = Player("hudfeedposition", "Top-Middle").values({
+	{0, "Default"},
+	{1, "Top-Middle"},
+	{2, "Top-Right"},
+	{3, "Bottom-Middle"},
+}).onchange_noinit(RR_UpdateHudFeedConfig).radio();
+
+// Tripwire
+consvar_t cv_obvious_tripwire = Player("obvioustripwire", "On").on_off().onchange_noinit(RR_ObviousTripwire_OnChange).radio();
+
+// Voltage
+consvar_t cv_obvious_voltage = Player("obviousvoltage", "On").on_off().radio();
+
+// Draw any danger checks on the side of the HUD
+consvar_t cv_show_dangerous_player_check = Player("showdangerplayercheck", "Off").on_off().radio();
+
+// HUD Scaling
+consvar_t cv_highreshudscale = Player("highreshudscale", "Default")
+	.values({
+		{FRACUNIT, "Default"}, 
+		{6*FRACUNIT/5, "120%"}, 
+		{0, NULL}
+	})
+	.onchange_noinit(SCR_Recalc).radio();
+consvar_t cv_highreshudscale_temp = MenuDummy("highreshudscale_temp", "");
+
+// Item timers (not all)
+consvar_t cv_gingeritemtimers = Player("huditemtimers", "On").on_off().radio();
+consvar_t cv_gingeritemtimersbiggertext = Player("huditemtimerssize", "Default").values({
+	{0, "Default"},
+	{1, "Big"}
+}).radio();
+consvar_t cv_gingeritemtimersoffset = Player("huditemtimersoffset", "0").floating_point()
+	.min_max(-180*FRACUNIT, 200*FRACUNIT) // At most 200 (bottom of the screen)
+	.step_amount(FRACUNIT)
+	.radio();
+
+// Powerup jingle - straight from HOSTMOD, thanks Tyron.
+consvar_t cv_powersound = Player("powersoundhc", "Off").on_off().radio();
+consvar_t cv_powersoundjoke = Player("powersoundjokehc", "On").on_off().onchange_noinit(KartExtraPowerSound_OnChange).radio();
+
+consvar_t cv_show_riders_finish_ticker = Player("ridersfinishticker", "On").on_off().onchange_noinit(KartFinishLineTicker_OnChange).radio();
+
+// Rumble Events
+consvar_t cv_morerumbleevents = Player("morerumbleevents", "On").on_off().onchange(RumbleEvents_OnChange).radio();
+consvar_t cv_rr_rumble_wall_bump = Player("rr_rumble_wall_bump", "On").on_off().radio();
+consvar_t cv_rr_rumble_fastfall_bounce = Player("rr_rumble_fastfall_bounce", "On").on_off().radio();
+consvar_t cv_rr_rumble_drift = Player("rr_rumble_drift", "On").on_off().radio();
+consvar_t cv_rr_rumble_spindash = Player("rr_rumble_spindash", "On").on_off().radio();
+consvar_t cv_rr_rumble_tailwhip = Player("rr_rumble_tailwhip", "On").on_off().radio();
+consvar_t cv_rr_rumble_rings = Player("rr_rumble_rings", "On").on_off().radio();
+consvar_t cv_rr_rumble_spheres = Player("rr_rumble_spheres", "On").on_off().radio();
+consvar_t cv_rr_rumble_wavedash = Player("rr_rumble_wavedash", "On").on_off().radio();
+
+// Rings drawn on player (akin to driftgauge)
+consvar_t cv_ringsonplayer = Player("ringsonplayer", "Custom").values({
+	{0, "Vanilla"}, 
+	{1, "Custom"}
+}).radio();
+
+// Speedometer draw on player (akin to driftguage)
+static void SpeedometerOnPlayer_OnChange(void) {
+	if (cv_speedometeronplayer.value == 1)
+		CV_StealthSetValue(&cv_exponplayer, 0);
+}
+consvar_t cv_speedometeronplayer = Player("speedometeronplayer", "Vanilla").values({
+	{0, "Vanilla"}, 
+	{1, "Custom"}
+}).onchange_noinit(SpeedometerOnPlayer_OnChange).radio();
+
+// EXP draw on player (akin to driftguage)
+static void ExpOnPlayer_OnChange(void) {
+	if(cv_exponplayer.value == 1)
+		CV_StealthSetValue(&cv_speedometeronplayer, 0);
+}
+consvar_t cv_exponplayer = Player("exponplayer", "Vanilla").values({
+	{0, "Vanilla"}, 
+	{1, "Custom"}
+}).onchange_noinit(ExpOnPlayer_OnChange).radio();
+
+// -- Battle
+
+// Blue Sphere meter drawn on player
+consvar_t cv_spheremeteronplayer = Player("spheremeteronplayer", "Custom").values({
+	{0, "Vanilla"}, 
+	{1, "Custom"}
+}).radio();
+
+// Alterate Emerald display HUD
+consvar_t cv_customemeraldhud = Player("customemeraldhud", "Full").values({
+	{0, "Vanilla"}, 
+	{1, "Minimal"},
+	{2, "Full"}
+}).radio();
+
+// Toggle Winner announcement at end of the round
+consvar_t cv_battle_toggle_winner_announcement = Player("bttl_toggle_winner_announcement", "On").on_off().radio();
+
+// Emerald locations on minimap
+consvar_t cv_battle_toggle_emerald_on_minimap = Player("bttl_emerald_on_minimap", "On").on_off().radio();
+consvar_t cv_battle_toggle_ufo_timer_on_minimap = Player("bttl_ufo_timer_on_minimap", "On").on_off().radio();
+
+// Toggle tracking players in the HUD
+consvar_t cv_targetrackplayers = Player("targetrackplayers", "Yes").yes_no().radio();
+
+// -- Race
+
+// Item/Ringbox Roulette drawn on player
+consvar_t cv_rouletteonplayer = Player("rouletteonplayer", "Custom").values({
+	{0, "Vanilla"}, 
+	{1, "Custom"}
+}).onchange(Roulette_OnChange).radio();
+
+static CV_PossibleValue_t itemboxscale_cons_t[] = {
+	{(4*FRACUNIT)/10, "40%"},
+	{FRACUNIT/2, "50%"},
+	{(3*FRACUNIT)/5, "60%"},
+	{(14*FRACUNIT)/20, "70%"},
+	{(4*FRACUNIT)/5, "80%"},
+	{(9*FRACUNIT)/10, "90%"},
+	{FRACUNIT, "100%"},
+	{0, NULL}
+};
+
+static CV_PossibleValue_t itemboxposition_cons_t[] = {
+	{0, "Left"},
+	{1, "Above"},
+	{2, "Right"}
+};
+
+// How big should we draw the item roulette?
+// And where exactly should we draw it?
+consvar_t cv_ringbox_roulette_player_scale = Player("ringbox_roulette_player_scale", "60%").values(itemboxscale_cons_t).radio();
+consvar_t cv_item_roulette_player_scale = Player("item_roulette_player_scale", "60%").values(itemboxscale_cons_t).radio();
+
+consvar_t cv_ringbox_roulette_player_position = Player("ringbox_roulette_player_position", "Right").values(itemboxposition_cons_t).radio();
+consvar_t cv_item_roulette_player_position = Player("item_roulette_player_position", "Left").values(itemboxposition_cons_t).radio();
+
+// Hide the giant big ass letters at the start of the race
+consvar_t cv_hud_hidecountdown = Player("hidecountdown", "Off").on_off().radio();
+// Hide the bigass position bulbs at the start of the race
+consvar_t cv_hud_hideposition = Player("hideposition", "Off").on_off().radio();
+// Hide the bigass lap emblem when you start a new lap
+consvar_t cv_hud_hidelapemblem = Player("hidelapemblem", "Off").on_off().radio();
+// Draw high-res portraits in the minirankings
+consvar_t cv_hud_usehighresportraits = Player("usehighresportraits", "Yes").yes_no().radio();
+// Restore SRB2Kart behaviour when viewing in-game rankings (i.e. having to hold the button)
+consvar_t cv_holdbuttonforscoreboard = Player("holdbuttonforscoreboard", "No").yes_no().radio();
+// Toggle between ANALOG and DIGITAL input display
+consvar_t cv_inputdisplaytoggle = Player("inputdisplaytoggle", "Digital").values({
+	{'2', "Digital"}, 
+	{'4', "Analog"}
+}).radio();
+consvar_t cv_inputdisplaytogglesize = Player("inputdisplaytogglesize", "Mini").values({
+	{0, "Normal"}, 
+	{1, "Mini"}
+}).radio();
+
+consvar_t cv_toggle_position_number = Player("positionnumbertoggle", "On").on_off().radio();
+consvar_t cv_toggle_race_minimap = Player("raceminimaptoggle", "On").on_off().radio();
+consvar_t cv_toggle_trick_cool = Player("tricktexttoggle", "On").on_off().radio();
+consvar_t cv_toggle_race_standings = Player("racestandingstoggle", "On").on_off().radio();
+consvar_t cv_showexponsplit = Player("showexponsplit", "On").on_off().radio();
+
+// Chat emotes
+consvar_t cv_chat_emotes = Player("chat_emotes", "On").on_off().onchange(RR_ChatEmotes_OnChange).radio();
+consvar_t cv_chat_emotes_animated = Player("chat_emotes_animate", "On").on_off().radio();
+consvar_t cv_chat_emotes_button = Player("chat_emotes_button", "On").on_off().radio();
+consvar_t cv_chat_emotes_preview = Player("chat_emotes_input_preview", "On").on_off().radio();
+consvar_t cv_chat_emotes_sort = Player("chat_emotes_sort", "Alphabetical").values({
+	{0, "Alphabetical"},
+	{1, "Most Used"},
+	{2, "Favourites"}
+}).onchange(RR_ChatEmoteSort_OnChange).radio();
+
+// Server
+consvar_t cv_lastknownserver = Player("lastknownserver", "").dont_save().radio();
+
+/**
+ * RadioRacers: END
+ */																													//SCS - RADIO END
+ 
 //
 // Server local, also available on dedicated servers.
 // Usually saved, not sycned though...
@@ -703,6 +931,25 @@ consvar_t cv_items[] = {
 	UnsavedNetVar("quadorbinaut",		"On").on_off().onchange_noinit(KartItem_OnChange),
 	UnsavedNetVar("dualjawz",			"On").on_off().onchange_noinit(KartItem_OnChange),
 	UnsavedNetVar("triplegachabom",		"On").on_off().onchange_noinit(KartItem_OnChange),
+	UnsavedNetVar("decabanana",			"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("superjackpot",		"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("wreckingball",		"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("masteremerald",		"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("pickpockethyu",		"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("yogospring",			"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("timestone",			"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("bogospring",			"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("normalshield",		"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("megachopper",		"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("armashield",			"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("aburnerjawz",		"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("dualaburnerjawz",	"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("pressuremine",		"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("chameleonblaster",	"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("eggblaster",			"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("ringgun",			"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("butlerhyudoro",		"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
+	UnsavedNetVar("octus",				"On").on_off().onchange_noinit(KartItem_OnChange),		//SCS ADD
 };
 
 consvar_t cv_kartbot = UnsavedNetVar("bots", "Off").values({
@@ -748,7 +995,8 @@ void LiveStudioAudience_OnChange(void);
 	consvar_t cv_livestudioaudience = UnsavedNetVar("livestudioaudience", "Off").on_off().onchange(LiveStudioAudience_OnChange);
 #endif
 
-consvar_t cv_maxplayers = NetVar("maxplayers", "8").min_max(1, MAXPLAYERS);
+void Maxplayers_OnChange(void);
+consvar_t cv_maxplayers = NetVar("maxplayers", "8").min_max(1, MAXPLAYERS).onchange_noinit(Maxplayers_OnChange);
 
 consvar_t cv_shuffleloser = NetVar("shuffleloser", "On").on_off();
 
@@ -968,7 +1216,8 @@ consvar_t cv_dummyip = MenuDummy("dummyip", "");
 consvar_t cv_dummyipselect = MenuDummy("dummyipselect", "0").min_max(0, 2);
 
 extern CV_PossibleValue_t dummykartspeed_cons_t[];
-consvar_t cv_dummykartspeed = MenuDummy("dummykartspeed", "Gear 2").values(dummykartspeed_cons_t);
+void DummyKartSpeed_OnChange(void);
+consvar_t cv_dummykartspeed = MenuDummy("dummykartspeed", "Gear 2").values(dummykartspeed_cons_t).onchange(DummyKartSpeed_OnChange);
 
 consvar_t cv_dummymatchbots = MenuDummy("dummymatchbots", "Off").values({
 	{0, "Off"},
@@ -991,7 +1240,8 @@ void Dummymenuplayer_OnChange(void);
 consvar_t cv_dummymenuplayer = MenuDummy("dummymenuplayer", "P1").onchange(Dummymenuplayer_OnChange).values({{0, "NOPE"}, {1, "P1"}, {2, "P2"}, {3, "P3"}, {4, "P4"}});
 
 consvar_t cv_dummyprofileautoroulette = MenuDummy("dummyprofileautoroulette", "Off").on_off();
-consvar_t cv_dummyprofilefov = MenuDummy("dummyprofilefov", "100").min_max(70, 110);
+//consvar_t cv_dummyprofilefov = MenuDummy("dummyprofilefov", "100").min_max(70, 110);
+consvar_t cv_dummyprofilefov = MenuDummy("dummyprofilefov", "100").min_max(70, 179); // Changed max to 179				//SCS - RADIO
 consvar_t cv_dummyprofilelitesteer = MenuDummy("dummyprofilelitesteer", "Off").on_off();
 consvar_t cv_dummyprofilestrictfastfall = MenuDummy("dummprofilestrictfastfall", "Off").on_off();
 consvar_t cv_dummyprofiledescriptiveinput = Player("dummyprofiledescriptiveinput", "Modern").values(descriptiveinput_cons_t);
@@ -1004,7 +1254,7 @@ consvar_t cv_dummyprofilerumble = MenuDummy("dummyprofilerumble", "On").on_off()
 consvar_t cv_dummyscramble = MenuDummy("dummyscramble", "Random").values({{0, "Random"}, {1, "Points"}});
 
 void CV_SPBAttackChanged(void);
-consvar_t cv_dummyspbattack = MenuDummy("dummyspbattack", "Off").on_off().onchange(CV_SPBAttackChanged);
+consvar_t cv_dummyspbattack = MenuDummy("dummyspbattack", "Off").on_off().onchange_noinit(CV_SPBAttackChanged);
 
 consvar_t cv_dummyspectate = MenuDummy("dummyspectate", "Spectator").values({{0, "Spectator"}, {1, "Playing"}});
 
@@ -1120,14 +1370,16 @@ consvar_t cv_autoring[MAXSPLITSCREENPLAYERS] = {
 };
 
 consvar_t cv_cam_dist[MAXSPLITSCREENPLAYERS] = {
-	Player("cam_dist", "190").floating_point(),
+	//Player("cam_dist", "190").floating_point(),
+	Player("cam_dist", "190").floating_point().min_max(190, 300*FRACUNIT).step_amount(FRACUNIT),			//SCS - RADIO
 	Player("cam2_dist", "190").floating_point(),
 	Player("cam3_dist", "190").floating_point(),
 	Player("cam4_dist", "190").floating_point(),
 };
 
 consvar_t cv_cam_height[MAXSPLITSCREENPLAYERS] = {
-	Player("cam_height", "95").floating_point(),
+	//Player("cam_height", "95").floating_point(),
+	Player("cam_height", "95").floating_point().min_max(95, 300*FRACUNIT).step_amount(FRACUNIT),			//SCS - RADIO
 	Player("cam2_height", "95").floating_point(),
 	Player("cam3_height", "95").floating_point(),
 	Player("cam4_height", "95").floating_point(),
@@ -1215,7 +1467,8 @@ consvar_t cv_followercolor[MAXSPLITSCREENPLAYERS] = {
 
 void Fov_OnChange(void);
 consvar_t cv_fov[MAXSPLITSCREENPLAYERS] = {
-	Player("fov", "100").floating_point().min_max(60*FRACUNIT, 179*FRACUNIT).onchange(Fov_OnChange).dont_save(),
+	//Player("fov", "100").floating_point().min_max(60*FRACUNIT, 179*FRACUNIT).onchange(Fov_OnChange).dont_save(),
+	Player("fov", "100").floating_point().min_max(60*FRACUNIT, 179*FRACUNIT).step_amount(FRACUNIT).onchange(Fov_OnChange).dont_save(),		//SCS - RADIO
 	Player("fov2", "100").floating_point().min_max(60*FRACUNIT, 179*FRACUNIT).onchange(Fov_OnChange).dont_save(),
 	Player("fov3", "100").floating_point().min_max(60*FRACUNIT, 179*FRACUNIT).onchange(Fov_OnChange).dont_save(),
 	Player("fov4", "100").floating_point().min_max(60*FRACUNIT, 179*FRACUNIT).onchange(Fov_OnChange).dont_save(),

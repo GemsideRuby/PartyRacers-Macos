@@ -291,6 +291,8 @@ UINT8 numlaps; // Removed from Cvar hell
 UINT8 gamespeed; // Game's current speed (or difficulty, or cc, or etc); 0 for easy, 1 for normal, 2 for hard
 boolean encoremode = false; // Encore Mode currently enabled?
 boolean prevencoremode;
+boolean localencore = false; // Local Encore Mode Palettes on?						//SCS - RADIO START
+boolean hakimode = false; // Observation Haki on?									//SCS - RADIO END
 boolean franticitems; // Frantic items currently enabled?
 
 // Server wants to enable teams?
@@ -496,7 +498,11 @@ bademblem:
 
 	if (!gonnadrawtime && showownrecord)
 	{
-		stickermedalinfo.timetoreach = G_GetBestTime(map);
+		stickermedalinfo.timetoreach = (encoremode == true)
+			? mapheaderinfo[map]->records.spbattack.time
+			: mapheaderinfo[map]->records.timeattack.time;
+		if (!stickermedalinfo.timetoreach)
+			stickermedalinfo.timetoreach = UINT32_MAX;
 	}
 
 	if (stickermedalinfo.timetoreach != UINT32_MAX)
@@ -584,6 +590,7 @@ static void G_UpdateRecordReplays(void)
 	char lastdemo[256], bestdemo[256];
 	const char *modeprefix = "";
 
+	// See also M_GetRecordMode
 	if (encoremode)
 	{
 		modeprefix = "spb-";
@@ -838,7 +845,8 @@ static INT32 G_GetValueFromControlTable(INT32 deviceID, INT32 deadzone, INT32 *c
 
 		value = G_GetDeviceGameKeyDownArray(deviceID)[key];
 
-		if (value >= deadzone)
+		//if (value >= deadzone)
+		if (value > deadzone)		//SCS EDIT - Merge Request
 		{
 			return value;
 		}
@@ -1413,6 +1421,7 @@ boolean G_Responder(event_t *ev)
 		if (HU_Responder(ev))
 		{
 			hu_keystrokes = true;
+			chat_keydown = true;
 			return true; // chat ate the event
 		}
 	}
@@ -1522,6 +1531,7 @@ boolean G_Responder(event_t *ev)
 			return true;
 
 		case ev_keyup:
+			chat_keydown = false; // prevents repeat inputs from inputs made with chat open
 			return false; // always let key up events filter down
 
 		case ev_mouse:
@@ -2329,6 +2339,8 @@ void G_PlayerReborn(INT32 player, boolean betweenmaps)
 	INT32 preffollower;
 
 	tic_t splits[MAXRACESPLITS];
+	
+	UINT8 amps;
 
 	INT32 i;
 
@@ -2496,6 +2508,8 @@ void G_PlayerReborn(INT32 player, boolean betweenmaps)
 		cangrabitems = 0;
 
 		memset(&splits, 0, sizeof(splits));
+		
+		amps = 0;
 	}
 	else
 	{
@@ -2558,6 +2572,8 @@ void G_PlayerReborn(INT32 player, boolean betweenmaps)
 
 		duelscore = players[player].duelscore;
 		memcpy(&splits, &players[player].splits, sizeof(splits));
+		
+		amps = players[player].amps;
 	}
 
 	spectatorReentry = (betweenmaps ? 0 : players[player].spectatorReentry);
@@ -2685,7 +2701,7 @@ void G_PlayerReborn(INT32 player, boolean betweenmaps)
 
 	// SRB2kart
 	p->itemtype = itemtype;
-	p->itemamount = itemamount;
+	K_SetPlayerItemAmount(p, itemamount);
 	p->growshrinktimer = growshrinktimer;
 	p->karmadelay = 0;
 	p->eggmanblame = -1;
@@ -2707,6 +2723,8 @@ void G_PlayerReborn(INT32 player, boolean betweenmaps)
 	p->spectatorReentry = spectatorReentry;
 	p->griefValue = griefValue;
 	p->griefStrikes = griefStrikes;
+	
+	p->amps = amps;
 
 	memcpy(&p->itemRoulette, &itemRoulette, sizeof (p->itemRoulette));
 	memcpy(&p->respawn, &respawn, sizeof (p->respawn));
@@ -4064,12 +4082,91 @@ UINT16 G_RandMap(UINT32 tolflags, UINT16 pprevmap, boolean ignoreBuffers, boolea
 
 void G_AddMapToBuffer(UINT16 map)
 {
+	#if 0
+	// DEBUG: make nearly everything but four race levels full justPlayed
+	// to look into what happens when a dedicated runs for seven million years.
+	INT32 justplayedvalue = TOLMaps(gametype) - VOTE_NUM_LEVELS;
+	UINT32 tolflag = G_TOLFlag(gametype);
+
+	// Find all the maps that are ok
+	INT32 i;
+	for (i = 0; i < nummapheaders; i++)
+	{
+		if (mapheaderinfo[i] == NULL)
+		{
+			continue;
+		}
+
+		if (mapheaderinfo[i]->lumpnum == LUMPERROR)
+		{
+			continue;
+		}
+
+		if ((mapheaderinfo[i]->typeoflevel & tolflag) == 0)
+		{
+			continue;
+		}
+
+		if (mapheaderinfo[i]->menuflags & LF2_HIDEINMENU)
+		{
+			// Don't include hidden
+			continue;
+		}
+
+		// Only care about restrictions if the host is a listen server.
+		if (!dedicated)
+		{
+			if (!(mapheaderinfo[i]->menuflags & LF2_NOVISITNEEDED)
+			&& !(mapheaderinfo[i]->records.mapvisited & MV_VISITED)
+			&& !(
+				mapheaderinfo[i]->cup
+				&& mapheaderinfo[i]->cup->cachedlevels[0] == i
+			))
+			{
+				// Not visited OR head of cup
+				continue;
+			}
+
+			if ((mapheaderinfo[i]->menuflags & LF2_FINISHNEEDED)
+			&& !(mapheaderinfo[i]->records.mapvisited & MV_BEATEN))
+			{
+				// Not completed
+				continue;
+			}
+		}
+
+		if (M_MapLocked(i + 1) == true)
+		{
+			// We haven't earned this one.
+			continue;
+		}
+
+		mapheaderinfo[i]->justPlayed = justplayedvalue;
+		justplayedvalue -= 1;
+		if (justplayedvalue <= 0)
+			break;
+	}
+#else
+	if (dedicated && D_NumPlayers() == 0)
+		return;
+
+	const size_t upperJustPlayedLimit = TOLMaps(gametype) - VOTE_NUM_LEVELS - 1;
+	
 	if (mapheaderinfo[map]->justPlayed == 0) // Started playing a new map.
 	{
 		// Decrement every maps' justPlayed value.
 		INT32 i;
 		for (i = 0; i < nummapheaders; i++)
 		{
+			// If the map's justPlayed value is higher
+			// than what it should be, clamp it.
+			// (Usually a result of SOC files
+			// manipulating which levels are hidden.)
+			if (mapheaderinfo[i]->justPlayed > upperJustPlayedLimit)
+			{
+				mapheaderinfo[i]->justPlayed = upperJustPlayedLimit;
+			}
+			
 			if (mapheaderinfo[i]->justPlayed > 0)
 			{
 				mapheaderinfo[i]->justPlayed--;
@@ -4078,8 +4175,9 @@ void G_AddMapToBuffer(UINT16 map)
 	}
 
 	// Set our map's justPlayed value.
-	mapheaderinfo[map]->justPlayed = TOLMaps(gametype) - VOTE_NUM_LEVELS;
+	mapheaderinfo[map]->justPlayed = upperJustPlayedLimit;
 	mapheaderinfo[map]->anger = 0; // Reset voting anger now that we're playing it
+	#endif
 }
 
 //
@@ -4202,6 +4300,7 @@ void G_GPCupIntoRoundQueue(cupheader_t *cup, UINT8 setgametype, boolean setencor
 	UINT8 i, levelindex = 0, bonusindex = 0;
 	UINT8 bonusmodulo = max(1, (cup->numlevels+1)/(cup->numbonus+1));
 	UINT16 cupLevelNum;
+	INT32 bonusgt;
 
 	// Levels are added to the queue in the following pattern.
 	// For 5 Race rounds and 2 Bonus rounds, the most common case:
@@ -4243,9 +4342,18 @@ void G_GPCupIntoRoundQueue(cupheader_t *cup, UINT8 setgametype, boolean setencor
 			if (cupLevelNum < nummapheaders)
 			{
 				// In the case of Bonus rounds, we simply skip invalid maps.
+				if ((mapheaderinfo[cupLevelNum]->typeoflevel & TOL_BATTLE) == TOL_BATTLE)
+				{
+					bonusgt = GT_BATTLE;
+				}
+				else
+				{
+					bonusgt = G_GuessGametypeByTOL(mapheaderinfo[cupLevelNum]->typeoflevel);
+				}
+
 				G_MapIntoRoundQueue(
 					cupLevelNum,
-					G_GuessGametypeByTOL(mapheaderinfo[cupLevelNum]->typeoflevel),
+					bonusgt,
 					setencore, // if this isn't correct, Got_Mapcmd will fix it
 					false
 				);
@@ -4313,9 +4421,22 @@ void G_GPCupIntoRoundQueue(cupheader_t *cup, UINT8 setgametype, boolean setencor
 			cupLevelNum = emeraldcup->cachedlevels[CUPCACHE_SPECIAL];
 			if (cupLevelNum < nummapheaders)
 			{
+				// In case of multiple TOLs, prioritize Special, then Versus, then guess.
+				if ((mapheaderinfo[cupLevelNum]->typeoflevel & TOL_SPECIAL) == TOL_SPECIAL)
+				{
+					bonusgt = GT_SPECIAL;
+				}
+				else if ((mapheaderinfo[cupLevelNum]->typeoflevel & TOL_VERSUS) == TOL_VERSUS)
+				{
+					bonusgt = GT_VERSUS;
+				}
+				else
+				{
+					bonusgt = G_GuessGametypeByTOL(mapheaderinfo[cupLevelNum]->typeoflevel);
+				}
 				G_MapIntoRoundQueue(
 					cupLevelNum,
-					G_GuessGametypeByTOL(mapheaderinfo[cupLevelNum]->typeoflevel),
+					bonusgt,
 					setencore, // if this isn't correct, Got_Mapcmd will fix it
 					true // Rank-restricted!
 				);
@@ -4785,14 +4906,14 @@ static void G_DoCompleted(void)
 			}
 		}
 
-		if (grandprixinfo.gp == true && grandprixinfo.wonround == true && player->exiting && (!retrying || grandprixinfo.gamespeed == KARTSPEED_EASY))
+		if (grandprixinfo.gp == true && grandprixinfo.wonround == true && player->exiting && (!retrying || !G_GametypeUsesLives()))
 		{
 			if (player->bot == true)
 			{
 				// Bots are going to get harder... :)
 				K_IncreaseBotDifficulty(player);
 			}
-			else if (K_IsPlayerLosing(player) == false)
+			else if (K_IsPlayerLosing(player) == false || !G_GametypeUsesLives())
 			{
 				// Increase your total rings
 				INT32 ringtotal = player->hudrings;
@@ -4975,7 +5096,10 @@ void G_AfterIntermission(void)
 		return;
 	}
 	else if (demo.recording && (modeattacking || demo.willsave))
+	{
+		demo.willsave = false;
 		G_SaveDemo();
+	}
 	else if (demo.recording)
 		G_ResetDemoRecording();
 
@@ -5113,6 +5237,9 @@ static void G_DoContinued(void)
 // when something new is added.
 void G_EndGame(void)
 {
+	// Clean up ACS music remaps.
+	Music_TuneReset();
+	
 	// Handle voting
 	if (nextmap == NEXTMAP_VOTING)
 	{
@@ -5917,7 +6044,7 @@ void G_SetRetryFlag(void)
 {
 	if (retrying == false && grandprixinfo.gp)
 	{
-		if (!specialstageinfo.valid)
+		if (grandprixinfo.eventmode != GPEVENT_SPECIAL)
 			grandprixinfo.rank.continuesUsed++;
 		grandprixinfo.rank.levels[grandprixinfo.rank.numLevels].continues++;
 	}

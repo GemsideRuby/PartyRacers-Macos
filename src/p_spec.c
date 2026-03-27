@@ -57,6 +57,10 @@
 #include "k_race.h" // K_SpawnFinishEXP
 #include "k_grandprix.h" // grandprixinfo
 
+#include "radioracers/rr_cvar.h"	//SCS - RADIO START
+#include "radioracers/rr_hud.h"
+#include "radioracers/rr_setup.h"	//SCS - RADIO END
+
 // Not sure if this is necessary, but it was in w_wad.c, so I'm putting it here too -Shadow Hog
 #include <errno.h>
 
@@ -1990,6 +1994,16 @@ static void K_HandleLapIncrement(player_t *player)
 			{
 				S_StartSound(player->mo, sfx_s3kb2);
 			}
+			
+			player->karthud[khud_splitcolor] = 0;
+			player->karthud[khud_splitposition] = 1;
+			player->karthud[khud_splitskin] = -1;
+			player->karthud[khud_splittime] = (INT32)(starttime - leveltime);
+			player->karthud[khud_splittimer] = 3*TICRATE;
+			player->karthud[khud_splitwin] = -2;
+			
+			// Radio - can happen here too
+			RR_PushGlobalFaultEventToFeed(player);		//SCS - RADIO
 
 			return;
 		}
@@ -2060,40 +2074,50 @@ static void K_HandleLapIncrement(player_t *player)
 				K_UpdateAllPlayerPositions(); // P_DoPlayerExit calls this
 			}
 
-			if (rainbowstartavailable == true && player->mo->hitlag == 0)
+			if (!G_TimeAttackStart() && !(gametyperules & GTR_ROLLINGSTART) && player->laps == 1 && lapisfresh)
 			{
-				if (K_InRaceDuel())
+				boolean setupsplits = false;
+				
+				if (rainbowstartavailable)
 				{
-					K_SpawnDriftElectricSparks(player, player->skincolor, false);
-					K_SpawnAmps(player, 20, player->mo);
+					// CONS_Printf("%d: %s gimme first blood\n", leveltime, player_names[player - players]);
+					player->pflags2 |= PF2_GIMMEFIRSTBLOOD;
+					setupsplits = true;
 				}
-				else
+				else if (!K_InRaceDuel() && M_NotFreePlay())
 				{
-					S_StartSound(player->mo, sfx_s23c);
-					player->startboost = 125;
+					// CONS_Printf("%d: %s gimme start award\n", leveltime, player_names[player - players]);
+					player->pflags2 |= PF2_GIMMESTARTAWARDS;
+					setupsplits = true;
+				}							//SCS - RADIO?
 
-					K_SpawnDriftBoostExplosion(player, 4);
-					K_SpawnDriftElectricSparks(player, SKINCOLOR_SILVER, false);
-					if (!G_TimeAttackStart())
-						K_SpawnAmps(player, (K_InRaceDuel()) ? 20 : 20, player->mo);
-
-					if (g_teamplay)
+					if (setupsplits)
 					{
-						for (UINT8 j = 0; i < MAXPLAYERS; i++)
-						{
-							if (!playeringame[j] || players[j].spectator || !players[j].mo || P_MobjWasRemoved(players[j].mo))
-								continue;
-							if (!G_SameTeam(player, &players[j]))
-								continue;
-							if (player == &players[j])
-								continue;
-							K_SpawnAmps(&players[j], 10, player->mo);
-						}
+						player->karthud[khud_splitcolor] = 0;
+						player->karthud[khud_splitposition] = 1;
+						player->karthud[khud_splitskin] = -1;
+						player->karthud[khud_splittime] = (INT32)(starttime - leveltime);
+						player->karthud[khud_splittimer] = 2*TICRATE;
+						player->karthud[khud_splitwin] = (rainbowstartavailable) ? 2 : 0;
 					}
-				}
+			}
+	
+			if (rainbowstartavailable == true && player->mo->hitlag == 0 && G_TimeAttackStart())
+			{
+				S_StartSound(player->mo, sfx_s23c);
+
+				// Radio
+				if (stplyr == player && radio_perfectboost_line != sfx_None)	//SCS - RADIO
+					S_StartSound(NULL, radio_perfectboost_line);				//SCS - RADIO
+				
+				player->startboost = 125;
+
+				K_SpawnDriftBoostExplosion(player, 4);
+				K_SpawnDriftElectricSparks(player, SKINCOLOR_SILVER, false);
 
 				rainbowstartavailable = false;
 			}
+			//}
 
 			if (player->laps == 1 && (modeattacking & ATTACKING_SPB))
 			{
@@ -4252,6 +4276,9 @@ boolean P_ProcessSpecial(activator_t *activator, INT16 special, INT32 *args, cha
 					}
 					else
 					{
+						if (mo->player->curshield != KSHIELD_NONE)	//SCS ADD - shields now protect you from ring drain
+							break;
+							
 						// args[2]: cap rings to -20 instead of 0
 						SINT8 baseline = (args[2] ? -20 : 0);
 
@@ -4265,6 +4292,7 @@ boolean P_ProcessSpecial(activator_t *activator, INT16 special, INT32 *args, cha
 							rings = (mo->player->rings - baseline);
 
 						mo->player->rings -= rings;
+						K_DefensiveOverdrive(mo->player);					//SCS ADD - Should fix this not triggering overdrive
 						S_StartSound(mo, sfx_antiri);
 					}
 				}
@@ -5473,9 +5501,13 @@ static void P_EvaluateOldSectorSpecial(player_t *player, sector_t *sector, secto
 				break;
 			/* FALLTHRU */
 		case 10: // Ring Drainer (No Floor Touch)
-			if (leveltime % (TICRATE/2) == 0 && player->rings > 0)
+			if (player->curshield != KSHIELD_NONE)	//SCS ADD - shields now protect you from ring drain
+				break;
+			
+			if (leveltime % (TICRATE/2) == 0 && player->rings > 0)		
 			{
 				player->rings--;
+				K_DefensiveOverdrive(player);			//SCS ADD - Should fix this not triggering overdrive
 				S_StartSound(player->mo, sfx_antiri);
 			}
 			break;
@@ -6840,7 +6872,8 @@ void P_InitSpecials(void)
 {
 	mapheader_lighting_t *lighting = &mapheaderinfo[gamemap-1]->lighting;
 
-	if (encoremode
+	//if (encoremode
+	if (shouldApplyEncore()		//SCS - RADIO
 #ifdef DEVELOP
 			&& cv_kartencoremap.value
 #endif

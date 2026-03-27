@@ -1258,6 +1258,7 @@ fixed_t P_GetMobjGravity(mobj_t *mo)
 			case MT_EGGMANITEM:
 			case MT_SSMINE:
 			case MT_LANDMINE:
+			case MT_PRESSUREMINE:			//SCS ADD
 			case MT_DROPTARGET:
 			case MT_SINK:
 			case MT_EMERALD:
@@ -1860,7 +1861,7 @@ boolean P_XYMovement(mobj_t *mo)
 
 					//{ SRB2kart - Orbinaut
 					// Bump sparks
-					if (mo->type == MT_ORBINAUT || mo->type == MT_GACHABOM)
+					if (mo->type == MT_ORBINAUT || mo->type == MT_GACHABOM || mo->type == MT_GHZBALL)		//SCS ADD
 					{
 						mobj_t *fx;
 						fx = P_SpawnMobj(mo->x, mo->y, mo->z, MT_BUMP);
@@ -1876,6 +1877,7 @@ boolean P_XYMovement(mobj_t *mo)
 						case MT_ORBINAUT: // Orbinaut speed decreasing
 						case MT_GACHABOM:
 						case MT_GARDENTOP:
+						case MT_GHZBALL:		//SCS ADD
 							if (mo->health > 1)
 							{
 								S_StartSound(mo, mo->info->attacksound);
@@ -1887,6 +1889,7 @@ boolean P_XYMovement(mobj_t *mo)
 							/*FALLTHRU*/
 
 						case MT_JAWZ:
+						case MT_AFTERBURNER_JAWZ:		//SCS ADD
 							if (mo->health == 1)
 							{
 								// This Item Damage
@@ -4555,6 +4558,9 @@ static void P_RefreshItemCapsuleParts(mobj_t *mobj)
 		part = part->tracer;
 		part->sprite = SPR_ITMN;
 		part->frame = FF_FULLBRIGHT|(count % 10);
+
+		// RADIO: Setting this boolean here
+		part->isSuperRingItemNumber = (itemType == KITEM_SUPERRING);		//SCS - RADIO
 		count /= 10;
 		numNumbers++;
 	}
@@ -5350,6 +5356,14 @@ boolean P_IsKartItem(INT32 type)
 		case MT_SINK:
 		case MT_GACHABOM:
 		case MT_TOXOMISTER_POLE:
+		case MT_GHZBALL:					//SCS ADD
+		case MT_YOGOSPRING:					//SCS ADD
+		case MT_BOGOSPRING:					//SCS ADD
+		case MT_MEGACHOPPER:				//SCS ADD
+		case MT_AFTERBURNER_JAWZ:			//SCS ADD
+		case MT_PRESSUREMINE:				//SCS ADD
+		case MT_BHYUDORO:					//SCS ADD
+		case MT_INKBUBBLE:					//SCS ADD
 			return true;
 
 		default:
@@ -5377,6 +5391,12 @@ boolean P_IsKartFieldItem(INT32 type)
 		case MT_DUELBOMB:
 		case MT_GACHABOM:
 		case MT_TOXOMISTER_POLE:
+		case MT_GHZBALL:					//SCS ADD
+		case MT_YOGOSPRING:					//SCS ADD
+		case MT_BOGOSPRING:					//SCS ADD
+		case MT_AFTERBURNER_JAWZ:			//SCS ADD
+		case MT_PRESSUREMINE:				//SCS ADD
+		case MT_INKBUBBLE:					//SCS ADD
 			return true;
 
 		default:
@@ -5412,6 +5432,15 @@ boolean P_IsRelinkItem(INT32 type)
 		case MT_GACHABOM:
 		case MT_TOXOMISTER_POLE:
 		case MT_FLOATINGITEM:  // Stone Shoe Trap
+		case MT_GHZBALL: 							//SCS ADD
+		case MT_YOGOSPRING:							//SCS ADD
+		case MT_BOGOSPRING:							//SCS ADD
+		case MT_MEGACHOPPER:						//SCS ADD
+		case MT_AFTERBURNER_JAWZ:					//SCS ADD
+		case MT_PRESSUREMINE:						//SCS ADD
+		case MT_BHYUDORO_CENTER:					//SCS ADD
+		case MT_INKBUBBLE:							//SCS ADD
+		case MT_MINIHYUDORO:						//SCS ADD
 			return true;
 
 		default:
@@ -5451,6 +5480,7 @@ static boolean P_IsTrackerType(INT32 type)
 	{
 		// Bots need to know if another Jawz is targetting a player
 		case MT_JAWZ:
+		case MT_AFTERBURNER_JAWZ:		//SCS ADD
 			return true;
 
 		// Players need to be able to glance at the Ancient Shrines
@@ -6774,6 +6804,23 @@ static void P_MobjSceneryThink(mobj_t *mobj)
 		}
 		break;
 	}
+	case MT_NORMALSHIELD_VISUAL:					//SCS ADD
+	{
+		if (!Obj_TickNormalShieldVisual(mobj))
+		{
+			return;
+		}
+		break;
+	}
+	case MT_ARMASHIELD_VISUAL1:					//SCS ADD
+	case MT_ARMASHIELD_VISUAL2:
+	{
+		if (!Obj_TickArmaShieldVisual(mobj))
+		{
+			return;
+		}
+		break;	
+	}
 	case MT_LIGHTNINGATTACK_VISUAL:
 	{
 		if (!(mobj->target && !P_MobjWasRemoved(mobj->target)))
@@ -6919,6 +6966,13 @@ static boolean P_MobjDeadThink(mobj_t *mobj)
 	{
 	case MT_PLAYER:
 		/// \todo Have the player's dead body completely finish its animation even if they've already respawned.
+		
+		if (mobj->player && mobj->player->itemtype == KITEM_PICKPOCKETHYU)		//SCS ADD
+		{
+			K_PickpocketHyuChainDestroy(mobj->player);
+			K_DropItems(mobj->player);
+			mobj->player->pickpockethyucombo = 0;
+		}
 		if (!mobj->fuse)
 		{ // Go away.
 		  /// \todo Actually go ahead and remove mobj completely, and fix any bugs and crashes doing this creates. Chasecam should stop moving, and F12 should never return to it.
@@ -6961,6 +7015,7 @@ static boolean P_MobjDeadThink(mobj_t *mobj)
 	case MT_ORBINAUT:
 	case MT_EGGMANITEM:
 	case MT_LANDMINE:
+	case MT_PRESSUREMINE:					//SCS ADD
 	//case MT_DROPTARGET:
 	case MT_SPB:
 	case MT_GACHABOM:
@@ -6978,6 +7033,9 @@ static boolean P_MobjDeadThink(mobj_t *mobj)
 		mobj->renderflags ^= RF_DONTDRAW;
 		break;
 	case MT_JAWZ:
+	case MT_GHZBALL:						//SCS ADD
+	case MT_MEGACHOPPER:					//SCS ADD
+	case MT_AFTERBURNER_JAWZ:				//SCS ADD
 		if (P_IsObjectOnGround(mobj))
 			P_SetMobjState(mobj, mobj->info->xdeathstate);
 		/* FALLTHRU */
@@ -7457,10 +7515,185 @@ static boolean P_MobjRegularThink(mobj_t *mobj)
 		P_MobjCheckWater(mobj);
 		break;
 	}
+	case MT_XSNAPLASTORBITSHOT:		//SCS ADD
+	{
+		if (!mobj->target)
+			;
+		else if (mobj->fuse < 5)
+		{
+			mobj->color = SKINCOLOR_MAROON;
+		}
+		else if (mobj->fuse < 7)
+		{
+			P_MoveOrigin(mobj, mobj->target->x, mobj->target->y, mobj->target->z);
+			mobj->color = SKINCOLOR_MAROON;
+		}
+		
+		mobj->frame = ((leveltime%4)/2)|FF_FULLBRIGHT|(8-mobj->fuse)<<FF_TRANSSHIFT;
+		break;
+	}
+	case MT_XSNAPLASTSHOT:			//SCS ADD
+	case MT_XSNAPLASTSHOTSHRINK:	//SCS ADD
+	case MT_RINGGUNLARGESHOT:		//SCS ADD
+	{
+		if (leveltime % 8 == 0)
+		{
+			P_SpawnGhostMobj(mobj);
+		}
+		
+		if (leveltime % 64 == 0)
+		{
+			mobj_t *bulletring = P_SpawnMobj(mobj->x, mobj->y, mobj->z, MT_XSNAPLASTORBITSHOT);
+			
+			if (bulletring)
+			{
+				bulletring->target = mobj;
+				bulletring->scale = mobj->scale*(3/2);
+				bulletring->angle = mobj->angle;
+				bulletring->color = SKINCOLOR_GOLD;
+				bulletring->fuse = 8;
+			}
+		}
+		break;
+	}
+	case MT_RINGGUNLIGHTS:			//SCS ADD
+	{
+		if (mobj->target && mobj->target->player && mobj->target->player->playerringgunpower > 0)
+		{
+			P_SetOrigin(mobj, mobj->target->x, mobj->target->y, mobj->target->z);
+		}
+		else
+			P_RemoveMobj(mobj);
+			
+		break;
+	}
+	case MT_GHZBALL:				//SCS ADD
+	{
+		Obj_WreckingBallThink(mobj);
+		P_MobjCheckWater(mobj);
+		break;		
+	}
+	case MT_MINIHYUDORO:			//SCS ADD
+	{
+		Obj_MiniHyudoroThink(mobj);
+		break;
+	}
+	case MT_TIMESTONEACTIVATE:		//SCS ADD
+	{
+		if (mobj->fuse == 1)
+		{
+			mobj_t *idleeffect = P_SpawnMobjFromMobj(mobj, 0, 0, 0, MT_TIMESTONEIDLE);
+			
+			if (idleeffect && mobj->target)
+			{
+				idleeffect->target = mobj->target;
+				mobj->target->player->timestonelingeringeffect = idleeffect;
+				idleeffect->destscale = mobj->scale;
+			}
+			
+			P_RemoveMobj(mobj);
+		}
+		else if (mobj->target && mobj->target->player && mobj->target->player->timestonefrozen)
+		{
+			P_SetOrigin(mobj, mobj->target->x, mobj->target->y, mobj->target->z);
+		}
+		else
+		{
+			mobj->target->player->timestonelingeringeffect = NULL;
+			P_RemoveMobj(mobj);
+		}
+		
+		break;
+		
+	}
+	case MT_TIMESTONEIDLE:			//SCS ADD
+	{
+		if (mobj->target && mobj->target->player)
+		{
+			if (mobj->target->player->timestonefrozen)
+				P_SetOrigin(mobj, mobj->target->x, mobj->target->y, mobj->target->z);
+			else
+			{
+				mobj->target->player->timestonelingeringeffect = NULL;
+				P_RemoveMobj(mobj);
+			}
+		}
+		
+		break;
+	}
+	case MT_SUPERFORMSPARKLE:		//SCS ADD
+	{
+		if (!mobj->target || !mobj->target->health || (mobj->target->player && !mobj->target->player->masteremeraldinvincibility))
+		{
+			P_RemoveMobj(mobj);
+			return false;
+		}
+		//mobj->color = mobj->target->color;
+		//mobj->colorized = mobj->target->colorized;
+		break;
+	}
+	case MT_INKBUBBLE:				//SCS ADD
+	{
+		if (mobj->threshold)
+			mobj->threshold--;
+		
+		mobj->momx = 0;
+		mobj->momy = 0;
+		mobj->momz = 0;
+		break;
+	}
+	case MT_MEGACHOPPER:				//SCS ADD
+	{
+		if (!mobj->target || !mobj->target->health)
+		{
+			//P_RemoveMobj(mobj);
+			P_SetMobjState(mobj, mobj->info->xdeathstate);
+			return false;
+		}
+		if (mobj->target && mobj->target->player && mobj->target->player->megachoppertimer <= 0)
+		{
+			mobj->target->player->megachopper = NULL;
+			mobj->target->player->megachoppertimer = 0;
+			if (P_IsObjectOnGround(mobj))
+			{
+				//P_RemoveMobj(mobj);
+				P_SetMobjState(mobj, mobj->info->xdeathstate);
+				return false;
+			}
+		}
+		Obj_MegaChopperThink(mobj);
+		break;		
+	}
+	case MT_EMERALDORBIT:					//SCS ADD
+	{
+		EM_OrbitThinker(mobj);
+		break;
+	}
+	case MT_XEMBEAM:						//SCS ADD
+	{
+		EM_BeamThinker(mobj);
+		break;
+	}
+	case MT_GHZBALLCHUNK:					//SCS ADD
+	{
+		Obj_WreckingBallChunkThink(mobj);
+		break;
+	}
 	case MT_JAWZ:
 	{
 		Obj_JawzThink(mobj);
 		P_MobjCheckWater(mobj);
+		break;
+	}
+	case MT_AFTERBURNER_JAWZ:
+	{
+		Obj_ABJawzThink(mobj);
+		P_MobjCheckWater(mobj);
+		break;
+	}
+	case MT_ABJZBOOSTER:
+	{
+		Obj_ABJawzBoosterThink(mobj);
 		break;
 	}
 	case MT_EGGMANITEM:
@@ -7671,6 +7904,7 @@ static boolean P_MobjRegularThink(mobj_t *mobj)
 			mobj->threshold--;
 		break;
 	case MT_LANDMINE:
+	case MT_PRESSUREMINE:								//SCS ADD
 		if (mobj->target && mobj->target->player)
 			mobj->color = mobj->target->player->skincolor;
 		else
@@ -8008,34 +8242,36 @@ static boolean P_MobjRegularThink(mobj_t *mobj)
 		player_t *player = target->player;
 		fixed_t myspeed = (player->speed);
 		boolean In_A_Race = ((gametyperules & GTR_CIRCUIT) && !K_Cooperative() && M_NotFreePlay() && !modeattacking); // If you're in a real race.
-		boolean prorated_sonicboom_alert = (K_PlayerTripwireSpeedThreshold(player) > 2 * K_GetKartSpeed(player, false, false)) ; // If you're being prorated.
+		boolean prorated_sonicboom_alert = (K_PlayerTripwireSpeedThreshold(player) > (9 * K_GetKartSpeed(player, false, false)/4)) ; // If you're being prorated, aka above 225%
 		fixed_t maxspeed = K_PlayerTripwireSpeedThreshold(player); // Centered at this speed.
 		fixed_t minspeed = max(2 * maxspeed / 4, 7 * K_GetKartSpeed(player, false, false) / 5); // Starts appearing at this speed.
 		fixed_t alertspeed = 9 * maxspeed / 10; // When to flash?
 		fixed_t frontoffset = 5*target->scale; // How far in front?
 		
 		fixed_t percentvisible = 0;
+		
+		boolean not_respawning = player->respawn.state == RESPAWNST_NONE;
 
-		if (myspeed > minspeed)
+		if (not_respawning && myspeed > minspeed)
 		{
 			percentvisible = min(FRACUNIT, FixedDiv(myspeed - minspeed, maxspeed - minspeed));
 		}
 
-		if (myspeed >= maxspeed || player->tripwireLeniency)
+		if (not_respawning && (myspeed >= maxspeed || player->tripwireLeniency))
 		{
 			player->subsonicleniency++; // Subsonic visual stays for a bit during tripwire leniency
 
-			if(player->subsonicleniency == 1 && player->tripwireLeniency && myspeed >= maxspeed && !S_SoundPlaying(player->mo, sfx_gsha7)) // Don't play during superring too
+			if (player->subsonicleniency == 1 && player->tripwireLeniency && myspeed >= maxspeed && !S_SoundPlaying(player->mo, sfx_gsha7)) // Don't play during superring too
 			{
-			mobj_t *boost = P_SpawnMobjFromMobj(player->mo, 0, 0, player->mo->height/2, MT_SONICBOOM);
-			boost->momx = player->mo->momx/2;
-			boost->momy = player->mo->momy/2;
-			boost->momz = player->mo->momz/2;
-			boost->angle = player->mo->angle + ANGLE_90;
-			boost->scalespeed = boost->scale;
-			boost->destscale = boost->scale*8;
-			//sonicboom->color = SKINCOLOR_WHITE;
-			boost->fuse = 8;				
+				mobj_t *boost = P_SpawnMobjFromMobj(player->mo, 0, 0, player->mo->height/2, MT_SONICBOOM);
+				boost->momx = player->mo->momx/2;
+				boost->momy = player->mo->momy/2;
+				boost->momz = player->mo->momz/2;
+				boost->angle = player->mo->angle + ANGLE_90;
+				boost->scalespeed = boost->scale;
+				boost->destscale = boost->scale*8;
+				//sonicboom->color = SKINCOLOR_WHITE;
+				boost->fuse = 8;		
 			}
 		}
 		else
@@ -8043,10 +8279,10 @@ static boolean P_MobjRegularThink(mobj_t *mobj)
 			player->subsonicleniency = 0; // Goes back down otherwise
 		}
 		
-		if (player->subsonicleniency >= (3*TICRATE)) 
+		if (player->subsonicleniency >= (3*TICRATE))
 		{
 			percentvisible = 0; // Once it stays long enough, no longer visible
-		} 
+		}
 
 #if 0
 		if (!K_PlayerUsesBotMovement(player))
@@ -8118,8 +8354,9 @@ static boolean P_MobjRegularThink(mobj_t *mobj)
 		mobj->renderflags |= (RF_DONTDRAW & ~K_GetPlayerDontDrawFlag(player));
 
 		// Alright, let's just handle all the sfx down here
+		boolean not_perma_tripwireok = player->invincibilitytimer == 0 && player->growshrinktimer <= 0 && player->hyudorotimer == 0;
 
-		if (P_IsDisplayPlayer(player))
+		if (P_IsDisplayPlayer(player) && not_perma_tripwireok && not_respawning)
 		{
 			UINT8 MIN_VOLUME = 25;
 			UINT8 MAX_VOLUME = 75;
@@ -8198,13 +8435,34 @@ static boolean P_MobjRegularThink(mobj_t *mobj)
 				trans = NUMTRANSMAPS;
 
 			trans = NUMTRANSMAPS - trans;
-
-			if ((trans >= NUMTRANSMAPS) // not a valid visibility
-				|| (myspeed < (tripspeed - basespeed/2) && (leveltime & 1)) // < 150% flickering
-				|| (mobj->target->player->tripwirePass < TRIPWIRE_BOOST) // Not strong enough to make an aura
-				|| mobj->target->player->flamedash) // Flameshield dash
+			
+			int invinc_rotation_delay = 2;
+			if (cv_reducevfx.value)
 			{
+				invinc_rotation_delay = 8;
+			}
+
+			boolean updatecolor = false;
+			if ((trans >= NUMTRANSMAPS) || mobj->target->player->flamedash || mobj->target->player->tripwirePass < TRIPWIRE_BOOST)
+			{
+				// never show for flameshield dash, below tripwire minimum or transparency invalid
+				mobj->renderflags &= ~RF_TRANSMASK;
 				mobj->renderflags |= RF_DONTDRAW;
+			}
+			else if (myspeed < (tripspeed - basespeed/2))
+			{
+				mobj->renderflags &= ~(RF_TRANSMASK|RF_DONTDRAW);
+				if (cv_reducevfx.value)
+				{
+					// < 150% make more transparent for reducevfx
+					mobj->renderflags |= RF_TRANS40;
+				}
+				else if (leveltime & 1)
+				{
+					// < 150% flickering normally
+					mobj->renderflags |= RF_DONTDRAW;
+				}
+				updatecolor = true;
 			}
 			else
 			{
@@ -8216,12 +8474,30 @@ static boolean P_MobjRegularThink(mobj_t *mobj)
 					mobj->renderflags |= (trans << RF_TRANSSHIFT);
 				}
 				mobj->renderflags |= (mobj->target->renderflags & RF_DONTDRAW);
+				
+				updatecolor = true;
 
+				if (blastermode == !(mobj->flags2 & MF2_AMBUSH))
+				{
+					mobj->flags2 ^= MF2_AMBUSH;
+					if (blastermode)
+					{
+						P_SetMobjState(mobj, (mobj->extravalue1) ? S_TRIPWIREBOOST_BLAST_BOTTOM : S_TRIPWIREBOOST_BLAST_TOP);
+					}
+					else
+					{
+						P_SetMobjState(mobj, (mobj->extravalue1) ? S_TRIPWIREBOOST_BOTTOM : S_TRIPWIREBOOST_TOP);
+					}
+				}
+			}
+
+			if (updatecolor)
+			{
 				if (mobj->target->player->invincibilitytimer > 0)
 				{
 					if (mobj->target->player->invincibilitytimer > itemtime+(2*TICRATE))
 					{
-						mobj->color = K_RainbowColor(leveltime / 2);
+						mobj->color = K_RainbowColor(leveltime / invinc_rotation_delay);
 					}
 					else
 					{
@@ -8238,19 +8514,6 @@ static boolean P_MobjRegularThink(mobj_t *mobj)
 				{
 					mobj->color = SKINCOLOR_NONE;
 					mobj->colorized = false;
-				}
-
-				if (blastermode == !(mobj->flags2 & MF2_AMBUSH))
-				{
-					mobj->flags2 ^= MF2_AMBUSH;
-					if (blastermode)
-					{
-						P_SetMobjState(mobj, (mobj->extravalue1) ? S_TRIPWIREBOOST_BLAST_BOTTOM : S_TRIPWIREBOOST_BLAST_TOP);
-					}
-					else
-					{
-						P_SetMobjState(mobj, (mobj->extravalue1) ? S_TRIPWIREBOOST_BOTTOM : S_TRIPWIREBOOST_TOP);
-					}
 				}
 			}
 		}
@@ -8311,12 +8574,39 @@ static boolean P_MobjRegularThink(mobj_t *mobj)
 			rand_angle = P_RandomRange(PR_ITEM_BOOST, 135, 225);
 			P_Thrust(smoke, mobj->angle+FixedAngle(rand_angle<<FRACBITS), rand_move * mobj->target->scale);
 		}
+		break;	
+	case MT_SPARKLETRAILOLD:																								//SCS ADD
+		if (!mobj->target || !mobj->target->health || (mobj->target->player && !mobj->target->player->invincibilitytimer))
+		{
+			P_RemoveMobj(mobj);
+			return false;
+		}
+		mobj->color = mobj->target->color;
+		mobj->colorized = mobj->target->colorized;
+		break;
+	case MT_TIMESTONESPARKLE:																								//SCS ADD
+		if (!mobj->target || !mobj->target->health || (mobj->target->player && !mobj->target->player->timestonefrozen))
+		{
+			P_RemoveMobj(mobj);
+			return false;
+		}
+		mobj->color = mobj->target->color;
+		mobj->colorized = mobj->target->colorized;
 		break;
 	case MT_INVULNFLASH:
 		if (!mobj->target || !mobj->target->health || (mobj->target->player && !mobj->target->player->invincibilitytimer))
 		{
 			P_RemoveMobj(mobj);
 			return false;
+		}
+		// This invinc mobj flickers intensely, so don't draw it in reducevfx
+		if (cv_reducevfx.value && (mobj->renderflags & RF_DONTDRAW) == 0)
+		{
+			mobj->renderflags |= RF_DONTDRAW;
+		}
+		if (!cv_reducevfx.value && (mobj->renderflags & RF_DONTDRAW) != 0)
+		{
+			mobj->renderflags ^= RF_DONTDRAW;
 		}
 		P_MoveOrigin(mobj, mobj->target->x, mobj->target->y, mobj->target->z);
 		break;
@@ -8899,6 +9189,36 @@ static boolean P_MobjRegularThink(mobj_t *mobj)
 
 		break;
 	}
+	case MT_NORMALSHIELD:																					//SCS ADD
+	{
+		if (!mobj->target || !mobj->target->health || !mobj->target->player
+			|| mobj->target->player->curshield != KSHIELD_NORMAL)
+		{
+			P_RemoveMobj(mobj);
+			return false;
+		}
+		P_SetScale(mobj, (mobj->destscale = (5*mobj->target->scale)>>2));
+
+		P_MoveOrigin(mobj, mobj->target->x, mobj->target->y, mobj->target->z + mobj->target->height/2);
+		K_FlipFromObject(mobj, mobj->target);
+
+		break;
+	}
+	case MT_ARMASHIELD:																					//SCS ADD
+	{
+		if (!mobj->target || !mobj->target->health || !mobj->target->player
+			|| mobj->target->player->curshield != KSHIELD_ARMA)
+		{
+			P_RemoveMobj(mobj);
+			return false;
+		}
+		P_SetScale(mobj, (mobj->destscale = (5*mobj->target->scale)>>2));
+
+		P_MoveOrigin(mobj, mobj->target->x, mobj->target->y, mobj->target->z + mobj->target->height/2);
+		K_FlipFromObject(mobj, mobj->target);
+
+		break;
+	}
 	case MT_GOTIT:
 	{
 		if (!mobj->target || !mobj->target->health || !mobj->target->player)
@@ -9243,11 +9563,13 @@ static boolean P_MobjRegularThink(mobj_t *mobj)
 		break;
 	}
 	case MT_HYUDORO:
+	case MT_BHYUDORO:	//SCS ADD
 	{
 		Obj_HyudoroThink(mobj);
 		break;
 	}
 	case MT_HYUDORO_CENTER:
+	case MT_BHYUDORO_CENTER:	//SCS ADD
 	{
 		Obj_HyudoroCenterThink(mobj);
 		break;
@@ -10614,9 +10936,14 @@ static boolean P_CanFlickerFuse(mobj_t *mobj)
 		case MT_FALLINGROCK:
 		case MT_FLOATINGITEM:
 		case MT_POGOSPRING:
+		case MT_YOGOSPRING:			//SCS ADD
+		case MT_BOGOSPRING:			//SCS ADD
 		case MT_EMERALD:
 		case MT_BLENDEYE_PUYO:
 		case MT_KART_PARTICLE:
+		case MT_GHZBALL:			//SCS ADD
+		case MT_GHZBALLCHUNK:		//SCS ADD
+		case MT_MEGACHOPPER:		//SCS ADD
 			if (mobj->fuse <= TICRATE)
 			{
 				return true;
@@ -10990,6 +11317,7 @@ void P_MobjThinker(mobj_t *mobj)
 		{
 			if (mobj->type == MT_SSMINE
 				|| mobj->type == MT_BUBBLESHIELDTRAP
+				|| mobj->type == MT_INKBUBBLE				//SCS ADD
 				|| mobj->type == MT_BALLHOG)
 			{
 				S_StartSound(mobj, mobj->info->deathsound);
@@ -11073,6 +11401,8 @@ void P_MobjThinker(mobj_t *mobj)
 		|| mobj->type == MT_ORBINAUT
 		|| mobj->type == MT_GACHABOM
 		|| mobj->type == MT_JAWZ
+		|| mobj->type == MT_GHZBALL										//SCS ADD
+		|| mobj->type == MT_AFTERBURNER_JAWZ							//SCS ADD
 		|| (mobj->type == MT_DROPTARGET && mobj->reactiontime))
 	{
 		P_TryMove(mobj, mobj->x, mobj->y, true, NULL); // Sets mo->standingslope correctly
@@ -11336,6 +11666,9 @@ static void P_DefaultMobjShadowScale(mobj_t *thing)
 
 	switch (thing->type)
 	{
+		case MT_MINIHYUDORO:					//SCS ADD
+			thing->shadowscale = FRACUNIT/2;
+			break;
 		case MT_PLAYER:
 		case MT_KART_LEFTOVER:
 		case MT_BATTLECAPSULE:
@@ -11361,12 +11694,15 @@ static void P_DefaultMobjShadowScale(mobj_t *thing)
 		case MT_LANDMINE:
 		case MT_BALLHOG:
 		case MT_HYUDORO:
+		case MT_BHYUDORO:						//SCS ADD
 		case MT_SINK:
 		case MT_ROCKETSNEAKER:
 		case MT_SPB:
 		case MT_DUELBOMB:
 		case MT_GACHABOM:
 		case MT_BALLOON:
+		case MT_AFTERBURNER_JAWZ:				//SCS ADD
+		case MT_PRESSUREMINE:					//SCS ADD
 			thing->shadowscale = 3*FRACUNIT/2;
 			break;
 		case MT_BANANA_SHIELD:
@@ -11392,6 +11728,9 @@ static void P_DefaultMobjShadowScale(mobj_t *thing)
 		case MT_BUBBLESHIELDTRAP:
 		case MT_FLAMESHIELD:
 		case MT_GARDENTOP:
+		case MT_GHZBALL:						//SCS ADD
+		case MT_NORMALSHIELD:					//SCS ADD
+		case MT_INKBUBBLE:						//SCS ADD
 			thing->shadowscale = FRACUNIT;
 			break;
 		case MT_RING:
@@ -11402,6 +11741,9 @@ static void P_DefaultMobjShadowScale(mobj_t *thing)
 		case MT_EMERALD:
 		case MT_ITEMCAPSULE:
 		case MT_POGOSPRING:
+		case MT_YOGOSPRING:						//SCS ADD
+		case MT_BOGOSPRING:						//SCS ADD
+		case MT_MEGACHOPPER:					//SCS ADD
 			thing->shadowscale = FRACUNIT/2;
 			break;
 		case MT_DRIFTCLIP:
@@ -11615,6 +11957,8 @@ mobj_t *P_SpawnMobj(fixed_t x, fixed_t y, fixed_t z, mobjtype_t type)
 			}
 			break;
 		case MT_POGOSPRING:
+		case MT_YOGOSPRING:													//SCS ADD
+		case MT_BOGOSPRING:													//SCS ADD
 			P_SetScale(mobj, (mobj->destscale = 3 * mobj->destscale / 2));
 			break;
 		case MT_KART_LEFTOVER:
@@ -12186,6 +12530,21 @@ void P_RemoveMobj(mobj_t *mobj)
 			Obj_AncientGearRemoved(mobj);
 			break;
 		}
+		case MT_GHZBALL:						//SCS ADD
+		{
+			Obj_WreckingBallDeath(mobj);
+			break;
+		}
+		case MT_RINGGUNBLASTMAX:				//SCS ADD
+		{
+			K_SpawnMineExplosion(mobj, mobj->color, 4);
+			break;
+		}
+		/*case MT_INKBUBBLE:
+		{
+			P_RemoveMobj(mobj);
+			break;
+		}*/
 		default:
 		{
 			break;
@@ -14607,7 +14966,14 @@ static boolean P_SetupSpawnedMapThing(mapthing_t *mthing, mobj_t *mobj)
 		Obj_InitHyudoroCenter(mobj, NULL);
 		break;
 	}
+	case MT_BHYUDORO_CENTER:		//SCS ADD
+	{
+		Obj_InitBHyudoroCenter(mobj, NULL);
+		break;
+	}
 	case MT_POGOSPRING:
+	case MT_YOGOSPRING:			//SCS ADD
+	case MT_BOGOSPRING:			//SCS ADD
 	{
 		// Start as tumble version.
 		mobj->reactiontime++;

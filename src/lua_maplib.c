@@ -2593,6 +2593,24 @@ static int mapheaderinfo_get(lua_State *L)
 		lua_pushfixed(L, header->gravity);
 	else if (fastcmp(field, "cameraheight"))
 		lua_pushfixed(L, header->cameraHeight);
+	else if (fastcmp(field, "thumbnail"))							//SCS ADD - merge request implementation "Expose map thumbnail and minimap to lua"
+	{
+		patch_t *tnpatch = header->thumbnailPic;
+
+		if (!tnpatch)
+			tnpatch = W_CachePatchName("BLANKLVL", PU_PATCH);
+
+		LUA_PushUserdata(L, tnpatch, META_PATCH);
+	}
+	else if (fastcmp(field, "minimap"))
+	{
+		patch_t *mmpatch = header->minimapPic;
+
+		if (!mmpatch)
+			mmpatch = W_CachePatchName("BLANKLVL", PU_PATCH);
+
+		LUA_PushUserdata(L, mmpatch, META_PATCH);
+	}
 	else {
 		// Read custom vars now
 		// (note: don't include the "LUA." in your lua scripts!)

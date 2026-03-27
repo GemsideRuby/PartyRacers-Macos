@@ -1893,13 +1893,18 @@ void F_VersionDrawer(void)
 		}
 
 #else // Regular build
+		// RADIO: Branding, branding, branding
+		addtext(trans, va("%s [%s]", compdate, comptime));							//SCS - RADIO START
+		addtext(trans, va("%s", D_GetFancyBranchName()));
+		addtext(trans, va("\x82radio\x80 [\x82%s\x80]", comprevision));				//SCS - RADIO END
 		addtext(trans, va("%s", VERSIONSTRING));
+		addtext(trans, va("\x82party racers\x80"));
 #endif
 
-		if (compuncommitted)
+		/*if (compuncommitted)														//SCS EDIT - Meh, don't need this right now
 		{
 			addtext(V_REDMAP|V_STRINGDANCE, "! UNCOMMITTED CHANGES !");
-		}
+		}*/
 	}
 #undef addtext
 }

@@ -1632,6 +1632,17 @@ typedef enum
 
 	// Ancient Gear
 	sfx_gotgea,
+	
+	//super jackpot			//SCS ADD
+	sfx_mycwin,
+	
+	//new gun item sounds	//SCS ADD
+	sfx_cblsht,
+	sfx_cblbsh,
+	sfx_cblded,
+	sfx_cblemp,
+	sfx_cblrld,
+	sfx_hmgsht,
 
 	// And LASTLY, Kart's skin sounds.
 	sfx_kwin,

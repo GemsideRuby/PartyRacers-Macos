@@ -37,6 +37,11 @@
 #include "core/thread_pool.h"
 #include "k_terrain.h"
 #include "r_debug.hpp"
+#include "k_kart.h"					//SCS - RADIO?
+
+// Radio
+#include "radioracers/rr_setup.h"	//SCS - RADIO
+#include "radioracers/rr_util.h"	//SCS - RADIO
 
 extern "C" consvar_t cv_debugfinishline;
 
@@ -688,6 +693,13 @@ void R_RenderMaskedSegRange(drawseg_t *drawseg, INT32 x1, INT32 x2)
 	rw_scalestep = drawseg->scalestep;
 	spryscale = drawseg->scale1 + (x1 - drawseg->x1)*rw_scalestep;
 
+	/** 
+	 * RADIO: Tripwire accessbility option
+	 */
+	if (P_IsLineTripWire(ldef)) {									//SCS - RADIO
+		texnum = RR_FetchAlternateTripwire(texnum);					//SCS - RADIO
+	}
+
 	// Texture must be cached before setting colfunc_2s,
 	// otherwise texture[texnum]->holes may be false when it shouldn't be
 	R_CheckTextureCache(texnum);
@@ -696,7 +708,7 @@ void R_RenderMaskedSegRange(drawseg_t *drawseg, INT32 x1, INT32 x2)
 	// are not stored per-column with post info in SRB2
 	if (textures[texnum]->holes)
 	{
-		if (textures[texnum]->flip & 2) // vertically flipped?
+		if ((textures[texnum]->flip & 2) || R_ShouldFlipTripWire(ldef)) // vertically flipped?
 		{
 			colfunc_2s = R_DrawFlippedMaskedColumn;
 			lengthcol = textures[texnum]->height;
@@ -706,8 +718,16 @@ void R_RenderMaskedSegRange(drawseg_t *drawseg, INT32 x1, INT32 x2)
 	}
 	else
 	{
-		colfunc_2s = R_Render2sidedMultiPatchColumn; // render multipatch with no holes (no post_t info)
-		lengthcol = textures[texnum]->height;
+		if (R_ShouldFlipTripWire(ldef)) // Check for tripwire flip even for non-holey textures
+		{
+			colfunc_2s = R_DrawFlippedMaskedColumn;
+			lengthcol = textures[texnum]->height;
+		}
+		else
+		{
+			colfunc_2s = R_Render2sidedMultiPatchColumn; // render multipatch with no holes (no post_t info)
+			lengthcol = textures[texnum]->height;
+		}
 	}
 
 	maskedtexturecol = drawseg->maskedtexturecol;

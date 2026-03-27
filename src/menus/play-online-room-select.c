@@ -67,6 +67,11 @@ void M_MPRoomSelectTick(void)
 void M_MPRoomSelectInit(INT32 choice)
 {
 	(void)choice;
+	
+	/**
+	 * RADIO: Prefer SRB2Kart's approach to this.																	//SCS - RADIO
+	 * Warn the player AS they attempt to connect to a server, but don't stop them from being able to search.
+	 */
 
 	if (modifiedgame)
 	{
@@ -84,6 +89,13 @@ void M_MPRoomSelectInit(INT32 choice)
 	mpmenu.servernum = 0;
 	mpmenu.scrolln = 0;
 	mpmenu.slide = 0;
+
+	mpmenu.serverpreview = false;							//SCS - RADIO START
+	mpmenu.serverslide_tic = 0;
+	mpmenu.serverslide_y = 0;
+	mpmenu.serverpreview_map = 0;
+	mpmenu.serverpreview_mapchecked = false;
+	mpmenu.serverpreview_done = false;						//SCS - RADIO END
 
 #ifndef TESTERS
 	if ((modifiedgame == true) || (M_SecretUnlocked(SECRET_ADDONS, true) == false))

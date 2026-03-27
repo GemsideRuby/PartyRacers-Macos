@@ -261,6 +261,7 @@ boolean staffsync = false;
 
 UINT8 splitscreen = 0;
 INT32 adminplayers[MAXPLAYERS];
+INT32 mutedplayers[MAXPLAYERS]; // RadioRacers: check doomstat.h for more information.		//SCS - RADIO
 
 // Scheduled commands.
 scheduleTask_t **schedule = NULL;
@@ -618,7 +619,23 @@ static boolean AllowedPlayerNameChar(char ch)
 	return true;
 }
 
-boolean EnsurePlayerNameIsGood(char *name, INT32 playernum)
+boolean IsPlayerNameUnique(const char *name, INT32 playernum)
+{
+	// Check if a player is currently using the name, case-insensitively.
+	for (INT32 ix = 0; ix < MAXPLAYERS; ix++)
+	{
+		if (ix == playernum) // Don't compare with themself.
+			continue;
+		if (playeringame[ix] == false) // This player is not ingame.
+			continue;
+		if (strcasecmp(name, player_names[ix]) == 0) // Are usernames equal?
+			return false;
+	}
+	
+	return true;
+}
+
+boolean IsPlayerNameGood(char *name)
 {
 	size_t ix, len = strlen(name);
 
@@ -650,36 +667,43 @@ boolean EnsurePlayerNameIsGood(char *name, INT32 playernum)
 	for (ix = 0; ix < len; ix++)
 		if (!AllowedPlayerNameChar(name[ix]))
 			return false;
+		
+	return true;
+}
 
-	// Check if a player is currently using the name, case-insensitively.
-	for (ix = 0; ix < MAXPLAYERS; ix++)
+boolean EnsurePlayerNameIsGood(char *name, INT32 playernum)
+{
+	size_t len = strlen(name);
+	
+	// Check if a player is using a valid name.
+	if (!IsPlayerNameGood(name))
+		return false;
+
+	// Check if another player is currently using the name, case-insensitively.
+	if (!IsPlayerNameUnique(name, playernum)) 
 	{
-		if (ix != (size_t)playernum && playeringame[ix]
-			&& strcasecmp(name, player_names[ix]) == 0)
-		{
-			// We shouldn't kick people out just because
-			// they joined the game with the same name
-			// as someone else -- modify the name instead.
+		// We shouldn't kick people out just because
+		// they joined the game with the same name
+		// as someone else -- modify the name instead.
 
-			// Recursion!
-			// Slowly strip characters off the end of the
-			// name until we no longer have a duplicate.
-			if (len > 1)
-			{
-				name[len-1] = '\0';
-				if (!EnsurePlayerNameIsGood (name, playernum))
-					return false;
-			}
-			else if (len == 1) // Agh!
-			{
-				// Last ditch effort...
-				sprintf(name, "%d", 'A' + M_RandomKey(26));
-				if (!EnsurePlayerNameIsGood (name, playernum))
-					return false;
-			}
-			else
+		// Recursion!
+		// Slowly strip characters off the end of the
+		// name until we no longer have a duplicate.
+		if (len > 1)
+		{
+			name[len-1] = '\0';
+			if (!EnsurePlayerNameIsGood (name, playernum))
 				return false;
 		}
+		else if (len == 1) // Agh!
+		{
+			// Last ditch effort...
+			sprintf(name, "%d", 'A' + M_RandomKey(26));
+			if (!EnsurePlayerNameIsGood (name, playernum))
+				return false;
+		}
+		else
+			return false;
 	}
 
 	return true;
@@ -1307,7 +1331,7 @@ void WeaponPref_Save(UINT8 **cp, INT32 playernum)
 	if (player->pflags & PF_AUTORING)
 		prefs |= WP_AUTORING;
 
-	if (player->pflags & PF2_STRICTFASTFALL)
+	if (player->pflags2 & PF2_STRICTFASTFALL)
 		prefs |= WP_STRICTFASTFALL;
 
 	WRITEUINT8(*cp, prefs);
@@ -2994,6 +3018,13 @@ static void Got_Mapcmd(const UINT8 **cp, INT32 playernum)
 
 	if (demo.playback && !demo.timing)
 		precache = false;
+	
+	// Save demo in case map change happened after level finish
+	// (either manually with the map command, or with a redo vote)
+	// Isn't needed for time attack (and would also cause issues, as there
+	// G_RecordDemo (which sets demo.recording to true) is called before this runs)
+	if (demo.recording && modeattacking == ATTACKING_NONE)
+		G_CheckDemoStatus();
 
 	demo.willsave = (cv_recordmultiplayerdemos.value == 2);
 	demo.savebutton = 0;
@@ -3901,6 +3932,48 @@ void ClearAdminPlayers(void)
 	memset(adminplayers, -1, sizeof(adminplayers));
 }
 
+void MutePlayerFromChat(INT32 playernum) {			//SCS - RADIO START
+	INT32 i;
+	for (i = 0; i < MAXPLAYERS; i++)
+	{
+		if (playernum == mutedplayers[i])
+			return; // Player is already muted
+		
+		if (mutedplayers[i] == -1) {
+			mutedplayers[i] = playernum;
+			break;			
+		}
+	}
+}
+
+void UnmutePlayerFromChat(INT32 playernum) {
+	INT32 i;
+	for (i = 0; i < MAXPLAYERS; i++)
+	{
+		if (mutedplayers[i] == playernum) {
+			mutedplayers[i] = -1;
+			break;			
+		}
+	}
+}
+
+boolean IsPlayerMuted(INT32 playernum) 
+{
+	INT32 i;
+	for (i = 0; i < MAXPLAYERS; i++)
+	{
+		if (playernum == mutedplayers[i]) {
+			return true;
+		}
+	}	
+	return false;
+}
+
+void ClearMutedPlayers(void)
+{
+	memset(mutedplayers, -1, sizeof(mutedplayers));
+}																//SCS - RADIO END
+
 void RemoveAdminPlayer(INT32 playernum)
 {
 	INT32 i;
@@ -4451,7 +4524,7 @@ static void Command_Addfile(void)
 		}
 
 		// Add file on your client directly if it is trivial, or you aren't in a netgame.
-		if (!(netgame || multiplayer) || musiconly)
+		if (!netgame || musiconly)
 		{
 			P_AddWadFile(fn);
 			addedfiles[numfilesadded++] = fn;
@@ -5151,8 +5224,8 @@ static void Command_Version_f(void)
 	CONS_Printf("\x87" "DEVELOP " "\x80");
 #endif
 
-	if (compuncommitted)
-		CONS_Printf("\x85" "! UNCOMMITTED CHANGES ! " "\x80");
+	//if (compuncommitted)													//SCS EDIT - Meh, don't need this right now
+		//CONS_Printf("\x85" "! UNCOMMITTED CHANGES ! " "\x80");
 
 	CONS_Printf("\n");
 }
@@ -5695,6 +5768,11 @@ static void Got_SetupVotecmd(const UINT8 **cp, INT32 playernum)
 	}
 
 	memcpy(g_voteLevels, tempVoteLevels, sizeof(g_voteLevels));
+	
+	// admin can force vote state whenever
+	// so we have to save this replay if it needs to be saved
+	if (demo.recording)
+		G_CheckDemoStatus();
 
 	G_SetGamestate(GS_VOTING);
 	Y_StartVote();
@@ -6067,7 +6145,7 @@ static void Got_Cheat(const UINT8 **cp, INT32 playernum)
 			K_StopRoulette(&player->itemRoulette);
 
 			player->itemtype = item;
-			player->itemamount = amt;
+			K_SetPlayerItemAmount(player, amt);
 
 			if (amt == 0)
 			{
@@ -7591,6 +7669,34 @@ void LiveStudioAudience_OnChange(void);
 void LiveStudioAudience_OnChange(void)
 {
 	livestudioaudience_timer = 90;
+}
+
+static boolean maxplayers_warned = false;
+
+static void M_MaxplayersSelect(INT32 choice)
+{
+	if (choice == MA_YES)
+	{
+		maxplayers_warned = true;
+		return;
+	}
+
+	CV_StealthSetValue(&cv_maxplayers, 8);
+}
+
+void Maxplayers_OnChange(void);
+void Maxplayers_OnChange(void)
+{
+	if (cv_maxplayers.value <= 8 || maxplayers_warned)
+		return;
+/*																							//SCS EDIT - Dear God, just shut up... The fact that this message exists is super embarrassing...
+	if (currentMenu == &PLAY_RaceDifficultyDef || currentMenu == &OPTIONS_ServerDef)
+	{
+		S_StartSound(NULL, sfx_s3k96);
+		M_StartMessage("Some advice...",
+			"Ring Racers was designed for \x82""8 or fewer players""\x80"".\n""\x80""Racing may be ""\x82""more frustrating""\x80"" in large games.\n""\x86""(Comeback tools can only work so hard!)",
+		M_MaxplayersSelect, MM_YESNO, "Bring on the imbalance...!", "Never mind!");
+	}*/
 }
 
 void Got_DiscordInfo(const UINT8 **p, INT32 playernum)

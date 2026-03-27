@@ -154,6 +154,8 @@ typedef enum
 	PF2_SERVERTEMPMUTE		= 1<<10, // Haven't met gamestochat requirement
 	PF2_SAMEFRAMESTUNG		= 1<<11, // Goofy bullshit for tracking mutual ring sting
 	PF2_UNSTINGABLE			= 1<<12, // Was bumped out of spindash
+	PF2_GIMMESTARTAWARDS	= 1<<13, // Need to apply non-first start awards on a 1 tic delay to prevent port priority
+	PF2_GIMMEFIRSTBLOOD		= 1<<14, // And need to differentiate between First Blood and everything else!
 } pflags2_t;
 
 typedef enum
@@ -210,7 +212,25 @@ Run this macro, then #undef FOREACH afterward
 	FOREACH (GARDENTOP,     22),\
 	FOREACH (GACHABOM,      23),\
 	FOREACH (STONESHOE,     24),\
-	FOREACH (TOXOMISTER,    25)
+	FOREACH (TOXOMISTER,    25),\
+	FOREACH (SUPERJACKPOT,  26),\
+	FOREACH (WRECKINGBALL,  27),\
+	FOREACH (MASTEREMERALD, 28),\
+	FOREACH (PICKPOCKETHYU, 29),\
+	FOREACH (YOGOSPRING, 	30),\
+	FOREACH (TIMESTONE, 	31),\
+	FOREACH (BOGOSPRING,	32),\
+	FOREACH (NORMALSHIELD,	33),\
+	FOREACH (MEGACHOPPER,	34),\
+	FOREACH (ARMASHIELD,	35),\
+	FOREACH (ABURNERJAWZ,	36),\
+	FOREACH (PRESSUREMINE,	37),\
+	FOREACH (CHAMBLASTER,	38),\
+	FOREACH (EGGBLASTER,	39),\
+	FOREACH (RINGGUN,		40),\
+	FOREACH (BUTLERHYU,		41),\
+	FOREACH (OCTUS,		42)
+
 
 typedef enum
 {
@@ -228,6 +248,8 @@ typedef enum
 	KRITEM_QUADORBINAUT,
 	KRITEM_DUALJAWZ,
 	KRITEM_TRIPLEGACHABOM,
+	KRITEM_DECABANANA,				//SCS ADD
+	KRITEM_DUALABURNERJAWZ,			//SCS ADD
 
 	NUMKARTRESULTS,
 
@@ -257,6 +279,8 @@ typedef enum
 	KSHIELD_BUBBLE = 2,
 	KSHIELD_FLAME = 3,
 	KSHIELD_TOP = 4,
+	KSHIELD_NORMAL = 5,			//SCS ADD
+	KSHIELD_ARMA = 6,			//SCS ADD
 	NUMKARTSHIELDS
 } kartshields_t;
 
@@ -270,7 +294,18 @@ typedef enum
 	KSM_JACKPOT,
 	KSM__MAX,
 } kartslotmachine_t;
-
+/*
+typedef enum
+{
+	KSM_BAR,
+	KSM_DOUBLEBAR,
+	KSM_TRIPLEBAR,
+	KSM_RING,
+	KSM_SEVEN,
+	KSM_SUPERJACKPOT,
+	KSM__MAX,
+} kartslotmachineback_t;
+*/
 typedef enum
 {
 	KSPIN_THRUST    = (1<<0),
@@ -386,6 +421,8 @@ typedef enum
 #define TRIPWIRETIME (50)
 
 #define BALLHOGINCREMENT (7)
+
+#define NORMSHIELDINCREMENT (15)			//SCS ADD
 
 //}
 
@@ -736,6 +773,7 @@ struct player_t
 	UINT8 position;			// Used for Kart positions, mostly for deterministic stuff
 	UINT8 oldposition;		// Used for taunting when you pass someone
 	UINT8 positiondelay;	// Used for position number, so it can grow when passing
+	UINT8 leaderpenalty;	// Used for penalising 1st in a positiondelay-friendly way
 
 	UINT8 teamposition;		// Position, but only against other teams -- not your own.
 	UINT8 teamimportance;	// Opposite of team position x2, with +1 for being in 1st.
@@ -755,6 +793,7 @@ struct player_t
 	tic_t lastairtime;
 	UINT16 bigwaypointgap;	// timer counts down if finish line distance gap is too big to update waypoint
 	UINT8 startboost;		// (0 to 125) - Boost you get from start of race
+	UINT8 neostartboost;	// Weaker partial startboost
 	UINT8 dropdashboost;	// Boost you get when holding A while respawning
 	UINT8 aciddropdashboost;	// acid dropdash
 
@@ -766,6 +805,7 @@ struct player_t
 	UINT8 wipeoutslow;		// Timer before you slowdown when getting wiped out
 	UINT8 justbumped;		// Prevent players from endlessly bumping into each other
 	UINT8 noEbrakeMagnet;	// Briefly disable 2.2 responsive ebrake if you're bumped by another player.
+	UINT8 wallSpikeDampen;	// 2.4 wallspikes can softlock in closed quarters... attenuate their violence
 	UINT8 tumbleBounces;
 	UINT16 tumbleHeight;	// In *mobjscaled* fracunits, or mfu, not raw fu
 	UINT16 stunned;			// Number of tics during which rings cannot be picked up
@@ -843,6 +883,7 @@ struct player_t
 	UINT8 pickuprings;	// Number of rings being picked up before added to the counter (prevents rings from being deleted forever over 20)
 	UINT8 ringdelay;	// (0 to 3) - 3 tic delay between every ring usage
 	UINT16 ringboost;	// Ring boost timer
+	UINT16 momentboost; // Sigh
 	UINT8 sparkleanim;	// (0 to 19) - Angle offset for ring sparkle animation
 	UINT16 superring;	// You were awarded rings, and have this many of them left to spawn on yourself.
 	UINT16 superringdisplay; // For HUD countup when awarded superring
@@ -870,7 +911,52 @@ struct player_t
 
 	UINT16 hyudorotimer;	// Duration of the Hyudoro offroad effect itself
 	SINT8 stealingtimer;	// if >0 you are stealing, if <0 you are being stolen from
+	SINT8 bstealingtimer;	// if >0 you are stealing, if <0 you are being stolen from		//SCS ADD
 	mobj_t *hoverhyudoro;	// First hyudoro hovering next to player
+	
+	mobj_t *orbitmasteremerald; //When using Master Emerald Item, this is what orbits around you for a second.			//SCS ADD
+	boolean masteremeraldinvincibility; //Is the player's invincibility timer tied to their current ring count?			//SCS ADD
+	boolean usedmasteremeraldduringringboxaward; //Used to determine unique behavior of Master Emerald item where it cuts off and puts you at -20 if used during a ringbox award. //SCS ADD
+	UINT16 playermasteremeraldringdraindelay;
+	
+	UINT16 pickpockethyucombo;	//SCS ADD
+	mobj_t *lastpickpockethyudoro; //SCS ADD
+	
+	boolean timestonefrozen;	//SCS ADD
+	SINT8 timestonefrozenringamount; //SCS ADD
+	UINT16 timestonefrozentimer;	//SCS ADD
+	
+	UINT16 normalshieldboostcharge;	//SCS ADD
+	boolean normalshieldboosttap;	//SCS ADD
+	
+	mobj_t *megachopper;			//SCS ADD
+	UINT16 megachoppertimer;	//SCS ADD
+	UINT16 megachopperdelaytime;	//SCS ADD
+	
+	UINT16 armageddonshieldboosttimer;	//SCS ADD
+	UINT16 armageddonshieldboostdelay;	//SCS ADD
+	UINT16 armashielddraindelay;		//SCS ADD
+	boolean armashielddeployed;			//SCS ADD
+	
+	SINT8 lastabjawztarget;	// (-1 to 15) - Last person you target with jawz, for playing the target switch sfx
+	UINT8 abjawztargetdelay;	// (0 to 5) - Delay for Jawz target switching, to make it less twitchy
+	
+	UINT16 gunusagetimer;	//SCS ADD
+	SINT8 chamblasterrapidshots;	//SCS ADD
+	UINT16 gunfiredelay;			//SCS ADD
+	UINT16 chamblasterreloadtimer;	//SCS ADD
+	
+	SINT8 squishedtimer;		//SCS ADD
+	
+	UINT16 playerringgunpower;	//SCS ADD
+	boolean playerringguntap;	//SCS ADD
+	SINT8 playerringgundelay;	//SCS ADD
+	
+	UINT16 inkblotchtimer;		//SCS ADD
+	
+	SINT8 trickspeedlevel;		//SCS ADD
+	
+	mobj_t *timestonelingeringeffect; //SCS ADD
 
 	UINT16 sneakertimer;	// Duration of a Sneaker Boost (from Sneakers or level boosters)
 	UINT8 numsneakers;		// Number of stacked sneaker effects
@@ -1171,6 +1257,9 @@ struct player_t
 
 	tic_t darkness_start;
 	tic_t darkness_end;
+
+	// Radio only
+	UINT16 expsplit;					//SCS - RADIO
 };
 
 // WARNING FOR ANYONE ABOUT TO ADD SOMETHING TO THE PLAYER STRUCT, G_PlayerReborn WANTS YOU TO SUFFER

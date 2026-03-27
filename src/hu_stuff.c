@@ -65,6 +65,14 @@
 #include "y_inter.h" // Y_PlayerStandingsDrawer
 #include "g_party.h"
 
+// RadioRacers
+#include "radioracers/rr_cvar.h" // cv_holdbuttonforscoreboard				//SCS - RADIO START
+#include "radioracers/rr_hud.h"
+#include "radioracers/rr_video.h"
+#ifndef ENABLE_RADIO_DEMOS
+#include "radioracers/rr_demo.h"
+#endif																		//SCS - RADIO END
+
 // coords are scaled
 #define HU_INPUTX 0
 #define HU_INPUTY 0
@@ -85,13 +93,18 @@ patch_t *frameslash;	// framerate stuff. Used in screen.c
 
 static player_t *plr;
 boolean hu_keystrokes; // :)
+boolean chat_keydown;
 boolean chat_on; // entering a chat message?
 boolean g_voicepushtotalk_on; // holding PTT?
-static char w_chat[HU_MAXMSGLEN + 1];
-static size_t c_input = 0; // let's try to make the chat input less shitty.
+//static char w_chat[HU_MAXMSGLEN + 1];
+//static size_t c_input = 0; // let's try to make the chat input less shitty.
+/** RADIO: Expose w_chat, c_input */											//SCS - RADIO
+char w_chat[HU_MAXMSGLEN + 1];
+size_t c_input = 0; // let's try to make the chat input less shitty.
 static boolean headsupactive = false;
 boolean hu_showscores; // draw rankings
-static char hu_tick;
+//static char hu_tick;
+char hu_tick;																	//SCS - RADIO
 
 //-------------------------------------------
 //              misc vars
@@ -185,6 +198,7 @@ static void Command_Sayto_f(void);
 static void Command_Sayteam_f(void);
 static void Command_CSay_f(void);
 static void Command_Shout(void);
+static void Command_MutePlayer(void); // RadioRacers - mute player command			//SCS - RADIO
 static void Got_Saycmd(const UINT8 **p, INT32 playernum);
 
 void HU_LoadGraphics(void)
@@ -236,6 +250,7 @@ void HU_Init(void)
 	COM_AddCommand("sayteam", Command_Sayteam_f);
 	COM_AddCommand("csay", Command_CSay_f);
 	COM_AddCommand("shout", Command_Shout);
+	COM_AddCommand("muteplayer", Command_MutePlayer); // RadioRacers - muteplayer command		//SCS - RADIO
 	RegisterNetXCmd(XD_SAY, Got_Saycmd);
 
 	// only allocate if not present, to save us a lot of headache
@@ -468,8 +483,10 @@ static UINT32 chat_maxscroll = 0; // how far can we scroll?
 //static chatmsg_t chat_log[CHAT_BUFSIZE]; // Keep every message sent to us in memory so we can scroll n shit, it's cool.
 
 static char chat_log[CHAT_BUFSIZE][255]; // hold the last 48 or so messages in that log.
-static char chat_mini[8][255]; // display up to 8 messages that will fade away / get overwritten
-static tic_t chat_timers[8];
+//static char chat_mini[8][255]; // display up to 8 messages that will fade away / get overwritten
+//static tic_t chat_timers[8];
+char chat_mini[8][255]; // display up to 8 messages that will fade away / get overwritten				//SCS - RADIO START
+tic_t chat_timers[8];																					//SCS - RADIO END
 
 static boolean chat_scrollmedown = false; // force instant scroll down on the chat log. Happens when you open it / send a message.
 
@@ -483,8 +500,12 @@ static void HU_removeChatText_Mini(void)
 	size_t i;
 	for(i=0;i<chat_nummsg_min-1;i++) {
 		strcpy(chat_mini[i], chat_mini[i+1]);
+		//radio
 		chat_timers[i] = chat_timers[i+1];
+		chat_mini_log_offset[i] = chat_mini_log_offset[i+1];			//SCS - RADIO
 	}
+	
+	RR_RemoveEmoteChatMiniLog(chat_nummsg_min);							//SCS - RADIO
 	chat_nummsg_min--; // lost 1 msg.
 
 	// use addy and make shit slide smoothly af.
@@ -499,7 +520,10 @@ static void HU_removeChatText_Log(void)
 	size_t i;
 	for(i=0;i<chat_nummsg_log-1;i++) {
 		strcpy(chat_log[i], chat_log[i+1]);
+		//radio
+		chat_log_offset[i] = chat_log_offset[i+1];			//SCS - RADIO
 	}
+	RR_RemoveEmoteChatLog(chat_nummsg_log-1);				//SCS - RADIO
 	chat_nummsg_log--; // lost 1 msg.
 }
 
@@ -526,7 +550,25 @@ void HU_AddChatText(const char *text, boolean playsound)
 		CONS_Printf("%s\n", text);
 	else			// if we aren't, still save the message to log.txt
 		CON_LogMessage(va("%s\n", text));
+
+	/**
+	 * RADIO: Track the emotes with each message in the chat log
+	 */
+	chat_mini_log_offset[chat_nummsg_min-1] = 0;										//SCS - RADIO START
+	chat_log_offset[chat_nummsg_log-1] = 0;
+	RR_UpdateEmoteChatLogs(chat_nummsg_min-1, chat_nummsg_log-1);						//SCS - RADIO END
 }
+
+/**
+ * RADIO: emote stuff
+ */
+ static void HU_AddChatTextWithOffset(const char *text, boolean playsound, int offset)	//SCS - RADIO START
+ {
+	HU_AddChatText(text, playsound);
+
+	chat_mini_log_offset[chat_nummsg_min-1] = offset;
+	chat_log_offset[chat_nummsg_log-1] = offset;
+ }																						//SCS - RADIO END
 
 /** Runs a say command, sending an ::XD_SAY message.
   * A say command consists of a signed 8-bit integer for the target, an
@@ -669,6 +711,91 @@ static void Command_Shout(void)
 	DoSayPacketFromCommand(0, 1, HU_SHOUT);
 }
 
+/** RadioRacers: Locally mute a player in a netgame.
+*/
+static void Command_MutePlayer(void)														//SCS - RADIO START
+{
+	/**
+	 * RadioRacers:
+	 * Go through the array of muted players and mute/unmute them, depending on 
+	 * the current muted status.
+	 * 
+	 * If muted, unmute.
+	 * If unmuted, mute.
+	 * 
+	 * You shouldn't be able to mute the server. 
+	 */
+
+	// Not in a netgame.
+	if (!netgame)
+	{
+		CONS_Printf(M_GetText("This only works in a netgame.\n")); // Silly, silly.
+		return;
+	}
+
+	// Not enough arguments.
+	if (COM_Argc() < 2)
+	{
+		CONS_Printf(M_GetText("muteplayer <playername|playernum>: locally mute a player in chat\n"));
+		return;
+	}
+
+	// Player's chat is muted already.
+	if (cv_mute.value) 
+	{
+		CONS_Printf(M_GetText("Your chat is already muted. Behave yourself.\n"));
+	}
+
+	INT32 target;
+
+	// Non-existent player.
+	target = nametonum(COM_Argv(1));
+	if (target == -1)
+	{
+		CONS_Alert(CONS_NOTICE, M_GetText("No player with that name!\n"));
+		return;
+	}
+
+	// Attempting to mute .. yourself.
+	if (P_IsMachineLocalPlayer(&players[target])) {
+		CONS_Alert(CONS_NOTICE, M_GetText("You cannot mute yourself.\n"));
+		return;
+	}
+
+	// Attempting to mute the server host. Administrators are fine, though.
+	if (target == serverplayer) {
+		CONS_Alert(CONS_NOTICE, M_GetText("You cannot mute the server host.\n"));
+		return;
+	}
+
+	// Attempting to mute .. a bot?
+	if (players[target].bot) {
+		CONS_Alert(CONS_NOTICE, M_GetText("Bots don't talk!\n"));
+		return;
+	}
+
+	// Check if target player is muted or not.
+	boolean isMuted = IsPlayerMuted(target);
+
+	if (isMuted) {
+		UnmutePlayerFromChat(target); // Unmute
+
+		HU_AddChatText(
+			va("\x86*%s \x86has been \x85unmuted\x86. (Only you can see this.)",player_names[target]),
+			false
+		);
+		S_StartSound(NULL, sfx_tmxunx);
+	} else {
+		MutePlayerFromChat(target); // Mute
+
+		HU_AddChatText(
+			va("\x86*%s \x86has been \x83muted\x86. (Only you can see this.)",player_names[target]),
+			false
+		);
+		S_StartSound(NULL, sfx_tmxunx);
+	}
+}																									//SCS - RADIO END
+
 /** Receives a message, processing an ::XD_SAY command.
   * \sa DoSayPacket
   * \author Graue <graue@oceanbase.org>
@@ -748,10 +875,13 @@ static void Got_Saycmd(const UINT8 **p, INT32 playernum)
 	}
 
 	// Show messages sent by you, to you, to your team, or to everyone:
-	if (playernum == consoleplayer // By you
+	//if (playernum == consoleplayer // By you
+	// RadioRacers: AND they're not muted
+	if ((playernum == consoleplayer // By you		//SCS - RADIO
 	|| (target == -1 && ST_SameTeam(&players[consoleplayer], &players[playernum])) // To your team
 	|| target == 0 // To everyone
-	|| consoleplayer == target-1) // To you
+	|| consoleplayer == target-1)
+	&& !IsPlayerMuted(playernum)) // To you				//SCS - RADIO
 	{
 		const char *prefix = "", *cstart = "", *cend = "", *adminchar = "\x82~\x83", *remotechar = "\x82@\x83", *fmt2, *textcolor = "\x80";
 		char *tempchar = NULL;
@@ -872,7 +1002,14 @@ static void Got_Saycmd(const UINT8 **p, INT32 playernum)
 			fmt2 = "%s<%s%s>\x80%s %s%s";
 		}*/
 
-		HU_AddChatText(va(fmt2, prefix, cstart, dispname, cend, textcolor, msg), (cv_chatnotifications.value) && !(flags & HU_SHOUT)); // add to chat
+		//HU_AddChatText(va(fmt2, prefix, cstart, dispname, cend, textcolor, msg), (cv_chatnotifications.value) && !(flags & HU_SHOUT)); // add to chat
+		
+		/** RADIO: ffs */
+		char* final_str = va(fmt2, prefix, cstart, dispname, cend, textcolor, msg);				//SCS - RADIO START
+		char* msg_offset = strchr(final_str, *msg);
+		int msg_index = (int)(msg_offset - final_str);
+
+		HU_AddChatTextWithOffset(final_str, (cv_chatnotifications.value) && !(flags & HU_SHOUT), msg_index); // add to chat			//SCS - RADIO END
 
 		if ((cv_chatnotifications.value) && (flags & HU_SHOUT))
 			S_StartSound(NULL, sfx_sysmsg);
@@ -897,6 +1034,7 @@ void HU_TickSongCredits(void)
 		cursongcredit.x = cursongcredit.old_x = 0;
 		cursongcredit.anim = 0;
 		cursongcredit.trans = NUMTRANSMAPS;
+		cursongcredit.use_credits_offset = false;
 		return;
 	}
 
@@ -954,18 +1092,25 @@ void HU_Ticker(void)
 	hu_tick &= 7; // currently only to blink chat input cursor
 
 	// Rankings
-	if (G_PlayerInputDown(0, gc_rankings, 0))
-	{
-		if (!hu_holdscores)
+	if (!cv_holdbuttonforscoreboard.value){
+		// Vanilla behaviour
+		if (G_PlayerInputDown(0, gc_rankings, 0))
 		{
-			hu_showscores ^= true;
+			if (!hu_holdscores)
+			{
+				hu_showscores ^= true;
+			}
+			hu_holdscores = true;
 		}
-		hu_holdscores = true;
+		else
+		{
+			hu_holdscores = false;
+		}
+	} else {
+		// RadioRacers: SRB2Kart behaviour
+		hu_showscores = G_PlayerInputDown(0, gc_rankings, 0) && !chat_on;
 	}
-	else
-	{
-		hu_holdscores = false;
-	}
+	
 
 	hu_keystrokes = false;
 
@@ -992,6 +1137,11 @@ void HU_Ticker(void)
 
 	if (cechotimer)
 		cechotimer--;
+	
+	// RADIO
+	if (hu_radio_tick > 0)				//SCS - RADIO START
+		hu_radio_tick--;				//SCS - RADIO END
+	
 
 	if (gamestate != GS_LEVEL)
 	{
@@ -999,6 +1149,11 @@ void HU_Ticker(void)
 	}
 
 	resynch_ticker++;
+	
+	
+#ifndef ENABLE_RADIO_DEMOS				//SCS - RADIO START
+	RR_DemoTicker();
+#endif									//SCS - RADIO END
 }
 
 static boolean teamtalk = false;
@@ -1093,6 +1248,9 @@ static void HU_sendChatMessage(void)
 		buf[1] = ((server || IsPlayerAdmin(consoleplayer)) && cv_autoshout.value) ? HU_SHOUT : 0; // flags
 
 		DoSayPacket(target, buf[1], consoleplayer, msg);
+		
+		if (cv_chat_emotes.value)							//SCS - RADIO START
+			RR_EmoteUsageCheckOnSend(msg);					//SCS - RADIO END
 	}
 }
 
@@ -1104,6 +1262,179 @@ void HU_clearChatChars(void)
 
 	I_UpdateMouseGrab();
 }
+
+// Handle HU_Responder for Radio-related functionality
+static boolean RR_HU_Responder(INT32 c)											//SCS - RADIO START
+{
+	if (c == KEY_ENTER)
+	{
+		if (!CHAT_MUTE)
+		{
+			if(is_emote_menu_on) {
+				// Don't close the chatbox, wait until the player closes it
+				return true;
+			}
+			if(is_emote_preview_on) {
+				RR_ResetEmoteSearchQuery();
+			}
+			HU_sendChatMessage();
+			RR_RemoveEmoteChatInputLog();
+		}
+		
+		RR_ResetEmoteSearchQuery();
+		chat_on = false;
+		c_input = 0; // reset input cursor
+		chat_scrollmedown = true; // you hit enter, so you might wanna autoscroll to see what you just sent. :)
+		I_UpdateMouseGrab();
+	} else if ((c == 'f' || c == 'F') && ctrldown) { // Favouriting
+		if (is_emote_menu_on) {
+			RR_UpdateFavouriteEmotes();
+			return true;
+		}
+	} else if(c == '=' && ctrldown) { // Sorting
+		if (!is_emote_preview_on && is_emote_menu_on) {
+			CV_AddValue(&cv_chat_emotes_sort, 1);
+			return true;
+		}
+	} else if (c == KEY_ESCAPE
+		/*|| ((c == gamecontrol[0][gc_talkkey][0] || c == gamecontrol[0][gc_talkkey][1]
+		|| c == gamecontrol[0][gc_teamkey][0] || c == gamecontrol[0][gc_teamkey][1])
+		&& c >= NUMKEYS)*/) // If it's not a keyboard key, then the chat button is used as a toggle.
+	{
+		RR_ResetAllEmoteChatInfo();
+		chat_on = false;
+		c_input = 0; // reset input cursor
+		I_UpdateMouseGrab();
+	}
+	else if ((c == KEY_UPARROW || c == KEY_MOUSEWHEELUP) && !OLDCHAT) // CHAT SCROLLING YAYS!
+	{
+		if (is_emote_menu_on) {
+			RR_CheckEmoteMenuMovement(c);
+			return true;
+		}
+
+		if (chat_scroll > 0) {
+			chat_scroll--;
+			justscrolledup = true;
+			chat_scrolltime = 4;
+		}
+	}
+	else if ((c == KEY_DOWNARROW || c == KEY_MOUSEWHEELDOWN) && !OLDCHAT)
+	{
+		if (is_emote_menu_on) {
+			RR_CheckEmoteMenuMovement(c);
+			return true;
+		}
+
+		if (chat_scroll < chat_maxscroll && chat_maxscroll > 0) {
+			chat_scroll++;
+			justscrolleddown = true;
+			chat_scrolltime = 4;
+		}
+	}
+	else if (c == KEY_LEFTARROW && !OLDCHAT) // i said go back
+	{
+		/** RADIO: Hijacking this if we're trying to select an emote */
+		if (is_emote_menu_on) {
+			RR_CheckEmoteMenuMovement(c);
+			return true;
+		}
+
+		if (c_input == 0)
+			return true;
+		
+		if (is_emote_preview_on) {
+			RR_UpdateEmoteQueryChoice_Left();
+			return true;
+		}
+		if (ctrldown)
+			c_input = M_JumpWordReverse(w_chat, c_input);
+		else
+			c_input--;
+	}
+	else if (c == KEY_RIGHTARROW && !OLDCHAT) // don't need to check for admin or w/e here since the chat won't ever contain anything if it's muted.
+	{
+		/** RADIO: Hijacking this if we're trying to select an emote */
+		if (is_emote_preview_on || is_emote_menu_on) {
+			if (is_emote_preview_on) {
+				RR_UpdateEmoteQueryChoice_Right();
+			} else if(is_emote_menu_on) {
+				RR_CheckEmoteMenuMovement(c);
+			}
+			return true;
+		}
+		if (c_input < strlen(w_chat)) {
+			if (ctrldown)
+				c_input += M_JumpWord(&w_chat[c_input]);
+			else
+				c_input++;
+		}
+	}
+	else if (c == KEY_TAB && !OLDCHAT) {
+		if (is_emote_preview_on && !is_emote_menu_on) {
+			RR_SelectEmoteFromPreview();
+			return true;
+		}
+		if(!is_emote_preview_on && is_emote_menu_on) {
+			RR_CheckChatEnterforEmoteMenu();
+			return true;
+		}
+	}
+	else if ((c == KEY_END || (ctrldown && (c == 'e' || c == 'E'))) && !OLDCHAT) {
+		RR_ToggleEmoteMenu();
+		return true;
+	}
+	else if ((c >= HU_FONTSTART && c <= HU_FONTEND && fontv[HU_FONT].font[c-HU_FONTSTART])
+		|| c == ' ') // Allow spaces, of course
+	{
+		if (CHAT_MUTE || strlen(w_chat) >= HU_MAXMSGLEN)
+			return true;
+		
+		/**
+		 * RADIO: Starting to search for an emote, enable the preview
+		 */
+		RR_CheckChatInputForEmotePreview(c);
+		RR_CheckChatInputForEmoteMenu(c);
+		
+		if (is_emote_menu_on) { 
+			return true;
+		}
+
+		memmove(&w_chat[c_input + 1], &w_chat[c_input], strlen(w_chat) - c_input + 1);
+		w_chat[c_input] = c;
+		c_input++;
+	}
+	else if (c == KEY_BACKSPACE)
+	{
+		if (CHAT_MUTE || (c_input <= 0 && !is_emote_menu_on))
+			return true;
+
+		RR_CheckChatDeleteForEmotePreview();
+		RR_CheckChatDeleteForEmoteMenu();
+
+		if (is_emote_menu_on) {
+			return true;
+		}
+
+		// If we're deleting an emote from the chat, delete the whole string
+		if (!is_emote_menu_on && !is_emote_preview_on) {
+			if(RR_CheckChatDeleteEmoteForInput()) 
+				return true;
+		}
+
+		memmove(&w_chat[c_input - 1], &w_chat[c_input], strlen(w_chat) - c_input + 1);
+		c_input--;
+	}
+	else if (c == KEY_DEL)
+	{
+		if (CHAT_MUTE || c_input >= strlen(w_chat))
+			return true;
+
+		memmove(&w_chat[c_input], &w_chat[c_input + 1], strlen(w_chat) - c_input);
+	}
+
+	return true;
+}																						//SCS - RADIO END
 
 //
 // Returns true if key eaten
@@ -1171,6 +1502,7 @@ boolean HU_Responder(event_t *ev)
 			teamtalk = false;
 			chat_scrollmedown = true;
 			typelines = 1;
+			RR_RemoveEmoteChatInputLog();		//SCS - RADIO
 			return true;
 		}
 		if ((ev->data1 == gamecontrol[0][gc_teamtalk][0] || ev->data1 == gamecontrol[0][gc_teamtalk][1]
@@ -1182,6 +1514,7 @@ boolean HU_Responder(event_t *ev)
 			teamtalk = G_GametypeHasTeams();	// Don't teamtalk if we don't have teams.
 			chat_scrollmedown = true;
 			typelines = 1;
+			RR_RemoveEmoteChatInputLog();		//SCS - RADIO
 			return true;
 		}
 	}
@@ -1229,6 +1562,9 @@ boolean HU_Responder(event_t *ev)
 			c_input += pastelen;
 			return true;
 		}
+		else if(cv_chat_emotes.value) {				//SCS - RADIO START
+			return RR_HU_Responder(c);
+		}											//SCS - RADIO END
 		else if (c == KEY_ENTER)
 		{
 			if (!CHAT_MUTE)
@@ -1351,25 +1687,29 @@ static void HU_drawMiniChat(void)
 
 	const fixed_t scale = (vid.width < 640) ? FRACUNIT : FRACUNIT/2;
 
-	for (; i > 0; i--)
-	{
-		char *msg = CHAT_WordWrap(boxw-4, scale, V_SNAPTOBOTTOM|V_SNAPTOLEFT, chat_mini[i-1]);
-		size_t j = 0;
-		INT32 linescount = 1;
-
-		for (; msg[j]; j++) // iterate through msg
+	if (cv_chat_emotes.value) {												//SCS - RADIO START
+		msglines = RR_Parse_ChatMiniLog_For_Lines(i, scale, boxw);
+	} else {																//SCS - RADIO END
+		for (; i > 0; i--)
 		{
-			if (msg[j] != '\n') // get back down.
-				continue;
+			char *msg = CHAT_WordWrap(boxw-4, scale, V_SNAPTOBOTTOM|V_SNAPTOLEFT, chat_mini[i-1]);
+			size_t j = 0;
+			INT32 linescount = 1;
 
-			linescount++;
+			for (; msg[j]; j++) // iterate through msg
+			{
+				if (msg[j] != '\n') // get back down.
+					continue;
+
+				linescount++;
+			}
+
+			msglines += linescount;
+
+			if (msg)
+				Z_Free(msg);
 		}
-
-		msglines += linescount;
-
-		if (msg)
-			Z_Free(msg);
-	}
+	}		//SCS - RADIO
 
 	y = chaty - charheight*(msglines+1);
 
@@ -1387,56 +1727,68 @@ static void HU_drawMiniChat(void)
 	}
 
 	i = 0;
-
-	for (; i<=(chat_nummsg_min-1); i++) // iterate through our hot messages
+	if (cv_chat_emotes.value)			//SCS - RADIO START
 	{
-		INT32 timer = ((cv_chattime.value*TICRATE)-chat_timers[i]) - cv_chattime.value*TICRATE+9; // see below...
-		INT32 transflag = (timer >= 0 && timer <= 9) ? (timer*V_10TRANS) : 0; // you can make bad jokes out of this one.
-		size_t j = 0;
-		char *msg = CHAT_WordWrap(boxw-4, scale, V_SNAPTOBOTTOM|V_SNAPTOLEFT, chat_mini[i]); // get the current message, and word wrap it.
-
-		INT32 linescount = 1;
-
-		for (; msg[j]; j++) // iterate through msg
+		chat_mini_log_parameters_t parameters = {
+			.charheight = charheight,
+			.x = &x,
+			.y = &y,
+			.boxw = boxw,
+			.scale = scale,
+			.chat_nummsg_min = chat_nummsg_min
+		};
+		RR_Draw_ChatMiniLog(parameters);
+	} else {							//SCS - RADIO END
+		for (; i<=(chat_nummsg_min-1); i++) // iterate through our hot messages
 		{
-			if (msg[j] != '\n') // get back down.
-				continue;
+			INT32 timer = ((cv_chattime.value*TICRATE)-chat_timers[i]) - cv_chattime.value*TICRATE+9; // see below...
+			INT32 transflag = (timer >= 0 && timer <= 9) ? (timer*V_10TRANS) : 0; // you can make bad jokes out of this one.
+			size_t j = 0;
+			char *msg = CHAT_WordWrap(boxw-4, scale, V_SNAPTOBOTTOM|V_SNAPTOLEFT, chat_mini[i]); // get the current message, and word wrap it.
 
-			linescount++;
-		}
+			INT32 linescount = 1;
 
-		if (cv_chatbacktint.value) // on request of wolfy
-		{
-			INT32 width = V_StringWidth(msg, 0);
-			if (vid.width >= 640)
-				width /= 2;
+			for (; msg[j]; j++) // iterate through msg
+			{
+				if (msg[j] != '\n') // get back down.
+					continue;
 
-			V_DrawFillConsoleMap(
-				x-2, y,
-				width+4,
-				charheight * linescount,
-				159|V_SNAPTOBOTTOM|V_SNAPTOLEFT
+				linescount++;
+			}
+
+			if (cv_chatbacktint.value) // on request of wolfy
+			{
+				INT32 width = V_StringWidth(msg, 0);
+				if (vid.width >= 640)
+					width /= 2;
+
+				V_DrawFillConsoleMap(
+					x-2, y,
+					width+4,
+					charheight * linescount,
+					159|V_SNAPTOBOTTOM|V_SNAPTOLEFT
+				);
+			}
+
+			V_DrawStringScaled(
+				x << FRACBITS,
+				y << FRACBITS,
+				scale, FRACUNIT, FRACUNIT,
+				V_SNAPTOBOTTOM|V_SNAPTOLEFT|transflag,
+				NULL,
+				HU_FONT,
+				msg
 			);
+
+			y += charheight * linescount;
+
+			if (msg)
+				Z_Free(msg);
 		}
 
-		V_DrawStringScaled(
-			x << FRACBITS,
-			y << FRACBITS,
-			scale, FRACUNIT, FRACUNIT,
-			V_SNAPTOBOTTOM|V_SNAPTOLEFT|transflag,
-			NULL,
-			HU_FONT,
-			msg
-		);
-
-		y += charheight * linescount;
-
-		if (msg)
-			Z_Free(msg);
-	}
-
-	// decrement addy and make that shit smooth:
-	addy /= 2;
+		// decrement addy and make that shit smooth:
+		addy /= 2;
+	}	//SCS - RADIO
 
 }
 
@@ -1498,54 +1850,71 @@ static void HU_drawChatLog(INT32 offset)
 
 	INT32 dy = 0;
 
-	for (i=0; i<chat_nummsg_log; i++) // iterate through our chatlog
+	if (cv_chat_emotes.value)						//SCS - RADIO START
 	{
-		INT32 j = 0, startj = 0;
-		char *msg = CHAT_WordWrap(boxw-4, scale, V_SNAPTOBOTTOM|V_SNAPTOLEFT, chat_log[i]); // get the current message, and word wrap it.
+		chat_log_parameters_t parameters = {
+			.chat_nummsg_log = chat_nummsg_log,
+			.charheight = charheight,
+			.x = x, 
+			.y = y,
+			.chat_topy = chat_topy,
+			.chat_bottomy = chat_bottomy,
+			.boxw = boxw, 
+			.scale = scale, 
+			.flags = V_SNAPTOBOTTOM|V_SNAPTOLEFT, 
+			.chat_log = chat_log
+		};
 
-		INT32 linescount = 1;
-
-		for (; msg[j]; j++) // iterate through msg
+		dy = RR_Parse_ChatLog(parameters);
+	} else {										//SCS - RADIO END
+		for (i=0; i<chat_nummsg_log; i++) // iterate through our chatlog
 		{
-			if (msg[j] != '\n') // get back down.
-				continue;
+			INT32 j = 0, startj = 0;
+			char *msg = CHAT_WordWrap(boxw-4, scale, V_SNAPTOBOTTOM|V_SNAPTOLEFT, chat_log[i]); // get the current message, and word wrap it.
 
-			if (y + dy >= chat_bottomy)
-				;
-			else if (y + dy + 2 + charheight < chat_topy)
+			INT32 linescount = 1;
+
+			for (; msg[j]; j++) // iterate through msg
 			{
-				dy += charheight;
+				if (msg[j] != '\n') // get back down.
+					continue;
 
-				if (y + dy + 2 + charheight >= chat_topy)
+				if (y + dy >= chat_bottomy)
+					;
+				else if (y + dy + 2 + charheight < chat_topy)
 				{
-					startj = j;
+					dy += charheight;
+
+					if (y + dy + 2 + charheight >= chat_topy)
+					{
+						startj = j;
+					}
+
+					continue;
 				}
 
-				continue;
+				linescount++;
 			}
 
-			linescount++;
+			if (y + dy < chat_bottomy)
+			{
+				V_DrawStringScaled(
+					(x + 2) << FRACBITS,
+					(y + dy + 2) << FRACBITS,
+					scale, FRACUNIT, FRACUNIT,
+					V_SNAPTOBOTTOM|V_SNAPTOLEFT,
+					NULL,
+					HU_FONT,
+					msg+startj
+				);
+			}
+
+			dy += charheight * linescount;
+
+			if (msg)
+				Z_Free(msg);
 		}
-
-		if (y + dy < chat_bottomy)
-		{
-			V_DrawStringScaled(
-				(x + 2) << FRACBITS,
-				(y + dy + 2) << FRACBITS,
-				scale, FRACUNIT, FRACUNIT,
-				V_SNAPTOBOTTOM|V_SNAPTOLEFT,
-				NULL,
-				HU_FONT,
-				msg+startj
-			);
-		}
-
-		dy += charheight * linescount;
-
-		if (msg)
-			Z_Free(msg);
-	}
-
+	}		//SCS - RADIO
 	V_ClearClipRect();
 
 	if (((chat_scroll >= chat_maxscroll) || (chat_scrollmedown)) && !(justscrolleddown || justscrolledup || chat_scrolltime)) // was already at the bottom of the page before new maxscroll calculation and was NOT scrolling.
@@ -1625,44 +1994,61 @@ static void HU_DrawChat(void)
 	}
 	else
 	{
-		msg = CHAT_WordWrap(
-			boxw-4,
-			scale,
+		RR_UpdateEmoteChatInputLog();									//SCS - RADIO START
+		if (cv_chat_emotes.value && cv_chat_emotes_preview.value) {
+			chat_input_parameters_t parameters = {
+				.boxw = boxw,
+				.scale = scale,
+				.flags = V_SNAPTOBOTTOM|V_SNAPTOLEFT,
+				.talk = talk,
+				.y = y,
+				.chatx = chatx,
+				.charheight = charheight
+			};
+
+			typelines = RR_DrawChatInput(parameters, &y);
+		} else {														//SCS - RADIO END
+			msg = CHAT_WordWrap(
+				boxw-4,
+				scale,
+				V_SNAPTOBOTTOM|V_SNAPTOLEFT,
+				va("%c%s %c%s%c%c", cflag, talk, tflag, w_chat, '\x80', '_')
+			);
+
+			for (; msg[i]; i++) // iterate through msg
+			{
+				if (msg[i] != '\n') // get back down.
+					continue;
+
+				typelines++;
+			}
+
+			// This is removed after the fact to not have the newline handling flicker.
+			if (i != 0 && hu_tick >= 4)
+			{
+				msg[i-1] = '\0';
+			}
+		}
+	}				//SCS - RADIO
+
+	if (!cv_chat_emotes.value || (cv_chat_emotes.value && !cv_chat_emotes_preview.value)) {			//SCS - RADIO
+		y -= typelines * charheight;
+
+		V_DrawFillConsoleMap(chatx, y-1, boxw, (typelines*charheight), 159 | V_SNAPTOBOTTOM | V_SNAPTOLEFT);
+
+		V_DrawStringScaled(
+			(chatx + 2) << FRACBITS,
+			y << FRACBITS,
+			scale, FRACUNIT, FRACUNIT,
 			V_SNAPTOBOTTOM|V_SNAPTOLEFT,
-			va("%c%s %c%s%c%c", cflag, talk, tflag, w_chat, '\x80', '_')
+			NULL,
+			HU_FONT,
+			msg ? msg : talk
 		);
 
-		for (; msg[i]; i++) // iterate through msg
-		{
-			if (msg[i] != '\n') // get back down.
-				continue;
-
-			typelines++;
-		}
-
-		// This is removed after the fact to not have the newline handling flicker.
-		if (i != 0 && hu_tick >= 4)
-		{
-			msg[i-1] = '\0';
-		}
-	}
-
-	y -= typelines * charheight;
-
-	V_DrawFillConsoleMap(chatx, y-1, boxw, (typelines*charheight), 159 | V_SNAPTOBOTTOM | V_SNAPTOLEFT);
-
-	V_DrawStringScaled(
-		(chatx + 2) << FRACBITS,
-		y << FRACBITS,
-		scale, FRACUNIT, FRACUNIT,
-		V_SNAPTOBOTTOM|V_SNAPTOLEFT,
-		NULL,
-		HU_FONT,
-		msg ? msg : talk
-	);
-
-	if (msg)
-		Z_Free(msg);
+		if (msg)
+			Z_Free(msg);
+	}								//SCS - RADIO
 
 	// handle /pm list. It's messy, horrible and I don't care.
 	if (!CHAT_MUTE && !teamtalk && vid.width >= 640 && strnicmp(w_chat, "/pm", 3) == 0) // 320x200 unsupported kthxbai
@@ -1741,6 +2127,17 @@ static void HU_DrawChat(void)
 	}
 
 	HU_drawChatLog(typelines-1); // typelines is the # of lines we're typing. If there's more than 1 then the log should scroll up to give us more space.
+
+	/** RADIO: Not supporting splitscreen */				//SCS - RADIO START
+	if (r_splitscreen < 1) {
+		chat_box_parameters_t parameters = {
+			.x = chatx,
+			.y = y,
+			.typelines = typelines,
+			.charheight = charheight
+		};
+		RR_DoChatStuff(parameters);
+	}														//SCS - RADIO END
 }
 
 
@@ -1983,6 +2380,10 @@ void HU_DrawSongCredits(void)
 	fixed_t y;
 
 	if (gamestate == GS_INTERMISSION)
+	{
+		y = (BASEVIDHEIGHT - 13) * FRACUNIT;
+	}
+	else if (cursongcredit.use_credits_offset)
 	{
 		y = (BASEVIDHEIGHT - 13) * FRACUNIT;
 	}

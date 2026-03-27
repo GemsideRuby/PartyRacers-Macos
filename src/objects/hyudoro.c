@@ -24,6 +24,9 @@
 #include "../k_hitlag.h"
 #include "../p_slopes.h"
 
+// Radio
+#include "../radioracers/rr_hud.h"				//SCS - RADIO
+
 enum {
 	HYU_PATROL,
 	HYU_RETURN,
@@ -85,7 +88,7 @@ static boolean
 is_hyudoro (mobj_t *thing)
 {
 	return !P_MobjWasRemoved(thing) &&
-		thing->type == MT_HYUDORO;
+		(thing->type == MT_HYUDORO || thing->type == MT_BHYUDORO);		//SCS EDIT
 }
 
 static mobj_t *
@@ -325,12 +328,16 @@ move_to_player (mobj_t *hyu)
 
 	// For first place only: cap hyudoro speed at 50%
 	// target player's kart speed
-	if (target->player && target->player->position == 1)
+	if (target->player && target->player->leaderpenalty)
 	{
 		const fixed_t normalspeed =
 			K_GetKartSpeed(target->player, false, false) / 2;
 
-		speed = min(speed, normalspeed);
+		if (hyu->type == MT_HYUDORO)
+			speed = min(speed*2, normalspeed*2);		//SCS EDIT - double speed
+		else
+			speed = min(speed*3, normalspeed*3);		//SCS ADD - for Butler Hyudoro
+		
 	}
 
 	P_InstaThrust(hyu, angle, speed);
@@ -533,8 +540,18 @@ hyudoro_set_held_item_from_player
 			return;
 		}
 	}
-
-	set_item(hyu, player->itemtype, player->itemamount);
+	
+	if (hyu->type == MT_BHYUDORO)		//SCS ADD
+	{
+		if (player->itemtype == KITEM_BUBBLESHIELD || player->itemtype == KITEM_FLAMESHIELD || player->itemtype == KITEM_NORMALSHIELD || player->itemtype == KITEM_ARMASHIELD)	//no stacking shields
+			set_item(hyu, player->itemtype, player->itemamount);
+		else
+			set_item(hyu, player->itemtype, min(player->itemamount*2, 99));
+		
+	}
+	else
+		set_item(hyu, player->itemtype, player->itemamount);
+	
 }
 
 static boolean
@@ -577,17 +594,24 @@ hyudoro_patrol_hit_player
 		hyudoro_capsule(hyu)->extravalue2 = player->skincolor;
 	}
 
-	K_StripItems(player);
+	//K_StripItems(player);
+	K_StripItemsExceptBackup(player);		//SCS EDIT - So, what? Does the backup item just vanish into the void???
 
 	S_StartSound(toucher, sfx_s3k92);
 
 	/* do not make 1st place invisible */
-	if (player->position != 1)
+	if (player->leaderpenalty == 0)
 	{
 		player->hyudorotimer = hyudorotime;
 	}
 
 	player->stealingtimer = hyudorotime;
+	
+	if (hyu->type == MT_BHYUDORO)
+	{
+		player->bstealingtimer = hyudorotime;	//this is literally only used for the HUD to show a different stealing graphic in the ietm slot
+		hyu->destscale = hyu->scale/2;			//when returning to the owner, shrink back down as to not obstruct the owner's view
+	}
 
 	P_SetTarget(&hyudoro_stolefrom(hyu), toucher);
 
@@ -599,8 +623,14 @@ hyudoro_patrol_hit_player
 
 	P_SetTarget(&hyudoro_target(hyu), master);
 
-	if (master && !P_MobjWasRemoved(master))
-		K_SpawnAmps(master->player, K_PvPAmpReward(20, master->player, player), toucher);
+	//if (master && !P_MobjWasRemoved(master))
+		//K_SpawnAmps(master->player, K_PvPAmpReward(20, master->player, player), toucher);
+	
+	UINT8 hyuAmps = 0;															//SCS - RADIO START
+	if (master && !P_MobjWasRemoved(master)) {
+		hyuAmps = K_PvPAmpReward(20, master->player, player);
+		K_SpawnAmps(master->player, hyuAmps, toucher);
+	}																			//SCS - RADIO END
 
 	if (center)
 		P_RemoveMobj(center);
@@ -613,7 +643,18 @@ hyudoro_patrol_hit_player
 	// This will flicker the shadow
 	hyudoro_timer(hyu) = 18;
 
-	P_SetMobjState(hyu, S_HYUDORO_RETURNING);
+	if (hyu->type == MT_BHYUDORO)
+	{
+		P_SetMobjState(hyu, S_BHYUDORO_RETURNING);
+		// Radio
+		RR_PushPlayerInteractionToFeed(master, toucher, ATTACK_HYUDOROBUTLER, hyuAmps);		//SCS ADD
+	}
+	else
+	{
+		P_SetMobjState(hyu, S_HYUDORO_RETURNING);
+		// Radio
+		RR_PushPlayerInteractionToFeed(master, toucher, ATTACK_HYUDORO, hyuAmps);		//SCS - RADIO
+	}
 
 	return true;
 }
@@ -625,7 +666,7 @@ award_immediately (mobj_t *hyu)
 
 	if (player)
 	{
-		if (player->position == 1)
+		if (player->leaderpenalty)
 		{
 			return false;
 		}
@@ -742,7 +783,7 @@ blend_hover_hyudoro (mobj_t *hyu)
 
 	/* 1st place: Hyudoro stack is unusable, so make a visual
 	   indication */
-	if (player->position == 1)
+	if (player->leaderpenalty)
 	{
 		hyu->renderflags |= RF_MODULATE;
 		trail_glow(hyu);
@@ -806,6 +847,39 @@ Obj_InitHyudoroCenter (mobj_t * center, mobj_t * master)
 }
 
 void
+Obj_InitBHyudoroCenter (mobj_t * center, mobj_t * master)		//SCS ADD
+{
+	mobj_t *hyu = P_SpawnMobjFromMobj(
+			center, 0, 0, 0, MT_BHYUDORO);
+
+	// This allows a Lua override
+	if (!hyudoro_center_max_radius(center))
+	{
+		hyudoro_center_max_radius(center) =
+			128 * center->scale;
+	}
+
+	center->radius = hyu->radius;
+	
+	hyu->destscale = hyu->scale*2;	//He has a bigger hitbox
+
+	hyu->angle = center->angle;
+	P_SetTarget(&hyudoro_center(hyu), center);
+	P_SetTarget(&hyudoro_center_master(center), master);
+
+	hyudoro_mode(hyu) = HYU_PATROL;
+
+	// Set splitscreen player visibility
+	hyu->renderflags |= RF_DONTDRAW;
+	if (master && !P_MobjWasRemoved(master) && master->player)
+	{
+		hyu->renderflags &= ~(K_GetPlayerDontDrawFlag(master->player));
+	}
+
+	Obj_SpawnFakeShadow(hyu); // this sucks btw
+}
+
+void
 Obj_HyudoroDeploy (mobj_t *master)
 {
 	mobj_t *center = P_SpawnMobjFromMobj(
@@ -821,6 +895,54 @@ Obj_HyudoroDeploy (mobj_t *master)
 	center->z = P_GetMobjGround(center) - P_MobjFlip(center);
 
 	S_StartSound(master, sfx_s3k92); // scary ghost noise
+}
+
+void
+Obj_ButlerHyudoroDeploy (mobj_t *master)						//SCS ADD
+{
+	mobj_t *center = P_SpawnMobjFromMobj(
+			master, 0, 0, 0, MT_BHYUDORO_CENTER);
+
+	center->angle = master->angle;
+	Obj_InitBHyudoroCenter(center, master);
+
+	// Update floorz to the correct position by indicating
+	// that it should be recalculated by P_MobjThinker.
+	center->floorz = master->z;
+	center->ceilingz = master->z + master->height;
+	center->z = P_GetMobjGround(center) - P_MobjFlip(center);
+
+	S_StartSound(master, sfx_s3k92); // scary ghost noise
+}
+
+void 
+Obj_MiniHyudoroThink(mobj_t *th)
+{
+	angle_t newangle = th->target->angle + th->angle + ANGLE_90;
+	
+	UINT32 newx = th->target->x + th->target->momx + FixedMul(FixedMul(th->target->scale, th->scale*10), FINECOSINE((newangle) >> ANGLETOFINESHIFT));
+
+	UINT32 newy = th->target->y + th->target->momy + FixedMul(FixedMul(th->target->scale, th->scale*10), FINESINE((newangle) >> ANGLETOFINESHIFT));
+			
+	th->momx = 0;
+	th->momy = 0;
+	th->momz = 0;
+	th->angle = th->target->angle;
+	
+	if (K_GetForwardMove(th->target->player) < 0)
+	{
+		th->angle = th->target->angle + ANGLE_180;
+	}
+	
+	//newx = FixedDiv(newx - th->x, 1);
+//	newy = FixedDiv(newy - th->y, 1);
+	
+	P_SetOrigin(th, (newx + th->threshold*FRACUNIT), (newy + th->threshold*FRACUNIT), (th->target->z + FRACUNIT*15));
+	
+	//th->momx = FixedDiv(newx - th->x, 1);
+	//th->momy = FixedDiv(newy - th->y, 1);
+	
+	//th->z = th->target->z + FRACUNIT*8;
 }
 
 void

@@ -15,6 +15,10 @@
 #include "../v_video.h"
 #include "../s_sound.h"
 
+// Radio
+#include "../m_easing.h"					//SCS - RADIO START
+#include "../i_time.h"
+#include "../z_zone.h"						//SCS - RADIO END
 //#define SERVERLISTDEBUG
 
 #ifdef SERVERLISTDEBUG
@@ -249,6 +253,12 @@ void M_ServersMenu(INT32 choice)
 	mpmenu.servernum = 0;
 	mpmenu.scrolln = 0;
 	mpmenu.slide = 0;
+	mpmenu.serverpreview = false;									//SCS - RADIO START
+	mpmenu.serverslide_tic = 0;
+	mpmenu.serverslide_y = 0;
+	mpmenu.serverpreview_map = 0;
+	mpmenu.serverpreview_mapchecked = false;
+	mpmenu.serverpreview_done = false;								//SCS - RADIO END
 
 	PLAY_MP_ServerBrowserDef.prevMenu = currentMenu;
 	M_SetupNextMenu(&PLAY_MP_ServerBrowserDef, false);
@@ -460,6 +470,26 @@ void M_MPServerBrowserTick(void)
 {
 	mpmenu.ticker++;
 	mpmenu.slide /= 2;
+	
+	if (mpmenu.serverpreview) {																						//SCS - RADIO START
+		if (mpmenu.serverslide_y < SERVERPREVIEWHEIGHT) {
+			tic_t dur = M_DueFrac(mpmenu.serverslide_tic, TICRATE*7);
+			fixed_t new_y = Easing_OutExpo(dur, mpmenu.serverslide_y << FRACBITS, SERVERPREVIEWHEIGHT*FRACUNIT);
+			mpmenu.serverslide_y += (new_y >> FRACBITS);
+		} else {
+			// Sliding is done, now fetch the map thumbnail
+			if (!mpmenu.serverpreview_mapchecked) {
+				char* realmapname = NULL;
+				mpmenu.serverpreview_map = G_FindMapByNameOrCode(
+					serverlist[mpmenu.servernum].info.maptitle, &realmapname
+				);
+				Z_Free(realmapname);
+
+				mpmenu.serverpreview_mapchecked = true;
+				mpmenu.serverslide_y = SERVERPREVIEWHEIGHT;
+			}
+		}
+	}																												//SCS - RADIO END
 
 #if defined (MASTERSERVER) && defined (HAVE_THREADS)
 	I_lock_mutex(&ms_ServerList_mutex);
@@ -477,6 +507,24 @@ void M_MPServerBrowserTick(void)
 	CL_TimeoutServerList();
 }
 
+static void M_ServerBrowserConfirm(INT32 choice)
+{
+	if (choice != MA_YES)
+		return;
+
+	COM_BufAddText(va("connect node %d\n", serverlist[mpmenu.servernum].node));
+
+	M_PleaseWait();
+}
+
+// Radio																				//SCS - RADIO START
+static void resetServerPreviewVars(void) {
+	mpmenu.serverpreview = false;
+	mpmenu.serverslide_y = 0;
+	mpmenu.serverpreview_map = 0;
+	mpmenu.serverpreview_mapchecked = false;
+	mpmenu.serverpreview_done = false;
+}																						//SCS - RADIO END
 // Input handler for server browser.
 boolean M_ServerBrowserInputs(INT32 ch)
 {
@@ -491,6 +539,9 @@ boolean M_ServerBrowserInputs(INT32 ch)
 
 	if (!itemOn && menucmd[pid].dpad_ud < 0)
 	{
+		if (mpmenu.serverpreview) {													//SCS - RADIO START
+			resetServerPreviewVars();
+		}																			//SCS - RADIO END
 		if (serverlistcount)
 		{
 			// Return the MS listing to the bottom.
@@ -516,16 +567,42 @@ boolean M_ServerBrowserInputs(INT32 ch)
 		{
 			M_SetMenuDelay(pid);
 
-			COM_BufAddText(va("connect node %d\n", serverlist[mpmenu.servernum].node));
-
-			M_PleaseWait();
+			/*if (serverlist[mpmenu.servernum].info.numberofplayer >= 8)					//SCS EDIT - Just shut up and let people play.
+			{
+				S_StartSound(NULL, sfx_s3k96);
+				M_StartMessage("Some advice...",
+					"Ring Racers was designed for \x82""8 or fewer players""\x80"".\n""\x80""Racing may be ""\x82""more frustrating""\x80"" in large games.\n""\x86""(Some servers allow more spectators than players.)",
+				M_ServerBrowserConfirm, MM_YESNO, "Bring on the imbalance...!", "Never mind!");
+			}
+			else
+			{*/
+				M_ServerBrowserConfirm(MA_YES);
+			//}
 
 			return true;
 		}
+
+		if (M_MenuButtonPressed(pid, MBT_L)) {					//SCS - RADIO START
+			M_SetMenuDelay(pid);
+
+			if (mpmenu.serverpreview) {
+				resetServerPreviewVars();
+			} else {
+				mpmenu.serverpreview = true;
+				mpmenu.serverslide_y = 0;
+				mpmenu.serverslide_tic = I_GetTime();
+			}
+
+			S_StartSound(NULL, sfx_s3k5b);
+			return true;
+		}														//SCS - RADIO END
 #endif
 
 		if (menucmd[pid].dpad_ud > 0)	// down
 		{
+			if (mpmenu.serverpreview) {							//SCS - RADIO START
+				resetServerPreviewVars();
+			}													//SCS - RADIO END
 			if ((UINT32)(mpmenu.servernum+1) < serverlistcount)
 			{
 				// Listing scroll down
@@ -551,6 +628,9 @@ boolean M_ServerBrowserInputs(INT32 ch)
 		}
 		else if (menucmd[pid].dpad_ud < 0)
 		{
+			if (mpmenu.serverpreview) {						//SCS - RADIO START
+				resetServerPreviewVars();
+			}												//SCS - RADIO END
 			if (mpmenu.servernum)
 			{
 				// Listing scroll up

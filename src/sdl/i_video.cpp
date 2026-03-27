@@ -94,7 +94,8 @@
 #endif
 
 // maximum number of windowed modes (see windowedModes[][])
-#define MAXWINMODES (19)
+//#define MAXWINMODES (19)
+#define MAXWINMODES (20)					//SCS - RADIO
 
 using namespace srb2;
 
@@ -148,6 +149,7 @@ static uint32_t g_rhi_generation = 0;
 // windowed video modes from which to choose from.
 static INT32 windowedModes[MAXWINMODES][2] =
 {
+	{2560,1440}, // 1.66				//SCS - RADIO
 	{1920,1200}, // 1.60,6.00
 	{1920,1080}, // 1.66
 	{1680,1050}, // 1.60,5.25
@@ -523,6 +525,7 @@ static void Impl_HandleWindowEvent(SDL_WindowEvent evt)
 		window_notinfocus = false;
 
 		S_SetMusicVolume();
+		g_voice_disabled = cv_voice_selfdeafen.value;
 
 		if (!firsttimeonmouse)
 		{
@@ -537,6 +540,8 @@ static void Impl_HandleWindowEvent(SDL_WindowEvent evt)
 			I_SetMusicVolume(0);
 		if (!(cv_bgaudio.value & 2))
 			S_StopSounds();
+		if (!(cv_bgaudio.value & 4))
+			g_voice_disabled = true;
 
 		G_ResetAllDeviceGameKeyDown();
 		G_ResetAllDeviceResponding();

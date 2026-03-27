@@ -57,6 +57,8 @@
 #include "thread.hpp"
 #include "../cxxutil.hpp"
 
+#include "../radioracers/rr_cvar.h" //SCS - RADIO
+
 using namespace srb2::acs;
 
 /*--------------------------------------------------
@@ -1655,6 +1657,33 @@ bool CallFunc_PlayerSkin(ACSVM::Thread *thread, const ACSVM::Word *argV, ACSVM::
 }
 
 /*--------------------------------------------------
+
+	bool CallFunc_PlayerSkinRealName(ACSVM::Thread *thread, const ACSVM::Word *argV, ACSVM::Word argC)
+
+		Returns the activating player's skin real name.
+--------------------------------------------------*/
+bool CallFunc_PlayerSkinRealName(ACSVM::Thread *thread, const ACSVM::Word *argV, ACSVM::Word argC)
+{
+	Environment *env = &ACSEnv;
+	auto info = &static_cast<Thread *>(thread)->info;
+
+	(void)argV;
+	(void)argC;
+
+	if ((info != NULL)
+		&& (info->mo != NULL && P_MobjWasRemoved(info->mo) == false)
+		&& (info->mo->player != NULL))
+	{
+		UINT16 skin = info->mo->player->skin;
+		thread->dataStk.push(~env->getString( skins[skin]->realname )->idx);
+		return false;
+	}
+
+	thread->dataStk.push(0);
+	return false;
+}
+
+/*--------------------------------------------------
 	bool CallFunc_PlayerBot(ACSVM::Thread *thread, const ACSVM::Word *argV, ACSVM::Word argC)
 
 		Returns the activating player's bot status.
@@ -1823,7 +1852,8 @@ bool CallFunc_EncoreMode(ACSVM::Thread *thread, const ACSVM::Word *argV, ACSVM::
 	(void)argV;
 	(void)argC;
 
-	thread->dataStk.push(encoremode);
+	//thread->dataStk.push(encoremode);
+	thread->dataStk.push(shouldApplyEncore());	//SCS - RADIO
 	return false;
 }
 
@@ -2409,12 +2439,24 @@ bool CallFunc_MusicStopAll(ACSVM::Thread *thread, const ACSVM::Word *argV, ACSVM
 bool CallFunc_MusicRemap(ACSVM::Thread *thread, const ACSVM::Word *argV, ACSVM::Word argC)
 {
 	ACSVM::MapScope *map = thread->scopeMap;
+	ACSVM::String *tuneStr = nullptr;
+	const char *tune = nullptr;
 
 	// 0: str tune - id for the tune to play
 	// 1: str song - lump name for the song to map to
 	// 2: [bool foractivator] - only do this if the activator is a player and is being viewed
 
 	if (argC > 2 && argV[2] && !ACS_ActivatorIsLocal(thread))
+	{
+		return false;
+	}
+	
+	tuneStr = map->getString(argV[0]);
+	tune = tuneStr->str;
+	
+	// Do not allow ACS to remap Stereo Mode tunes.
+	if (strlen(tune) > 5
+	    && toupper(tune[0]) == 'S' && toupper(tune[1]) == 'T' && toupper(tune[2]) == 'E' && toupper(tune[3]) == 'R' && toupper(tune[4]) == 'E')
 	{
 		return false;
 	}

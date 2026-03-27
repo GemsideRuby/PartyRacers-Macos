@@ -22,6 +22,9 @@
 // SRB2Kart
 #include "hu_stuff.h" // fonts
 
+// Radio
+#include "radioracers/rr_cvar.h"	//SCS - RADIO
+
 #ifdef __cplusplus
 
 #include "hwr2/twodee.hpp"
@@ -214,6 +217,8 @@ void V_RestoreClipRect(const cliprect_t *copy);
 #define V_DrawFixedPatch(x,y,sc,s,p,c) V_DrawStretchyFixedPatch(x,y,sc,sc,s,p,c)
 void V_DrawStretchyFixedPatch(fixed_t x, fixed_t y, fixed_t pscale, fixed_t vscale, INT32 scrn, patch_t *patch, const UINT8 *colormap);
 void V_DrawCroppedPatch(fixed_t x, fixed_t y, fixed_t pscale, INT32 scrn, patch_t *patch, fixed_t sx, fixed_t sy, fixed_t w, fixed_t h);
+
+void V_DrawCroppedEmotePatch(fixed_t x, fixed_t y, fixed_t pscale, INT32 scrn, patch_t *patch, fixed_t sx, fixed_t sy, fixed_t w, fixed_t h, fixed_t y_offset);	//SCS - RADIO
 
 void V_DrawContinueIcon(INT32 x, INT32 y, INT32 flags, INT32 skinnum, UINT16 skincolor);
 
@@ -436,6 +441,13 @@ void V_DrawPatchFill(patch_t *pat);
 void VID_BlitLinearScreen(const UINT8 *srcptr, UINT8 *destptr, INT32 width, INT32 height, size_t srcrowbytes,
 	size_t destrowbytes);
 
+// Credit to Alufolie for these functions (from Indev450/SRB2Kart-Saturn), tweaked slightly for RingRacers purposes							//SCS - RADIO START
+void V_DrawAdaptiveScaledFullScreenPatch(patch_t *patch, uint8_t* c, INT32 flags);
+void V_DrawHorizontallyScaledFullScreenPatch(patch_t *patch);
+
+// For widescreen
+#define IS_WEIRD_RES() (cv_highreshudscale.value != FRACUNIT && ((vid.width % BASEVIDWIDTH != 0) || (vid.height % BASEVIDHEIGHT != 0)))
+void V_DrawAdaptiveScaledPatchWithCoords(fixed_t x, fixed_t y, patch_t *patch, INT32 flags);												//SCS - RADIO END
 /**
  * Display the software framebuffer to the screen. Added in RHI conversion; software is not implicitly displayed by the
  * system.

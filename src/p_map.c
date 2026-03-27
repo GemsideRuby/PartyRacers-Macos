@@ -430,12 +430,16 @@ boolean P_DoSpring(mobj_t *spring, mobj_t *object)
 			P_SetTarget(&spring->target, object);
 		}
 
-		if (spring->type == MT_POGOSPRING)
+		if (spring->type == MT_POGOSPRING || spring->type == MT_YOGOSPRING || spring->type == MT_BOGOSPRING)		//SCS EDIT
 		{
 			if (spring->reactiontime == 0)
-			{
+			{	
 				object->eflags &= ~MFE_SPRUNG; // needed to permit the following
-				K_DoPogoSpring(object, -vertispeed, 0); // negative so momz isn't modified
+				
+				if (spring->type == MT_YOGOSPRING)
+					K_DoYellowPogoSpring(object, -vertispeed, 0); // negative so momz isn't modified
+				else
+					K_DoPogoSpring(object, -vertispeed, 0); // negative so momz isn't modified
 			}
 			else
 			{
@@ -448,6 +452,14 @@ boolean P_DoSpring(mobj_t *spring, mobj_t *object)
 
 				// FIXME: try to compensate tumbling gravity
 				object->momz = 3 * object->momz / 2;
+				
+				if (object->momx == 0)			//SCS ADD START
+					object->momx = 5;
+					
+				if (object->momy == 0)
+					object->momy = 5;			//SCS ADD END
+				
+				//spring->fuse -= 2;		//SCS ADD - trying to prevent respawning on top of a spring essentially softlocking you until its fuse expires.
 			}
 
 			if (!spring->fuse)
@@ -807,7 +819,7 @@ static BlockItReturn_t PIT_CheckThing(mobj_t *thing)
 			fixed_t zRange = FixedDiv(thing->z - g_tm.thing->z, tractorHeight);
 			fixed_t momZ = max(zRange, FRACUNIT/16);
 
-			if (g_tm.thing->eflags & MFE_UNDERWATER)
+			if ((g_tm.thing->eflags & MFE_UNDERWATER) && g_tm.thing->player->curshield != KSHIELD_BUBBLE) //SCS ADD
 			{
 				momZ = (117 * momZ) / 200;
 			}
@@ -1040,6 +1052,9 @@ static BlockItReturn_t PIT_CheckThing(mobj_t *thing)
 		|| g_tm.thing->type == MT_BATTLECAPSULE
 		|| g_tm.thing->type == MT_KART_LEFTOVER
 		|| g_tm.thing->type == MT_TOXOMISTER_POLE
+		|| g_tm.thing->type == MT_GHZBALL				//SCS ADD
+		|| g_tm.thing->type == MT_AFTERBURNER_JAWZ		//SCS ADD
+		|| g_tm.thing->type == MT_PRESSUREMINE			//SCS ADD
 		|| (g_tm.thing->type == MT_PLAYER)))
 	{
 		// see if it went over / under
@@ -1059,6 +1074,9 @@ static BlockItReturn_t PIT_CheckThing(mobj_t *thing)
 		|| thing->type == MT_BATTLECAPSULE
 		|| thing->type == MT_KART_LEFTOVER
 		|| thing->type == MT_TOXOMISTER_POLE
+		|| thing->type == MT_GHZBALL			//SCS ADD
+		|| thing->type == MT_AFTERBURNER_JAWZ	//SCS ADD
+		|| thing->type == MT_PRESSUREMINE		//SCS ADD
 		|| (thing->type == MT_PLAYER)))
 	{
 		// see if it went over / under
@@ -1077,7 +1095,7 @@ static BlockItReturn_t PIT_CheckThing(mobj_t *thing)
 
 	if (g_tm.thing->type == MT_ORBINAUT || g_tm.thing->type == MT_JAWZ || g_tm.thing->type == MT_GACHABOM
 		|| g_tm.thing->type == MT_ORBINAUT_SHIELD || g_tm.thing->type == MT_JAWZ_SHIELD
-		|| g_tm.thing->type == MT_GARDENTOP)
+		|| g_tm.thing->type == MT_GARDENTOP || g_tm.thing->type == MT_AFTERBURNER_JAWZ)			//SCS EDIT
 	{
 		// see if it went over / under
 		if (g_tm.thing->z > thing->z + thing->height)
@@ -1089,7 +1107,7 @@ static BlockItReturn_t PIT_CheckThing(mobj_t *thing)
 	}
 	else if (thing->type == MT_ORBINAUT || thing->type == MT_JAWZ || thing->type == MT_GACHABOM
 		|| thing->type == MT_ORBINAUT_SHIELD || thing->type == MT_JAWZ_SHIELD
-		|| thing->type == MT_GARDENTOP)
+		|| thing->type == MT_GARDENTOP || thing->type == MT_AFTERBURNER_JAWZ)			//SCS EDIT
 	{
 		// see if it went over / under
 		if (g_tm.thing->z > thing->z + thing->height)
@@ -1142,7 +1160,7 @@ static BlockItReturn_t PIT_CheckThing(mobj_t *thing)
 		return K_MineCollide(thing, g_tm.thing) ? BMIT_CONTINUE : BMIT_ABORT;
 	}
 
-	if (g_tm.thing->type == MT_LANDMINE)
+	if (g_tm.thing->type == MT_LANDMINE || g_tm.thing->type == MT_PRESSUREMINE)		//SCS EDIT
 	{
 		// see if it went over / under
 		if (g_tm.thing->z > thing->z + thing->height)
@@ -1152,7 +1170,7 @@ static BlockItReturn_t PIT_CheckThing(mobj_t *thing)
 
 		return K_LandMineCollide(g_tm.thing, thing) ? BMIT_CONTINUE : BMIT_ABORT;
 	}
-	else if (thing->type == MT_LANDMINE)
+	else if (thing->type == MT_LANDMINE || thing->type == MT_PRESSUREMINE)		//SCS EDIT
 	{
 		// see if it went over / under
 		if (g_tm.thing->z > thing->z + thing->height)
@@ -1162,6 +1180,69 @@ static BlockItReturn_t PIT_CheckThing(mobj_t *thing)
 
 		return K_LandMineCollide(thing, g_tm.thing) ? BMIT_CONTINUE : BMIT_ABORT;
 	}
+	
+	if (g_tm.thing->type == MT_GHZBALL)													//SCS ADD START
+	{
+		// see if it went over / under
+		if (g_tm.thing->z > thing->z + thing->height)
+			return BMIT_CONTINUE; // overhead
+		if (g_tm.thing->z + g_tm.thing->height < thing->z)
+			return BMIT_CONTINUE; // underneath
+
+		return K_GHZBallCollide(g_tm.thing, thing) ? BMIT_CONTINUE : BMIT_ABORT;
+	}
+	else if (thing->type == MT_GHZBALL)
+	{
+		// see if it went over / under
+		if (g_tm.thing->z > thing->z + thing->height)
+			return BMIT_CONTINUE; // overhead
+		if (g_tm.thing->z + g_tm.thing->height < thing->z)
+			return BMIT_CONTINUE; // underneath
+
+		return K_GHZBallCollide(thing, g_tm.thing) ? BMIT_CONTINUE : BMIT_ABORT;
+	}
+	
+	if (g_tm.thing->type == MT_RINGGUNBLASTMAX)													//SCS ADD START
+	{
+		// see if it went over / under
+		if (g_tm.thing->z > thing->z + thing->height)
+			return BMIT_CONTINUE; // overhead
+		if (g_tm.thing->z + g_tm.thing->height < thing->z)
+			return BMIT_CONTINUE; // underneath
+
+		return K_RingGunBlastMaxCollide(g_tm.thing, thing) ? BMIT_CONTINUE : BMIT_ABORT;
+	}
+	else if (thing->type == MT_RINGGUNBLASTMAX)
+	{
+		// see if it went over / under
+		if (g_tm.thing->z > thing->z + thing->height)
+			return BMIT_CONTINUE; // overhead
+		if (g_tm.thing->z + g_tm.thing->height < thing->z)
+			return BMIT_CONTINUE; // underneath
+
+		return K_RingGunBlastMaxCollide(thing, g_tm.thing) ? BMIT_CONTINUE : BMIT_ABORT;
+	}
+	
+	if (g_tm.thing->type == MT_MEGACHOPPER)
+	{
+		// see if it went over / under
+		if (g_tm.thing->z > thing->z + thing->height)
+			return BMIT_CONTINUE; // overhead
+		if (g_tm.thing->z + g_tm.thing->height < thing->z)
+			return BMIT_CONTINUE; // underneath
+
+		return K_MegaChopperCollide(g_tm.thing, thing) ? BMIT_CONTINUE : BMIT_ABORT;
+	}
+	else if (thing->type == MT_MEGACHOPPER)
+	{
+		// see if it went over / under
+		if (g_tm.thing->z > thing->z + thing->height)
+			return BMIT_CONTINUE; // overhead
+		if (g_tm.thing->z + g_tm.thing->height < thing->z)
+			return BMIT_CONTINUE; // underneath
+
+		return K_MegaChopperCollide(thing, g_tm.thing) ? BMIT_CONTINUE : BMIT_ABORT;
+	}																						//SCS ADD END
 
 	if (g_tm.thing->type == MT_SINK)
 	{
@@ -1378,12 +1459,12 @@ static BlockItReturn_t PIT_CheckThing(mobj_t *thing)
 		if (g_tm.thing->z + g_tm.thing->height < thing->z)
 			return BMIT_CONTINUE; // underneath
 
-		if (g_tm.thing->player && g_tm.thing->player && g_tm.thing->player->tumbleBounces > 0)
+		if (g_tm.thing->player && g_tm.thing->player->tumbleBounces)
 		{
-			return BMIT_CONTINUE;
+			if (thing->type == MT_SPIKE || G_CompatLevel(0x0011))
+				return BMIT_CONTINUE;
 		}
-
-		if (!P_IsObjectOnGround(g_tm.thing) && g_tm.thing->momz * P_MobjFlip(g_tm.thing) < 0) // fell into it
+		else if (!P_IsObjectOnGround(g_tm.thing) && g_tm.thing->momz * P_MobjFlip(g_tm.thing) < 0) // fell into it
 		{
 			P_DamageMobj(g_tm.thing, thing, thing, 1, DMG_TUMBLE);
 
@@ -1398,6 +1479,7 @@ static BlockItReturn_t PIT_CheckThing(mobj_t *thing)
 		{
 			if (
 				thing->type == MT_WALLSPIKE
+				&& G_CompatLevel(0x0011)
 				&& g_tm.thing->health
 				&& g_tm.thing->player
 				&& (g_tm.thing->player->justbumped < bumptime-2)
@@ -4211,6 +4293,8 @@ static void P_BouncePlayerMove(mobj_t *mo, TryMoveResult_t *result)
 			P_TryMove(mo, mo->x - oldmomx, mo->y - oldmomy, true, NULL);
 		}
 	}
+	
+	K_DappleEmployment(mo->player);
 }
 
 //

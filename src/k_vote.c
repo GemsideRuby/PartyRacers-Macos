@@ -833,21 +833,35 @@ static void Y_DrawVoteBackground(void)
 
 	const UINT8 planetFrame = (bgTimer / FRACUNIT) % PLANET_FRAMES;
 
-	V_DrawFixedPatch(
-		0, 0,
-		FRACUNIT, 0,
-		vote_draw.bg_planet[planetFrame], NULL
-	);
-	V_DrawFixedPatch(
-		(BASEVIDWIDTH - vote_draw.bg_checker->width) * FRACUNIT, 0,
-		FRACUNIT, V_ADD|V_TRANSLUCENT,
-		vote_draw.bg_checker, NULL
-	);
-	V_DrawFixedPatch(
-		(BASEVIDWIDTH - vote_draw.bg_checker->width) * FRACUNIT, 0,
-		FRACUNIT, V_ADD|V_TRANSLUCENT,
-		vote_draw.bg_checker, NULL
-	);
+	if (IS_WEIRD_RES()) {																				//SCS - RADIO START
+		V_DrawAdaptiveScaledFullScreenPatch(vote_draw.bg_planet[planetFrame], NULL, V_NOSCALEPATCH);
+		V_DrawFixedPatch(
+			(BASEVIDWIDTH - vote_draw.bg_checker->width) * FRACUNIT, 0,
+			FRACUNIT, V_ADD|V_TRANSLUCENT|V_SNAPTOTOP|V_SNAPTORIGHT,
+			vote_draw.bg_checker, NULL
+		);
+		V_DrawFixedPatch(
+			(BASEVIDWIDTH - vote_draw.bg_checker->width) * FRACUNIT, 0,
+			FRACUNIT, V_ADD|V_TRANSLUCENT|V_SNAPTOTOP|V_SNAPTORIGHT,
+			vote_draw.bg_checker, NULL
+		);
+	} else {																							//SCS - RADIO END
+		V_DrawFixedPatch(
+			0, 0,
+			FRACUNIT, 0,
+			vote_draw.bg_planet[planetFrame], NULL
+		);
+		V_DrawFixedPatch(
+			(BASEVIDWIDTH - vote_draw.bg_checker->width) * FRACUNIT, 0,
+			FRACUNIT, V_ADD|V_TRANSLUCENT,
+			vote_draw.bg_checker, NULL
+		);
+		V_DrawFixedPatch(
+			(BASEVIDWIDTH - vote_draw.bg_checker->width) * FRACUNIT, 0,
+			FRACUNIT, V_ADD|V_TRANSLUCENT,
+			vote_draw.bg_checker, NULL
+		);
+	}																									//SCS - RADIO
 
 	levelPos += FixedMul(TEXT_DERR_SCROLL, renderdeltatics);
 	while (levelPos > levelLoop)
@@ -873,17 +887,23 @@ static void Y_DrawVoteBackground(void)
 	{
 		derrPos -= derrLoop;
 	}
+	
+	INT32 derrtextflags = 0;				//SCS - RADIO START
+	if (IS_WEIRD_RES())
+		derrtextflags = V_SNAPTOBOTTOM;		//SCS - RADIO END
 
 	V_DrawFixedPatch(
 		-derrPos,
 		(BASEVIDHEIGHT - vote_draw.bg_derrText->height) * FRACUNIT,
-		FRACUNIT, V_SUBTRACT,
+		//FRACUNIT, V_SUBTRACT,
+		FRACUNIT, V_SUBTRACT|derrtextflags,		//SCS - RADIO
 		vote_draw.bg_derrText, NULL
 	);
 	V_DrawFixedPatch(
 		-derrPos + derrLoop,
 		(BASEVIDHEIGHT - vote_draw.bg_derrText->height) * FRACUNIT,
-		FRACUNIT, V_SUBTRACT,
+		//FRACUNIT, V_SUBTRACT,
+		FRACUNIT, V_SUBTRACT|derrtextflags,		//SCS - RADIO
 		vote_draw.bg_derrText, NULL
 	);
 
@@ -1845,7 +1865,7 @@ static void Y_TickVoteStageStrike(void)
 static void Y_TickVoteSelection(void)
 {
 	boolean everyone_voted = true;/* the default condition */
-	INT32 i;
+	INT32 i, j;
 
 	if (vote.tic < 3*(NEWTICRATE/7)) // give it some time before letting you control it :V
 	{
@@ -1872,7 +1892,6 @@ static void Y_TickVoteSelection(void)
 				if (vote.players[i].sentTimeOutVote == false)
 				{
 					// Move off of striked stages for the timeout vote.
-					INT32 j;
 					for (j = 0; j < VOTE_NUM_LEVELS; j++)
 					{
 						if (g_votes_striked[vote.players[i].selection] == false)
@@ -1944,9 +1963,9 @@ static void Y_TickVoteSelection(void)
 			{
 				// bots vote randomly
 				INT32 rng = M_RandomKey(VOTE_NUM_LEVELS);
-				for (i = 0; i < VOTE_NUM_LEVELS; i++)
+				for (j = 0; j < VOTE_NUM_LEVELS; j++)
 				{
-					if (g_votes_striked[i] == false)
+					if (g_votes_striked[j] == false)
 					{
 						break;
 					}
@@ -2095,7 +2114,7 @@ static void Y_InitVoteDrawing(void)
 	INT32 i = 0, j = 0;
 
 	vote_draw.ruby_icon = W_CachePatchName("RUBYICON", PU_STATIC);
-	vote_draw.strike_icon = W_CachePatchName("K_NOBLNS", PU_STATIC);
+	vote_draw.strike_icon = W_CachePatchName("VT_LSTRK", PU_STATIC);
 
 	for (i = 0; i < PLANET_FRAMES; i++)
 	{

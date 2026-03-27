@@ -26,6 +26,9 @@
 #include "../r_main.h"
 #include "../tables.h"
 
+// Radio
+#include "../radioracers/rr_hud.h"			//SCS - RADIO
+
 using namespace srb2::objects;
 
 namespace
@@ -311,6 +314,7 @@ struct Cloud : Mobj
 		if (leveltime % (TICRATE/3) == 0 && follow()->player->rings > -20) // toxomister ring drain
 		{
 			follow()->player->rings--;
+			K_DefensiveOverdrive(follow()->player);
 			S_StartSound(follow()->player->mo, sfx_antiri);
 		}
 
@@ -321,7 +325,14 @@ struct Cloud : Mobj
 
 		if (fuse < kMaxFuse && (kMaxFuse - fuse) % 20 == 0 && Mobj::valid(target()) && target()->player && follow()->player)
 		{
-			K_SpawnAmps(target()->player, K_PvPAmpReward(3, target()->player, follow()->player), this);
+			//K_SpawnAmps(target()->player, K_PvPAmpReward(3, target()->player, follow()->player), this);		//Amp reward was changed from 3 to 2 in RC6. SCS - Maybe consider putting it back? This REALLY wasn't overpowered...
+			UINT8 toxicAmps = K_PvPAmpReward(3, target()->player, follow()->player);							//SCS - RADIO START
+			K_SpawnAmps(target()->player, toxicAmps, this);
+			// Radio
+			// only push this to the feed
+			if(cv_hudfeed_show_amps.value && target()->player == stplyr) {
+				RR_PushPlayerInteractionToFeed(target(), follow(), ATTACK_TOXOMISTER_CLOUD, toxicAmps);
+			}																									//SCS - RADIO END
 		}
 
 		follow()->player->stunned = fuse; // stunned as long as cloud is here
@@ -382,6 +393,15 @@ struct Cloud : Mobj
 			}
 
 			P_SetTarget(&toucher->player->toxomisterCloud, this);
+			
+			// Radio																										//SCS - RADIO START
+			// unless you're the display player, don't push this to the feed
+			// the OTHER hudfeed notification will be pushed when they're actively getting amps
+			if(
+				!cv_hudfeed_show_amps.value || 
+				(cv_hudfeed_show_amps.value && Mobj::valid(target()) && target()->player && target()->player != stplyr)) {
+				RR_PushPlayerInteractionToFeed(target(), toucher, ATTACK_TOXOMISTER_CLOUD, 0);
+			}																												//SCS - RADIO END
 		}
 
 		toucher->hitlag(8);

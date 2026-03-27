@@ -52,6 +52,11 @@
 #include "m_easing.h"
 #include "k_hud.h" // messagetimer
 #include "k_endcam.h"
+
+// RadioRacers
+#include "radioracers/rr_controller.h"			//SCS - RADIO
+#include "radioracers/rr_hud.h"					//SCS - RADIO
+
 #include "lua_profile.h"
 #include "deh_tables.h" // MOBJTYPE_LIST
 
@@ -601,6 +606,9 @@ static inline void P_DeviceRumbleTick(void)
 		player_t *player = &players[g_localplayers[i]];
 		UINT16 low = 0;
 		UINT16 high = 0;
+		
+		// RadioRacers: Yeah.
+		rumbleevent_e rumbleEvent;		//SCS - RADIO
 
 		if (player->mo != NULL && !player->exiting)
 		{
@@ -608,6 +616,25 @@ static inline void P_DeviceRumbleTick(void)
 			{
 				low = high = 65536 / 2;
 			}
+			else if (													//SCS - RADIO START
+				RR_ShouldUseMoreRumbleEvents() && 
+				(rumbleEvent = RR_GetRumbleEvent(player)) != 0
+			)
+			{
+				low = high =  RR_GetRumbleStrength(rumbleEvent);
+
+				// RadioRacers: Really gross.
+				if (P_IsMachineLocalPlayer(player))
+				{
+					if (localPlayerWavedashClickTimer > 0)
+						localPlayerWavedashClickTimer--;
+
+					if (localPlayerPickupSpheresDelay >= 4)
+						localPlayerPickupSpheresDelay = 4;
+					else
+						localPlayerPickupSpheresDelay++;
+				}
+			}															//SCS - RADIO END
 			else if (player->sneakertimer > (sneakertime-(TICRATE/2)) || player->panelsneakertimer > (sneakertime-(TICRATE/2)) || player->weaksneakertimer > (sneakertime-(TICRATE/2)))
 			{
 				low = high = 65536 / (3+player->numsneakers+player->numpanelsneakers+player->numweaksneakers);
@@ -1222,6 +1249,8 @@ void P_Ticker(boolean run)
 	{
 		K_TickDialogue();
 		K_TickMessages();
+		RR_ridersFinishTick();	//SCS - RADIO
+		RR_TickHudFeed();		//SCS - RADIO
 	}
 
 	if (run)

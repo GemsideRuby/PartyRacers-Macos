@@ -28,6 +28,11 @@ void Obj_HyudoroCenterThink(mobj_t *actor);
 void Obj_HyudoroCollide(mobj_t *special, mobj_t *toucher);
 boolean Obj_HyudoroShadowZ(mobj_t *actor, fixed_t *return_z, pslope_t **return_slope);
 
+/* Butler Hyudoro */			//SCS ADD
+void Obj_InitBHyudoroCenter(mobj_t *center, mobj_t *master);
+void Obj_ButlerHyudoroDeploy(mobj_t *master);
+void Obj_MiniHyudoroThink(mobj_t *actor);
+
 /* Garden Top */
 void Obj_GardenTopDeploy(mobj_t *rider);
 mobj_t *Obj_GardenTopThrow(player_t *player);
@@ -479,6 +484,9 @@ boolean Obj_TickStoneShoeChain(mobj_t *chain);
 player_t *Obj_StoneShoeOwnerPlayer(mobj_t *shoe);
 void Obj_CollideStoneShoe(mobj_t *mover, mobj_t *mobj);
 
+player_t *Obj_StoneShoeFollowPlayer(mobj_t *shoe);				//SCS - RADIO
+player_t *Obj_StoneShoeChainShoeFollowPlayer(mobj_t *chain);	//SCS - RADIO
+
 /* Toxomister */
 void Obj_InitToxomisterPole(mobj_t *pole);
 boolean Obj_TickToxomisterPole(mobj_t *pole);
@@ -505,6 +513,43 @@ mobj_t *Obj_GetAncientGearMinimapMobj(void);
 void Obj_MushroomHillPolePlayerThink(player_t *player);
 void Obj_MushroomHillPoleTouch(mobj_t *pole, mobj_t *toucher);
 void Obj_MushroomHillPoleFuse(mobj_t *pole);
+
+
+/* Wrecking Ball */				//SCS ADD
+void Obj_WreckingBallThink(mobj_t *th);
+//boolean Obj_WreckingBallJawzCollide(mobj_t *t1, mobj_t *t2);
+void Obj_WreckingBallThrown(mobj_t *th, fixed_t finalSpeed, fixed_t dir);
+void Obj_WreckingBallDrop(mobj_t *th);
+boolean Obj_WreckingBallCanRunOnWater(mobj_t *th);
+void Obj_WreckingBallThrown_Pre(mobj_t *th, fixed_t finalSpeed, fixed_t dir);
+boolean Obj_WreckingBallWasTossed(mobj_t *th);
+void Obj_WreckingBallChainThink(mobj_t *th);
+void Obj_WreckingBallChunkThink(mobj_t *th);
+void Obj_WreckingBallSpawnChain(mobj_t *th);
+void Obj_WreckingBallDeath(mobj_t *th);
+
+/*Master Emerald */					//SCS ADD
+void EM_OrbitThinker(mobj_t *th);
+void EM_BeamThinker(mobj_t *th);
+fixed_t cSpd (fixed_t ang, fixed_t spd, mobj_t *th, boolean Cosine);
+
+/* Normal Shield */
+UINT8 K_NormShieldChargeToNormShieldBoostCount(INT32 charge, UINT8 cap); //SCS ADD
+void Obj_SpawnNormalShieldVisuals(mobj_t *shield);
+boolean Obj_TickNormalShieldVisual(mobj_t *mobj);
+
+/* Mega Chopper */
+void Obj_MegaChopperDeath(mobj_t *th);
+void Obj_MegaChopperThink(mobj_t *th);
+
+/* Armageddon Shield */
+void Obj_SpawnArmaShieldVisuals(mobj_t *shield);	//SCS ADD
+boolean Obj_TickArmaShieldVisual(mobj_t *mobj);
+
+/* Afterburner Jawz */
+void Obj_ABJawzThink(mobj_t *th);										//SCS ADD
+void Obj_ABJawzThrown(mobj_t *th, fixed_t finalSpeed, fixed_t dir);
+void Obj_ABJawzBoosterThink(mobj_t *th);
 
 
 #ifdef __cplusplus

@@ -49,6 +49,14 @@
 #include "m_easing.h"
 #include "k_hud.h" // K_AddMessage
 
+// Radio
+#include "radioracers/rr_util.h"														//SCS - RADIO START
+#include "radioracers/rr_hud.h"
+
+// CTF player names
+#define CTFTEAMCODE(pl) pl->ctfteam ? (pl->ctfteam == 1 ? "\x85" : "\x84") : ""
+#define CTFTEAMENDCODE(pl) pl->ctfteam ? "\x80" : ""									//SCS - RADIO END
+
 void P_ForceFeed(const player_t *player, INT32 attack, INT32 fade, tic_t duration, INT32 period)
 {
 	BasicFF_t Basicfeed;
@@ -145,7 +153,7 @@ boolean P_CanPickupItem(player_t *player, UINT8 weapon)
 	else
 	{
 		// Item slot already taken up
-		if (weapon == PICKUP_EGGBOX)
+		if (weapon == PICKUP_EGGBOX)			//SCS NOTE - I'll leave this be. Let not being able to pickup paper items be a penalty for hitting an Eggmark
 		{
 			// Invulnerable
 			if (player->flashing > 0)
@@ -159,20 +167,35 @@ boolean P_CanPickupItem(player_t *player, UINT8 weapon)
 		else
 		{
 			// Item-specific timer going off
-			if (player->stealingtimer
+			/*if (player->stealingtimer			//SCS EDIT - We'll do these checks later
 				|| player->rocketsneakertimer
-				|| player->eggmanexplode)
-				return false;
+				|| player->eggmanexplode
+				|| player->timestonefrozen		//SCS ADD
+				|| player->megachoppertimer		//SCS ADD
+				|| player->gunusagetimer)		//SCS ADD
+				return false;*/
 
 			// Item slot already taken up
-			if (player->itemRoulette.active == true
+			if ((player->itemRoulette.active == true && (weapon == PICKUP_ITEMBOX || weapon == PICKUP_ITEMCAPSULE))	//SCS EDIT - Don't hit another item box if the roulette is spinning!
 				|| player->ringboxdelay > 0
 				|| (weapon != PICKUP_PAPERITEM && player->itemamount)
 				|| (player->itemflags & IF_ITEMOUT))
 				return false;
+				
+			if (weapon == PICKUP_ITEMBOX || weapon == PICKUP_ITEMCAPSULE)	//SCS ADD - Yeah, don't even destroy item boxes or item capsules if you've got these going
+			{
+				if (player->stealingtimer
+					|| player->rocketsneakertimer
+					|| player->eggmanexplode
+					|| player->timestonefrozen		//SCS ADD
+					|| player->timestonefrozentimer //SCS ADD
+					|| player->megachoppertimer		//SCS ADD
+					|| player->gunusagetimer) 		//SCS ADD
+						return false;
+			}
 
-			if (weapon == PICKUP_PAPERITEM && K_GetShieldFromItem(player->itemtype) != KSHIELD_NONE)
-				return false; // No stacking shields!
+			//if (weapon == PICKUP_PAPERITEM && K_GetShieldFromItem(player->itemtype) != KSHIELD_NONE)		//SCS EDIT - if stacking shields is the main concern, I'll handle that elsewhere. For now, I want the player to be able to get a backup item while they have a shield.
+				//return false; // No stacking shields!
 		}
 	}
 
@@ -335,6 +358,7 @@ static void P_ItemPop(mobj_t *actor)
 void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher, boolean heightcheck)
 {
 	player_t *player;
+	boolean hasitemtimeractive = false;
 
 	if (objectplacing)
 		return;
@@ -452,20 +476,66 @@ void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher, boolean heightcheck)
 					player_t *owner = Obj_StoneShoeOwnerPlayer(special);
 					if (owner)
 					{
-						K_SpawnAmps(player, K_PvPAmpReward(20, owner, player), toucher);
-						K_SpawnAmps(owner, K_PvPAmpReward(20, owner, player), toucher);
+						//K_SpawnAmps(player, K_PvPAmpReward(20, owner, player), toucher);
+						//K_SpawnAmps(owner, K_PvPAmpReward(20, owner, player), toucher);
+						UINT8 stoneShoeAmps = K_PvPAmpReward(20, owner, player);									//SCS - RADIO START
+						K_SpawnAmps(player, stoneShoeAmps, toucher);
+						K_SpawnAmps(owner, stoneShoeAmps, toucher);
+
+						// Radio
+						RR_PushPlayerInteractionToFeed(owner->mo, toucher, ATTACK_STONESHOE_TRAP, stoneShoeAmps);	//SCS - RADIO END
 					}
 				}
 				else
 				{
-					if (player->itemamount && player->itemtype != special->threshold)
+					if (player->itemamount && player->itemtype != special->threshold && player->backupitemtype != KITEM_NONE && player->backupitemtype != special->threshold)	//SCS ADD START		This code here sucks ass. Clean it up later.
 						return;
-
-					player->itemtype = special->threshold;
-					if ((UINT16)(player->itemamount) + special->movecount > 255)
-						player->itemamount = 255;
-					else
-						player->itemamount += special->movecount;
+						
+					if (player->itemRoulette.active == true && player->backupitemtype != KITEM_NONE && player->backupitemtype != special->threshold)	//if the item roulette is spinning, check the backup slot to see if we can still pickup stuff
+						return;
+						
+					if (player->stealingtimer
+					|| player->rocketsneakertimer
+					|| player->eggmanexplode
+					|| player->timestonefrozen		//SCS ADD
+					|| player->timestonefrozentimer //SCS ADD
+					|| player->megachoppertimer		//SCS ADD
+					|| player->gunusagetimer) 		//SCS ADD
+						hasitemtimeractive = true;
+					//&& player->backupitemtype != KITEM_NONE && player->backupitemtype != special->threshold)		//SCS ADD		//if we have an item timer going off, check if the backup slot is available
+						//return;
+						
+					if ((!player->itemRoulette.active && hasitemtimeractive == false && (player->itemamount && player->itemtype == special->threshold && K_GetShieldFromItem(player->itemtype) == KSHIELD_NONE && player->itemtype != KITEM_CHAMBLASTER))
+						|| (!player->itemRoulette.active && player->itemtype == KITEM_NONE && hasitemtimeractive == false)) //I'll put the no shield stacking thing here
+					{
+						player->itemtype = special->threshold;
+						//CONS_Printf("We're adding it to the main slot \n");
+						if ((UINT16)(player->itemamount) + special->movecount > 255)
+							K_SetPlayerItemAmount(player, 255);
+						else
+							K_AdjustPlayerItemAmount(player, special->movecount);
+					}
+					else if (player->backupitemtype == KITEM_NONE || (player->backupitemtype == special->threshold && K_GetShieldFromItem(player->backupitemtype) == KSHIELD_NONE 
+					&& player->itemtype != KITEM_CHAMBLASTER)) //Also no stacking shield here, too.
+					{
+						player->backupitemtype = special->threshold;
+						//CONS_Printf("We're adding it to the backup slot \n");	
+						if ((UINT16)(player->backupitemamount) + special->movecount > 255)
+							K_SetPlayerBackupItemAmount(player, 255);
+						else
+							K_AdjustPlayerBackupItemAmount(player, special->movecount);
+					}
+					else if (K_GetShieldFromItem(player->itemtype) != KSHIELD_NONE && special->threshold == player->itemtype && player->itemtype != KITEM_CHAMBLASTER)	//And no stacking shields here, either
+						return;
+					else																																						//SCS ADD END
+					{
+						return;
+						/*player->itemtype = special->threshold;
+						if ((UINT16)(player->itemamount) + special->movecount > 255)
+							player->itemamount = 255;
+						else
+							player->itemamount += special->movecount;*/
+					}
 				}
 			}
 
@@ -685,6 +755,37 @@ void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher, boolean heightcheck)
 		case MT_BALLOON: // SRB2kart
 			P_SetObjectMomZ(toucher, 20<<FRACBITS, false);
 			break;
+			
+		case MT_INKBUBBLE:			//SCS ADD
+			//if ((special->target == toucher || special->target == toucher->target) && (special->threshold > 0))
+				//return;
+
+			//if (special->target && !P_MobjWasRemoved(special->target))
+				//return;
+			
+			if (special->threshold)	//leeway so you don't auto-pick it back up when deploying
+				return;
+
+			if (special->health <= 0 || toucher->health <= 0)
+				return;
+		
+			if (!player->mo || player->spectator)
+				return;
+			
+			if (K_TryPickMeUp(special, toucher, false))
+				return;
+			
+			if (player->curshield != KSHIELD_NONE)
+				return;
+			
+			if (player->hyudorotimer)
+				return;
+			
+			player->inkblotchtimer = (max(400, min((300/player->position)*12, 700)) - (5*player->position));
+			P_DamageMobj(player->mo, special, special->target, 1, DMG_NORMAL);
+			P_SetMobjState(special, special->info->deathstate);
+			
+			return;
 
 		case MT_BUBBLESHIELDTRAP:
 			if ((special->target == toucher || special->target == toucher->target) && (special->threshold > 0))
@@ -701,9 +802,12 @@ void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher, boolean heightcheck)
 
 			if (K_TryPickMeUp(special, toucher, false))
 				return;
+			
+			UINT8 bubbleShieldTrapAmps = 0;	//SCS - RADIO
 
 			if (special->target && !P_MobjWasRemoved(special->target) && toucher->player && (toucher->player != (special->target->player))) // Last condition here is so you can't get your own amps
 			{
+				bubbleShieldTrapAmps = K_PvPAmpReward(20, special->target->player, toucher->player);							//SCS - RADIO
 				K_SpawnAmps(special->target->player, K_PvPAmpReward(20, special->target->player, toucher->player), toucher);
 			}
 
@@ -722,9 +826,13 @@ void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher, boolean heightcheck)
 			special->z = toucher->z;
 
 			S_StartSound(toucher, sfx_s1b2);
+
+			// Radio: Push to the feed, after the player hears the sound
+			RR_PushPlayerInteractionToFeed(special->target, toucher, ATTACK_BUBBLESHIELD_TRAP, bubbleShieldTrapAmps);		//SCS - RADIO
 			return;
 
 		case MT_HYUDORO:
+		case MT_BHYUDORO:							//SCS ADD
 			Obj_HyudoroCollide(special, toucher);
 			return;
 
@@ -774,6 +882,8 @@ void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher, boolean heightcheck)
 				return;
 
 			P_GivePlayerSpheres(player, 1);
+
+			RR_HandleBlueSphereRumble(player);		//SCS - RADIO
 			break;
 
 		// Secret emblem thingy
@@ -1092,6 +1202,9 @@ void P_TouchSpecialThing(mobj_t *special, mobj_t *toucher, boolean heightcheck)
 		case MT_AIRIVOBALL:
 		{
 			Obj_IvoBallTouch(special, toucher);
+
+			// RadioRacers: IVOBALL. Not IVOSPHERE. IVOBALL.
+			RR_HandleBlueSphereRumble(player);					//SCS - RADIO
 			return;
 		}
 		case MT_PATROLIVOBALL:
@@ -1274,6 +1387,7 @@ static void P_AddBrokenPrison(mobj_t *target, mobj_t *inflictor, mobj_t *source)
 		// but the cost of tracking them here is trivial :D
 		case MT_JAWZ:
 		case MT_JAWZ_SHIELD:
+		case MT_AFTERBURNER_JAWZ:				//SCS ADD
 			targetdamaging = UFOD_JAWZ;
 			break;
 		case MT_SPB:
@@ -1636,9 +1750,6 @@ boolean P_CheckRacers(void)
 
 	boolean eliminateLast = (!K_CanChangeRules(true) || (cv_karteliminatelast.value != 0));
 
-	if (grandprixinfo.gp && grandprixinfo.gamespeed == KARTSPEED_EASY)
-		eliminateLast = false;
-
 	boolean allHumansDone = true;
 	//boolean allBotsDone = true;
 
@@ -1701,11 +1812,13 @@ boolean P_CheckRacers(void)
 #ifndef DEVELOP
 		else if (grandprixinfo.gp == true)
 		{
-			// Always do this in GP
 			eliminateLast = true;
 		}
 #endif
 	}
+	
+	if (grandprixinfo.gp && grandprixinfo.gamespeed == KARTSPEED_EASY)
+		eliminateLast = false;
 
 	if (eliminateLast == true && (numExiting >= numPlaying-1))
 	{
@@ -1768,6 +1881,9 @@ boolean P_CheckRacers(void)
 			racecountdown = countdown + 1;
 		}
 	}
+	
+	if (grandprixinfo.gp && !G_GametypeUsesLives()) // Relaxed
+		racecountdown = 0;
 
 	// We're still playing, but no one else is,
 	// so we need to reset spectator griefing.
@@ -1800,16 +1916,17 @@ void P_UpdateRemovedOrbital(mobj_t *target, mobj_t *inflictor, mobj_t *source)
 				{
 					if (target->target->hnext && !P_MobjWasRemoved(target->target->hnext))
 						K_KillBananaChain(target->target->hnext, inflictor, source);
-					target->target->player->itemamount = 0;
+					
+					K_SetPlayerItemAmount(target->target->player, 0);
 				}
 				else if (target->target->player->itemamount)
-					target->target->player->itemamount--;
+					K_AdjustPlayerItemAmount(target->target->player, -1);
 			}
 			else if ((target->type == MT_ORBINAUT_SHIELD && target->target->player->itemtype == KITEM_ORBINAUT) // orbit items
 				|| (target->type == MT_JAWZ_SHIELD && target->target->player->itemtype == KITEM_JAWZ))
 			{
 				if (target->target->player->itemamount)
-					target->target->player->itemamount--;
+					K_AdjustPlayerItemAmount(target->target->player, -1);
 				if (target->lastlook != 0)
 				{
 					K_RepairOrbitChain(target);
@@ -1847,7 +1964,8 @@ void P_KillMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, UINT8 damaget
 		 || target->type == MT_DROPTARGET || target->type == MT_DROPTARGET_SHIELD
 		 || target->type == MT_EGGMANITEM || target->type == MT_EGGMANITEM_SHIELD
 		 || target->type == MT_BALLHOG || target->type == MT_SPB
-		 || target->type == MT_GACHABOM || target->type == MT_KART_LEFTOVER)) // kart dead items
+		 || target->type == MT_GACHABOM || target->type == MT_GHZBALL || target->type == MT_AFTERBURNER_JAWZ 		//SCS ADD
+		 || target->type == MT_KART_LEFTOVER)) // kart dead items
 		target->flags |= MF_NOGRAVITY; // Don't drop Tails 03-08-2000
 	else
 		target->flags &= ~MF_NOGRAVITY; // lose it if you for whatever reason have it, I'm looking at you shields
@@ -1900,7 +2018,7 @@ void P_KillMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, UINT8 damaget
 			}
 			else
 			{
-				target->fuse = 2*TICRATE + 2;
+				target->fuse = (2*TICRATE + 2);
 			}
 		}
 	}
@@ -2028,6 +2146,8 @@ void P_KillMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, UINT8 damaget
 				target->momx = target->momy = target->momz = 0;
 
 				Obj_SpawnDestroyedKart(target);
+				
+				RR_PushPlayerInteractionToFeed(target, target, ATTACK_DEATH, 0);				//SCS ADD
 
 				if (source && !P_MobjWasRemoved(source))
 				{
@@ -2085,10 +2205,11 @@ void P_KillMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, UINT8 damaget
 					K_InitPlayerTally(target->player);
 				}
 			}
+			
 			break;
 
 		case MT_KART_LEFTOVER:
-			if (!P_MobjWasRemoved(inflictor))
+			if (inflictor && !P_MobjWasRemoved(inflictor))					//SCS EDIT
 			{
 				K_KartSolidBounce(target, inflictor);
 				target->momz = 20 * inflictor->scale * P_MobjFlip(inflictor);
@@ -2206,15 +2327,15 @@ void P_KillMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, UINT8 damaget
 				if (target->threshold < 1 || target->threshold >= NUMKARTITEMS) // bruh moment prevention
 				{
 					player->itemtype = KITEM_SAD;
-					player->itemamount = 1;
+					K_SetPlayerItemAmount(player, 1);
 				}
 				else
 				{
 					player->itemtype = target->threshold;
 					if (K_GetShieldFromItem(player->itemtype) != KSHIELD_NONE) // never give more than 1 shield
-						player->itemamount = 1;
+						K_SetPlayerItemAmount(player, 1);
 					else
-						player->itemamount = max(1, target->movecount);
+						K_SetPlayerItemAmount(player, max(1, target->movecount));
 				}
 				player->karthud[khud_itemblink] = TICRATE;
 				player->karthud[khud_itemblinkmode] = 0;
@@ -2441,11 +2562,15 @@ void P_KillMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, UINT8 damaget
 		case MT_ANCIENTGEAR:
 			Obj_AncientGearDeath(target, source);
 			break;
+		case MT_GHZBALL:
+			//if (target->health <= 0)
+			Obj_WreckingBallDeath(target);
+			break;
 		default:
 			break;
 	}
 
-	if ((target->type == MT_JAWZ || target->type == MT_JAWZ_SHIELD) && !(target->flags2 & MF2_AMBUSH))
+	if ((target->type == MT_JAWZ || target->type == MT_AFTERBURNER_JAWZ || target->type == MT_JAWZ_SHIELD) && !(target->flags2 & MF2_AMBUSH))		//SCS EDIT
 	{
 		target->z += P_MobjFlip(target)*20*target->scale;
 	}
@@ -2735,10 +2860,12 @@ static boolean P_KillPlayer(player_t *player, mobj_t *inflictor, mobj_t *source,
 				&& (playeringame[player->pitblame]) && (!players[player->pitblame].spectator)
 				&& (players[player->pitblame].mo) && (!P_MobjWasRemoved(players[player->pitblame].mo)))
 			{
-				if (gametyperules & (GTR_BUMPERS|GTR_CHECKPOINTS))
+				if (gametyperules & (GTR_BUMPERS|GTR_CHECKPOINTS)) {
 					P_DamageMobj(player->mo, players[player->pitblame].mo, players[player->pitblame].mo, 1, DMG_KARMA);
-				else
+			} else {
 					K_SpawnAmps(&players[player->pitblame], 20, player->mo);
+					RR_PushPlayerInteractionToFeed(players[player->pitblame].mo, player->mo, ATTACK_PITFALL, 20);			//SCS - RADIO
+				}																											//SCS - RADIO
 				player->pitblame = -1;
 			}
 			else if (player->mo->health > 1 || K_Cooperative())
@@ -2817,7 +2944,7 @@ static void AddNullHitlag(player_t *player, tic_t oldHitlag)
 	}
 }
 
-static boolean P_FlashingException(const player_t *player, const mobj_t *inflictor)
+static boolean P_FlashingException(const player_t *player, const mobj_t *inflictor)					//SCS NOTE - what this does is ignore Iframes, not prevent the screen from flashing
 {
 	if (!inflictor)
 	{
@@ -2873,6 +3000,8 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 	boolean downgraded = false;
 
 	INT32 laglength = 6;
+	
+	UINT8 ampsForHudfeed = 0;		//SCS ADD
 
 	if (objectplacing)
 		return false;
@@ -2922,6 +3051,9 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 				source->player->roundconditions.checkthisframe = true;
 			}
 			break;
+		case MT_MEGACHOPPER:
+			return false;
+			break;
 
 		default:
 			break;
@@ -2954,6 +3086,9 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 				return false;
 
 			P_SetObjectMomZ(target, 12*FRACUNIT, false);
+			break;
+		case MT_MEGACHOPPER:
+			return false;
 			break;
 
 		default:
@@ -3055,6 +3190,10 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 				inflictor->tracer->player->roundconditions.returntosender_mark = true;
 				inflictor->tracer->player->roundconditions.checkthisframe = true;
 			}
+			
+			//if (inflictor && inflictor->target == source)//->player == player && inflictor->target->player->position == player->position)	//SCS ADD
+				//return false;
+				
 		}
 		else if (!(inflictor && inflictor->player)
 			&& !(player->exiting || player->laps > numlaps)
@@ -3073,6 +3212,8 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 		// Instant-Death
 		if ((damagetype & DMG_DEATHMASK))
 		{
+			// Radio: Workaround for Sink
+			RR_PushPlayerDeathToFeed(source, target, inflictor);			//SCS - RADIO
 			if (!P_KillPlayer(player, inflictor, source, damagetype))
 				return false;
 		}
@@ -3082,6 +3223,77 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 		}
 		else
 		{
+			if (player->curshield == KSHIELD_FLAME)		//SCS ADD - Elemental Shield blockings!
+			{
+				if (inflictor)
+				{
+					switch(inflictor->type)
+					{
+						case MT_FLAME:
+						case MT_FLAMEPARTICLE:
+						case MT_FLAMEHOLDER:
+						case MT_FIRETORCH:
+						case MT_FLAMEJET:
+						case MT_VERTICALFLAMEJET:
+						case MT_FLAMEJETFLAME:
+						case MT_FLAMEJETFLAMEB:
+						case MT_LAVAFALL:
+						case MT_LAVAFALL_LAVA:
+						case MT_SSCANDLE_FLAME:
+						case MT_SPINFIRE:
+						case MT_FIREBARPOINT:
+						case MT_SMALLFIREBAR:
+						case MT_BIGFIREBAR:
+						case MT_SMOLDERING:
+						case MT_BOOMEXPLODE:
+						case MT_BOOMPARTICLE:
+						case MT_BALLHOGBOOM:
+						case MT_SPBEXPLOSION:
+							return false;
+						break;
+						
+						default:
+						break;
+					}
+				}
+			}
+			else if (player->curshield == KSHIELD_LIGHTNING)
+			{
+				if (inflictor)
+				{
+					switch(inflictor->type)
+					{
+						case MT_DEZLASER:
+							return false;
+						break;
+						
+						default:
+						break;
+					}
+				}
+				//else if (P_IsObjectOnGround(player->mo)) //inflictor is not valid - intended for Death Egg electric floor sur
+					//return false;
+			}
+			
+			if (player->squishedtimer)		//SCS ADD	- Leave squished players alone
+				return false;
+
+			if (player->curshield && inflictor && (inflictor->type == MT_XSNAPLASTSHOTSHRINK || inflictor->type == MT_XSNAPSHOT || inflictor->type == MT_XSNAPLASTSHOT								//SCS ADD
+			|| inflictor->type == MT_RINGGUNMINISHOT || inflictor->type == MT_RINGGUNNORMALSHOT || inflictor->type == MT_RINGGUNLARGESHOT || inflictor->type == MT_RINGGUNBLASTSTRONG
+			|| inflictor->type == MT_RINGGUNBLASTMAX))
+				return false;
+				
+			if (inflictor && inflictor->type == MT_XSNAPLASTSHOTSHRINK)	//SCS ADD
+			{
+				if (player->growshrinktimer == 0)
+					player->mo->destscale = FixedMul(player->mo->destscale, SHRINK_SCALE);
+				
+				player->growshrinktimer -= 2*TICRATE;
+				
+				S_StartSound(player, sfx_kc59);
+				S_StartSound(player, sfx_kc59);
+			}
+			
 			UINT8 type = (damagetype & DMG_TYPEMASK);
 			const boolean hardhit = (type == DMG_EXPLODE || type == DMG_KARMA || type == DMG_TUMBLE); // This damage type can do evil stuff like ALWAYS combo
 			INT16 ringburst = 5;
@@ -3285,22 +3497,135 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 				{
 					if (!P_PlayerInPain(player) && (player->defenseLockout || player->instaWhipCharge))
 					{
-						K_SpawnAmps(source->player, 20, target);
+						ampsForHudfeed = 20;												//SCS - RADIO 
+						K_SpawnAmps(source->player, ampsForHudfeed, target);				//SCS EDIT
 					}
 				}
+				
+				if (player->itemtype == KITEM_PICKPOCKETHYU)		//SCS ADD
+				{
+					K_PickpocketHyuChainDestroy(player);
+					K_DropItems(player);
+					player->pickpockethyucombo = 0;
+				}
+				
+				if (player->timestonefrozen && player->timestonefrozentimer > 0)		//SCS ADD
+						player->timestonefrozentimer -= 2*TICRATE;
+						
+				if (player->timestonefrozentimer <= 3*TICRATE)
+				{	
+					player->timestonefrozen = false;
+					player->timestonefrozentimer = 0;		
+				}
+				if (player->itemtype == KITEM_ARMASHIELD)
+				{
+					switch (type)
+					{
+						case DMG_INSTAKILL:
+						case DMG_DEATHPIT:
+						case DMG_CRUSHED:
+							break;
+						case DMG_NORMAL:
+						case DMG_VOLTAGE:
+						case DMG_KARMA:
+						case DMG_WIPEOUT:
+						case DMG_WHUMBLE:
+						case DMG_STUMBLE:
+							type = DMG_EXPLODE;
+							break;
+						case DMG_TUMBLE:
+							type = DMG_INSTAKILL;
+							player->markedfordeath = true;
+							break;
+						default:
+							break;
+					}
+					K_SpawnMineExplosion(player->mo, player->mo->color, 3);
+					player->armageddonshieldboosttimer = 1;
+				}				
 			}
 			else
 			{
 				// We successfully damaged them! Give 'em some bumpers!
+				
+				if (player->itemtype == KITEM_PICKPOCKETHYU)		//SCS ADD
+				{
+					K_PickpocketHyuChainDestroy(player);
+					K_DropItems(player);
+					player->pickpockethyucombo = 0;
+				}
+				
+				if (player->timestonefrozen && player->timestonefrozentimer > 0)		//SCS ADD
+						player->timestonefrozentimer -= 2*TICRATE;
+						
+				if (player->timestonefrozentimer <= 3*TICRATE)
+				{	
+					player->timestonefrozen = false;
+					player->timestonefrozentimer = 0;		
+				}
+				
+				if (player->itemtype == KITEM_ARMASHIELD)
+				{
+					switch (type)
+					{
+						case DMG_INSTAKILL:
+						case DMG_DEATHPIT:
+						case DMG_CRUSHED:
+							break;
+						case DMG_NORMAL:
+						case DMG_VOLTAGE:
+						case DMG_KARMA:
+						case DMG_WIPEOUT:
+						case DMG_WHUMBLE:
+							type = DMG_EXPLODE;
+							break;
+						case DMG_TUMBLE:
+						case DMG_STUMBLE:
+							player->markedfordeath = true;
+							P_StartQuakeFromMobj(5, 44 * player->mo->scale, 2560 * player->mo->scale, player->mo);
+							break;
+						default:
+							break;
+					}
+					K_SpawnMineExplosion(player->mo, player->mo->color, 3);
+					player->armageddonshieldboosttimer = 1;
+				}
 
 				if (source && source != player->mo && source->player)
 				{
 					// Stone Shoe handles amps on its own, but this is also a good place to set soften tumble for it
-					if (inflictor->type == MT_STONESHOE || inflictor->type == MT_STONESHOE_CHAIN)
+					if (inflictor->type == MT_STONESHOE || inflictor->type == MT_STONESHOE_CHAIN) {
 						softenTumble = true;
-					else
-						K_SpawnAmps(source->player, K_PvPAmpReward((type == DMG_WHUMBLE) ? 30 : 20, source->player, player), target);
-
+				} else {
+						//K_SpawnAmps(source->player, K_PvPAmpReward((type == DMG_WHUMBLE) ? 30 : 20, source->player, player), target);
+						UINT8 whumbleAmps = 20; 						//SCS ADD START
+						
+						ampsForHudfeed = whumbleAmps;
+						
+						if (inflictor)
+						{
+							if (inflictor->type == MT_XSNAPLASTSHOTSHRINK || inflictor->type == MT_XSNAPLASTSHOT || inflictor->type == MT_RINGGUNNORMALSHOT)
+							{
+								ampsForHudfeed = 10;
+							}
+							else if (inflictor->type == MT_XSNAPSHOT || inflictor->type == MT_RINGGUNMINISHOT)
+							{
+								ampsForHudfeed = 5;
+							}
+							else if (inflictor->type == MT_RINGGUNBLASTMAX)
+							{
+								ampsForHudfeed = 40;
+							}
+							else if (inflictor->type == MT_RINGGUNBLASTSTRONG)
+							{
+								ampsForHudfeed = 30;
+							}
+						}	
+						
+						ampsForHudfeed = K_PvPAmpReward((type == DMG_WHUMBLE) ? (ampsForHudfeed+10) : ampsForHudfeed, source->player, player);
+						
+						K_SpawnAmps(source->player, ampsForHudfeed, target);															//SCS ADD END
+					}
 
 					K_BotHitPenalty(player);
 
@@ -3333,7 +3658,8 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 					{
 						tic_t kinvextend;
 
-						softenTumble = true;
+						if (source->player->masteremeraldinvincibility)
+							softenTumble = true; 		//SCS - reverting back to 2.0 invincibility? Let's see how it feels...
 
 						if (gametyperules & GTR_CLOSERPLAYERS)
 							kinvextend = 2*TICRATE;
@@ -3341,8 +3667,11 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 							kinvextend = 3*TICRATE;
 
 						// Reduce the value of subsequent invinc extensions
-						kinvextend = kinvextend / (1 + source->player->invincibilityextensions); // 50%, 33%, 25%[...]
-						kinvextend = max(kinvextend, TICRATE);
+						//if (!player->masteremeraldinvincibility)					//SCS ADD
+						//{
+							kinvextend = kinvextend / (1 + source->player->invincibilityextensions); // 50%, 33%, 25%[...]
+							kinvextend = max(kinvextend, TICRATE);
+						//}
 
 						source->player->invincibilityextensions++;
 
@@ -3353,7 +3682,7 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 					}
 
 					// if the inflictor is a landmine, its reactiontime will be non-zero if it is still moving
-					if (inflictor->type == MT_LANDMINE && inflictor->reactiontime > 0)
+					if ((inflictor->type == MT_LANDMINE || inflictor->type == MT_PRESSUREMINE) && inflictor->reactiontime > 0)		//SCS EDIT
 					{
 						// reduce tumble severity to account for getting beaned point blank sometimes
 						softenTumble = true;
@@ -3361,6 +3690,11 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 						inflictor->momx = 0;
 						inflictor->momy = 0;
 					}
+					
+					/*if (inflictor->type == MT_GHZBALL)		//SCS ADD
+					{
+						Obj_WreckingBallCollide(target, inflictor);
+					}*/
 
 					K_TryHurtSoundExchange(target, source);
 
@@ -3438,7 +3772,7 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 				}
 			}
 
-			if (player->rings <= -20)
+			if (player->rings <= -20 || (inflictor && inflictor->type == MT_RINGGUNBLASTMAX))		//SCS EDIT
 			{
 				player->markedfordeath = true;
 				damagetype = DMG_TUMBLE;
@@ -3464,6 +3798,13 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 				player->ringburst += 5; // IT'S THE DAMAGE STUMBLE HACK AGAIN AAAAAAAAHHHHHHHHHHH
 				K_PopPlayerShield(player);
 			}
+			
+			/*if (type != DMG_WHUMBLE && !downgraded && inflictor && inflictor->type == MT_GHZBALL)
+			{
+				type = DMG_TUMBLE;
+				softenTumble = false;
+				target->momz += (5*abs(player->rings))/target->scale;
+			}*/
 
 			if (!(gametyperules & GTR_SPHERES) && player->tripwireLeniency && !P_PlayerInPain(player))
 			{
@@ -3563,6 +3904,10 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 			}
 
 			K_DefensiveOverdrive(target->player);
+			
+			if (inflictor) {															//SCS ADD
+				RR_PushPlayerDamageToFeed(source, target, inflictor, ampsForHudfeed);
+			}	
 		}
 	}
 	else
@@ -3608,6 +3953,7 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 					break;
 				case MT_JAWZ:
 				case MT_JAWZ_SHIELD:
+				case MT_AFTERBURNER_JAWZ:			//SCS ADD
 					targetdamaging = UFOD_JAWZ;
 					break;
 				case MT_SPB:
@@ -3693,6 +4039,9 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 	boolean truewhumble = false; // Invincibility-ignoring DMG_WHUMBLE from the Insta-Whip itself.
 
 	INT32 laglength = 6;
+	
+	// Radio
+	UINT8 ampsForHudfeed = 0;		//SCS - RADIO
 
 	if (objectplacing)
 		return false;
@@ -3742,6 +4091,9 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 				source->player->roundconditions.checkthisframe = true;
 			}
 			break;
+		case MT_MEGACHOPPER:		//SCS ADD
+				return false;
+			break;
 
 		default:
 			break;
@@ -3774,6 +4126,9 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 				return false;
 
 			P_SetObjectMomZ(target, 12*FRACUNIT, false);
+			break;
+		case MT_MEGACHOPPER:									//SCS ADD
+			return false;
 			break;
 
 		default:
@@ -3875,6 +4230,10 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 				inflictor->tracer->player->roundconditions.returntosender_mark = true;
 				inflictor->tracer->player->roundconditions.checkthisframe = true;
 			}
+			
+			//if (inflictor && inflictor->target == source)//->player == player && inflictor->target->player->position == player->position)	//SCS ADD
+				//return false;
+				
 		}
 		else if (!(inflictor && inflictor->player)
 			&& !(player->exiting || player->laps > numlaps)
@@ -3905,6 +4264,74 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 			UINT8 type = (damagetype & DMG_TYPEMASK);
 			const boolean hardhit = (type == DMG_EXPLODE || type == DMG_KARMA || type == DMG_TUMBLE); // This damage type can do evil stuff like ALWAYS combo
 			INT16 ringburst = 5;
+			
+			if (player->curshield == KSHIELD_FLAME)		//SCS ADD - Elemental Shield blockings!
+			{
+				if (inflictor)
+				{
+					switch(inflictor->type)
+					{
+						case MT_FLAME:
+						case MT_FLAMEPARTICLE:
+						case MT_FLAMEHOLDER:
+						case MT_FIRETORCH:
+						case MT_FLAMEJET:
+						case MT_VERTICALFLAMEJET:
+						case MT_FLAMEJETFLAME:
+						case MT_FLAMEJETFLAMEB:
+						case MT_LAVAFALL:
+						case MT_LAVAFALL_LAVA:
+						case MT_SSCANDLE_FLAME:
+						case MT_SPINFIRE:
+						case MT_FIREBARPOINT:
+						case MT_SMALLFIREBAR:
+						case MT_BIGFIREBAR:
+						case MT_SMOLDERING:
+						case MT_BOOMEXPLODE:
+						case MT_BOOMPARTICLE:
+						case MT_BALLHOGBOOM:
+						case MT_SPBEXPLOSION:
+							return false;
+						break;
+						
+						default:
+						break;
+					}
+				}
+			}
+			else if (player->curshield == KSHIELD_LIGHTNING)
+			{
+				if (inflictor)
+				{
+					switch(inflictor->type)
+					{
+						case MT_DEZLASER:
+							return false;
+						break;
+						
+						default:
+						break;
+					}
+				}
+				//else if (P_IsObjectOnGround(player->mo)) //inflictor is not valid - intended for Death Egg electric floor sur
+					//return false;
+			}
+			
+			if (player->squishedtimer)		//SCS ADD	- Leave squished players alone
+				return false;
+				
+			if (player->curshield && inflictor && (inflictor->type == MT_XSNAPLASTSHOTSHRINK || inflictor->type == MT_XSNAPSHOT || inflictor->type == MT_XSNAPLASTSHOT									//SCS ADD
+			|| inflictor->type == MT_RINGGUNMINISHOT || inflictor->type == MT_RINGGUNNORMALSHOT || inflictor->type == MT_RINGGUNLARGESHOT || inflictor->type == MT_RINGGUNBLASTSTRONG
+			|| inflictor->type == MT_RINGGUNBLASTMAX))
+				return false;
+				
+			if (inflictor && inflictor->type == MT_XSNAPLASTSHOTSHRINK)	//SCS ADD
+			{
+				if (player->growshrinktimer == 0)
+					player->mo->destscale = FixedMul(player->mo->destscale, SHRINK_SCALE);
+				
+				player->growshrinktimer -= 2*TICRATE;
+			}
 
 			if (inflictor && !P_MobjWasRemoved(inflictor) && inflictor->type == MT_INSTAWHIP && type == DMG_WHUMBLE)
 				truewhumble = true;
@@ -3953,7 +4380,9 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 					sfx = sfx_s3k45;
 				}
 				else if (player->hyudorotimer > 0)
-					;
+				{
+					clash = false;
+				}
 				else
 				{
 					invincible = false;
@@ -4127,22 +4556,131 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 				{
 					if (!P_PlayerInPain(player) && (player->defenseLockout || player->instaWhipCharge))
 					{
-						K_SpawnAmps(source->player, 20, target);
+						ampsForHudfeed = 20;												//SCS - RADIO 
+						K_SpawnAmps(source->player, ampsForHudfeed, target);				//SCS EDIT
 					}
+				}
+				
+				if (player->itemtype == KITEM_PICKPOCKETHYU)		//SCS ADD
+				{
+					K_PickpocketHyuChainDestroy(player);
+					K_DropItems(player);
+					player->pickpockethyucombo = 0;
+				}
+				
+				if (player->timestonefrozen && player->timestonefrozentimer > 0)		//SCS ADD
+						player->timestonefrozentimer -= 2*TICRATE;
+						
+				if (player->timestonefrozentimer <= 3*TICRATE)
+				{	
+					player->timestonefrozen = false;
+					player->timestonefrozentimer = 0;		
+				}
+				if (player->itemtype == KITEM_ARMASHIELD)
+				{
+					switch (type)
+					{
+						case DMG_INSTAKILL:
+						case DMG_DEATHPIT:
+						case DMG_CRUSHED:
+							break;
+						case DMG_NORMAL:
+						case DMG_VOLTAGE:
+						case DMG_KARMA:
+						case DMG_WIPEOUT:
+						case DMG_WHUMBLE:
+							type = DMG_EXPLODE;
+							break;
+						case DMG_TUMBLE:
+						case DMG_STUMBLE:
+							player->markedfordeath = true;
+							P_StartQuakeFromMobj(5, 44 * player->mo->scale, 2560 * player->mo->scale, player->mo);
+							break;
+							break;
+						default:
+							break;
+					}
+					K_SpawnMineExplosion(player->mo, player->mo->color, 3);
+					player->armageddonshieldboosttimer = 1;
 				}
 			}
 			else
 			{
 				// We successfully damaged them! Give 'em some bumpers!
 
+				if (player->itemtype == KITEM_PICKPOCKETHYU)		//SCS ADD
+				{
+					K_PickpocketHyuChainDestroy(player);
+					K_DropItems(player);
+					player->pickpockethyucombo = 0;
+				}
+				
+				if (player->timestonefrozen && player->timestonefrozentimer > 0)		//SCS ADD
+						player->timestonefrozentimer -= 2*TICRATE;
+						
+				if (player->timestonefrozentimer <= 3*TICRATE)
+				{	
+					player->timestonefrozen = false;
+					player->timestonefrozentimer = 0;		
+				}
+				if (player->itemtype == KITEM_ARMASHIELD)
+				{
+					switch (type)
+					{
+						case DMG_INSTAKILL:
+						case DMG_DEATHPIT:
+						case DMG_CRUSHED:
+							break;
+						case DMG_NORMAL:
+						case DMG_VOLTAGE:
+						case DMG_KARMA:
+						case DMG_WIPEOUT:
+						case DMG_WHUMBLE:
+						case DMG_STUMBLE:
+							type = DMG_EXPLODE;
+							break;
+						case DMG_TUMBLE:
+							type = DMG_INSTAKILL;
+							break;
+						default:
+							break;
+					}
+					K_SpawnMineExplosion(player->mo, player->mo->color, 3);
+					player->armageddonshieldboosttimer = 1;
+				}
+
 				if (source && source != player->mo && source->player)
 				{
 					// Stone Shoe handles amps on its own, but this is also a good place to set soften tumble for it
-					if (inflictor->type == MT_STONESHOE || inflictor->type == MT_STONESHOE_CHAIN)
+					if (inflictor->type == MT_STONESHOE || inflictor->type == MT_STONESHOE_CHAIN) {
 						softenTumble = true;
-					else
-						K_SpawnAmps(source->player, K_PvPAmpReward((truewhumble) ? 30 : 20, source->player, player), target);
-
+				} else {
+						//K_SpawnAmps(source->player, K_PvPAmpReward((truewhumble) ? 30 : 20, source->player, player), target);
+						UINT8 whumbleAmps = 20; 																			//SCS - RADIO START - SCS EDIT
+						ampsForHudfeed = whumbleAmps;
+						
+						if (inflictor)																						//SCS ADD START
+						{
+							if (inflictor->type == MT_XSNAPLASTSHOTSHRINK || inflictor->type == MT_XSNAPLASTSHOT || inflictor->type == MT_RINGGUNNORMALSHOT)
+							{
+								ampsForHudfeed = 10;
+							}
+							else if (inflictor->type == MT_XSNAPSHOT || inflictor->type == MT_RINGGUNMINISHOT)
+							{
+								ampsForHudfeed = 5;
+							}
+							else if (inflictor->type == MT_RINGGUNBLASTMAX)
+							{
+								ampsForHudfeed = 40;
+							}
+							else if (inflictor->type == MT_RINGGUNBLASTSTRONG)
+							{
+								ampsForHudfeed = 30;
+							}
+						}																								
+						ampsForHudfeed = K_PvPAmpReward((truewhumble) ? (ampsForHudfeed+10) : ampsForHudfeed, source->player, player);				//SCS ADD END
+						K_SpawnAmps(source->player, ampsForHudfeed, target);																		//SCS - RADIO END - SCS EDIT
+					}
 
 					K_BotHitPenalty(player);
 
@@ -4175,7 +4713,8 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 					{
 						tic_t kinvextend;
 
-						softenTumble = true;
+						if (source->player->masteremeraldinvincibility)
+							softenTumble = true; 		//SCS - reverting back to 2.0 invincibility? Let's see how it feels...
 
 						if (gametyperules & GTR_CLOSERPLAYERS)
 							kinvextend = 2*TICRATE;
@@ -4195,7 +4734,7 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 					}
 
 					// if the inflictor is a landmine, its reactiontime will be non-zero if it is still moving
-					if (inflictor->type == MT_LANDMINE && inflictor->reactiontime > 0)
+					if ((inflictor->type == MT_LANDMINE || inflictor->type == MT_PRESSUREMINE) && inflictor->reactiontime > 0)
 					{
 						// reduce tumble severity to account for getting beaned point blank sometimes
 						softenTumble = true;
@@ -4280,7 +4819,7 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 				}
 			}
 
-			if (player->rings <= -20)
+			if (player->rings <= -20 || (inflictor && inflictor-> type == MT_RINGGUNBLASTMAX))		//SCS EDIT
 			{
 				player->markedfordeath = true;
 				damagetype = DMG_TUMBLE;
@@ -4313,6 +4852,13 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 				type = DMG_WHUMBLE;
 				downgraded = true;
 			}
+			
+			/*if (type != DMG_WHUMBLE && !downgraded && inflictor && inflictor->type == MT_GHZBALL)
+			{
+				type = DMG_TUMBLE;
+				softenTumble = false;
+				target->momz += (5*abs(player->rings))/target->scale;
+			}*/
 
 			if (!(gametyperules & GTR_SPHERES) && player->tripwireLeniency && !P_PlayerInPain(player))
 			{
@@ -4410,6 +4956,11 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 			}
 
 			K_DefensiveOverdrive(target->player);
+
+			// RadioRacers: .. right around here
+			if (inflictor) {															//SCS - RADIO START
+				RR_PushPlayerDamageToFeed(source, target, inflictor, ampsForHudfeed);
+			}																			//SCS - RADIO END
 		}
 	}
 	else
@@ -4455,6 +5006,7 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 					break;
 				case MT_JAWZ:
 				case MT_JAWZ_SHIELD:
+				case MT_AFTERBURNER_JAWZ:				//SCS ADD
 					targetdamaging = UFOD_JAWZ;
 					break;
 				case MT_SPB:
@@ -4523,7 +5075,8 @@ void P_FlingBurst
 		mobjtype_t objType,
 		tic_t objFuse,
 		fixed_t objScale,
-		INT32 i)
+		INT32 i,
+		fixed_t dampen)
 {
 	mobj_t *mo = P_SpawnMobjFromMobj(player->mo, 0, 0, 0, objType);
 	P_SetTarget(&mo->target, player->mo);
@@ -4550,7 +5103,8 @@ void P_FlingBurst
 	angle_t fp = offset + (((i / 2) % RING_LAYER_SIDE_SIZE) * (offset * 3 >> 1));
 
 	const UINT8 layer = i / RING_LAYER_SIZE;
-	const fixed_t thrust = (13 * mo->scale) + (7 * mo->scale * layer);
+	fixed_t thrust = (13 * mo->scale) + (7 * mo->scale * layer);
+	thrust = FixedDiv(thrust, dampen);
 	mo->momx = (player->mo->momx / 2) + FixedMul(FixedMul(thrust, FINECOSINE(fp >> ANGLETOFINESHIFT)), FINECOSINE(fa >> ANGLETOFINESHIFT));
 	mo->momy = (player->mo->momy / 2) + FixedMul(FixedMul(thrust, FINECOSINE(fp >> ANGLETOFINESHIFT)), FINESINE(fa >> ANGLETOFINESHIFT));
 	mo->momz = (player->mo->momz / 2) + (FixedMul(thrust, FINESINE(fp >> ANGLETOFINESHIFT)) * P_MobjFlip(mo));
@@ -4595,12 +5149,12 @@ void P_PlayerRingBurst(player_t *player, INT32 num_rings)
 
 	for (i = 0; i < num_fling_rings; i++)
 	{
-		P_FlingBurst(player, fa, MT_FLINGRING, 60*TICRATE, FRACUNIT, i);
+		P_FlingBurst(player, fa, MT_FLINGRING, 60*TICRATE, FRACUNIT, i, FRACUNIT);
 	}
 
 	while (i < spill_total)
 	{
-		P_FlingBurst(player, fa, MT_DEBTSPIKE, 0, 3 * FRACUNIT / 2, i++);
+		P_FlingBurst(player, fa, MT_DEBTSPIKE, 0, 3 * FRACUNIT / 2, i++, FRACUNIT);
 	}
 
 	K_DefensiveOverdrive(player);

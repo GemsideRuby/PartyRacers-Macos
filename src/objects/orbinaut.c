@@ -201,7 +201,7 @@ boolean Obj_OrbinautJawzCollide(mobj_t *t1, mobj_t *t2)
 	if (t2->player)
 	{
 		if ((t2->player->flashing > 0 && t2->hitlag == 0)
-			&& !(t1->type == MT_ORBINAUT || t1->type == MT_JAWZ || t1->type == MT_GACHABOM))
+			&& !(t1->type == MT_ORBINAUT || t1->type == MT_JAWZ || t1->type == MT_GACHABOM || t1->type == MT_AFTERBURNER_JAWZ))		//SCS EDIT
 			return true;
 
 		if (t2->player->hyudorotimer)
@@ -230,7 +230,7 @@ boolean Obj_OrbinautJawzCollide(mobj_t *t1, mobj_t *t2)
 	else if (t2->type == MT_ORBINAUT || t2->type == MT_JAWZ
 		|| t2->type == MT_ORBINAUT_SHIELD || t2->type == MT_JAWZ_SHIELD
 		|| t2->type == MT_BANANA || t2->type == MT_BANANA_SHIELD
-		|| t2->type == MT_BALLHOG || t2->type == MT_GACHABOM)
+		|| t2->type == MT_BALLHOG || t2->type == MT_GACHABOM || t2->type == MT_AFTERBURNER_JAWZ)		//SCS EDIT
 	{
 		// Other Item Damage
 		angle_t bounceangle = K_GetCollideAngle(t1, t2);
@@ -245,7 +245,7 @@ boolean Obj_OrbinautJawzCollide(mobj_t *t1, mobj_t *t2)
 
 		damageitem = true;
 	}
-	else if (t2->type == MT_SSMINE_SHIELD || t2->type == MT_SSMINE || t2->type == MT_LANDMINE)
+	else if (t2->type == MT_SSMINE_SHIELD || t2->type == MT_SSMINE || t2->type == MT_LANDMINE || t2->type == MT_PRESSUREMINE)		//SCS EDIT
 	{
 		damageitem = true;
 		// Bomb death
@@ -325,10 +325,9 @@ void Obj_OrbinautThrown(mobj_t *th, fixed_t finalSpeed, fixed_t dir)
 	{
 		th->color = orbinaut_owner(th)->player->skincolor;
 
-		const mobj_t *owner = orbinaut_owner(th);
-		const ffloor_t *rover = P_IsObjectFlipped(owner) ? owner->ceilingrover : owner->floorrover;
+		const boolean ownerwaterrun = K_WaterRun(orbinaut_owner(th));
 
-		if (dir >= 0 && rover && (rover->fofflags & FOF_SWIMMABLE))
+		if (dir >= 0 && ownerwaterrun)
 		{
 			// The owner can run on water, so we should too!
 			orbinaut_flags(th) |= ORBI_WATERSKI;

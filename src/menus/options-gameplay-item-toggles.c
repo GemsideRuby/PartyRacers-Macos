@@ -19,42 +19,64 @@ menuitem_t OPTIONS_GameplayItems[] =
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Super Ring",			NULL, {.routine = M_HandleItemToggles}, KITEM_SUPERRING, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Self-Propelled Bomb",	NULL, {.routine = M_HandleItemToggles}, KITEM_SPB, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Hyudoro",				NULL, {.routine = M_HandleItemToggles}, KITEM_HYUDORO, 0},
-	{IT_KEYHANDLER | IT_NOTHING, NULL, "Kitchen Sink",			NULL, {.routine = M_HandleItemToggles}, KITEM_KITCHENSINK, 0},
-
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Pickpocket Hyudoro",	NULL, {.routine = M_HandleItemToggles}, KITEM_PICKPOCKETHYU, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Butler Hyudoro",		NULL, {.routine = M_HandleItemToggles}, KITEM_BUTLERHYU, 0},
+	
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Sneaker",				NULL, {.routine = M_HandleItemToggles}, KITEM_SNEAKER, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Sneaker x2",			NULL, {.routine = M_HandleItemToggles}, KRITEM_DUALSNEAKER, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Sneaker x3",			NULL, {.routine = M_HandleItemToggles}, KRITEM_TRIPLESNEAKER, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Rocket Sneaker",		NULL, {.routine = M_HandleItemToggles}, KITEM_ROCKETSNEAKER, 0},
-
-	{IT_KEYHANDLER | IT_NOTHING, NULL, "Banana",				NULL, {.routine = M_HandleItemToggles}, KITEM_BANANA, 0},
-	{IT_KEYHANDLER | IT_NOTHING, NULL, "Banana x3",				NULL, {.routine = M_HandleItemToggles}, KRITEM_TRIPLEBANANA, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Stone Shoe",		 	NULL, {.routine = M_HandleItemToggles}, KITEM_STONESHOE, 0},
+		
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Gachabom",				NULL, {.routine = M_HandleItemToggles}, KITEM_GACHABOM, 0},
-
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Gachabom x3",			NULL, {.routine = M_HandleItemToggles}, KRITEM_TRIPLEGACHABOM, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Orbinaut",				NULL, {.routine = M_HandleItemToggles}, KITEM_ORBINAUT, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Orbinaut x3",			NULL, {.routine = M_HandleItemToggles}, KRITEM_TRIPLEORBINAUT, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Orbinaut x4",			NULL, {.routine = M_HandleItemToggles}, KRITEM_QUADORBINAUT, 0},
-	{IT_KEYHANDLER | IT_NOTHING, NULL, "Gachabom x3",			NULL, {.routine = M_HandleItemToggles}, KRITEM_TRIPLEGACHABOM, 0},
-
+	
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Banana",				NULL, {.routine = M_HandleItemToggles}, KITEM_BANANA, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Banana x3",				NULL, {.routine = M_HandleItemToggles}, KRITEM_TRIPLEBANANA, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Deca-Banana",			NULL, {.routine = M_HandleItemToggles}, KRITEM_DECABANANA, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Jawz",					NULL, {.routine = M_HandleItemToggles}, KITEM_JAWZ, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Jawz x2",				NULL, {.routine = M_HandleItemToggles}, KRITEM_DUALJAWZ, 0},
+	
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Proximity Mine",		NULL, {.routine = M_HandleItemToggles}, KITEM_MINE, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Ballhog",				NULL, {.routine = M_HandleItemToggles}, KITEM_BALLHOG, 0},
-
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Toxomister",			NULL, {.routine = M_HandleItemToggles}, KITEM_TOXOMISTER, 0},
-	{IT_KEYHANDLER | IT_NOTHING, NULL, "Drop Target",			NULL, {.routine = M_HandleItemToggles}, KITEM_DROPTARGET, sfx_s258},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Pressure Mine",			NULL, {.routine = M_HandleItemToggles}, KITEM_PRESSUREMINE, 0},	
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Land Mine",				NULL, {.routine = M_HandleItemToggles}, KITEM_LANDMINE, 0},
-	{IT_KEYHANDLER | IT_NOTHING, NULL, "Eggmark",				NULL, {.routine = M_HandleItemToggles}, KITEM_EGGMAN, 0},
-
+	
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Invincibility",			NULL, {.routine = M_HandleItemToggles}, KITEM_INVINCIBILITY, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Master Emerald",		NULL, {.routine = M_HandleItemToggles}, KITEM_MASTEREMERALD, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Grow",					NULL, {.routine = M_HandleItemToggles}, KITEM_GROW, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Shrink",				NULL, {.routine = M_HandleItemToggles}, KITEM_SHRINK, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Time Stone",		 	NULL, {.routine = M_HandleItemToggles}, KITEM_TIMESTONE, 0},
+	
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Pogo Spring",		 	NULL, {.routine = M_HandleItemToggles}, KITEM_POGOSPRING, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Yellow Pogo Spring",	NULL, {.routine = M_HandleItemToggles}, KITEM_YOGOSPRING, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Blue Pogo Spring",		NULL, {.routine = M_HandleItemToggles}, KITEM_BOGOSPRING, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Drop Target",			NULL, {.routine = M_HandleItemToggles}, KITEM_DROPTARGET, sfx_s258},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Gardentop",		 		NULL, {.routine = M_HandleItemToggles}, KITEM_GARDENTOP, 0},
-
+	
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Normal Shield",			NULL, {.routine = M_HandleItemToggles}, KITEM_NORMALSHIELD, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Lightning Shield",		NULL, {.routine = M_HandleItemToggles}, KITEM_LIGHTNINGSHIELD, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Bubble Shield",			NULL, {.routine = M_HandleItemToggles}, KITEM_BUBBLESHIELD, 0},
 	{IT_KEYHANDLER | IT_NOTHING, NULL, "Flame Shield",			NULL, {.routine = M_HandleItemToggles}, KITEM_FLAMESHIELD, 0},
-	{IT_KEYHANDLER | IT_NOTHING, NULL, "Pogo Spring",		 	NULL, {.routine = M_HandleItemToggles}, KITEM_POGOSPRING, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Armageddon Shield",		NULL, {.routine = M_HandleItemToggles}, KITEM_ARMASHIELD, 0},
+
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Balkiry",				NULL, {.routine = M_HandleItemToggles}, KITEM_ABURNERJAWZ, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Balkiry x2",			NULL, {.routine = M_HandleItemToggles}, KRITEM_DUALABURNERJAWZ, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Checker Wrecker",		NULL, {.routine = M_HandleItemToggles}, KITEM_WRECKINGBALL, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Mega Chopper",			NULL, {.routine = M_HandleItemToggles}, KITEM_MEGACHOPPER, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Octus",					NULL, {.routine = M_HandleItemToggles}, KITEM_OCTUS, 0},
+	
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Chameleon Blaster",		NULL, {.routine = M_HandleItemToggles}, KITEM_CHAMBLASTER, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Egg Blaster",			NULL, {.routine = M_HandleItemToggles}, KITEM_EGGBLASTER, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Ring Gun",				NULL, {.routine = M_HandleItemToggles}, KITEM_RINGGUN, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Eggmark",				NULL, {.routine = M_HandleItemToggles}, KITEM_EGGMAN, 0},
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Kitchen Sink",			NULL, {.routine = M_HandleItemToggles}, KITEM_KITCHENSINK, 0},
+
+	{IT_KEYHANDLER | IT_NOTHING, NULL, "Super Jackpot",			NULL, {.routine = M_HandleItemToggles}, KITEM_SUPERJACKPOT, 0},
 
 //	{IT_KEYHANDLER | IT_NOTHING, NULL, NULL, NULL, {.routine = M_HandleItemToggles}, 0, 0}, -- next time, gadget
 
@@ -124,7 +146,7 @@ void KartFrantic_MenuSound(void)
 
 void M_HandleItemToggles(INT32 choice)
 {
-	const INT32 width = 8, height = 4;
+	const INT32 width = 11, height = 5;						//SCS EDIT
 	INT32 column = itemOn/height, row = itemOn%height;
 	INT16 next;
 	UINT8 i;

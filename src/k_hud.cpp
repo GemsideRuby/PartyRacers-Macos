@@ -57,6 +57,16 @@
 #include "m_easing.h"
 #include "v_draw.hpp"
 
+#include "radioracers/rr_cvar.h"					//SCS - RADIO START
+#include "radioracers/rr_hud.h"
+#include "radioracers/rr_util.h"
+#include "radioracers/rr_video.h"
+
+// Radio - static variables for drawing the backup items when being tracked on the player
+static INT32 itemRouletteX;
+static INT32 itemRouletteY;
+static INT32 itemRouletteFlags;						//SCS - RADIO END
+
 //{ 	Patch Definitions
 static patch_t *kp_nodraw;
 
@@ -148,13 +158,13 @@ static patch_t *kp_itemmulsticker[2];
 static patch_t *kp_itemx;
 
 static patch_t *kp_sadface[3];
-static patch_t *kp_sneaker[3];
+static patch_t *kp_sneaker[5];			//SCS EDIT
 static patch_t *kp_rocketsneaker[3];
 static patch_t *kp_invincibility[19];
-static patch_t *kp_banana[3];
+static patch_t *kp_banana[6];			//SCS EDIT
 static patch_t *kp_eggman[3];
 static patch_t *kp_orbinaut[6];
-static patch_t *kp_jawz[3];
+static patch_t *kp_jawz[4];				//SCS EDIT
 static patch_t *kp_mine[3];
 static patch_t *kp_landmine[3];
 static patch_t *kp_ballhog[3];
@@ -173,14 +183,36 @@ static patch_t *kp_gardentop[3];
 static patch_t *kp_gachabom[3];
 static patch_t *kp_stoneshoe[3];
 static patch_t *kp_toxomister[3];
-static patch_t *kp_bar[2];
-static patch_t *kp_doublebar[2];
-static patch_t *kp_triplebar[2];
-static patch_t *kp_slotring[2];
-static patch_t *kp_seven[2];
-static patch_t *kp_jackpot[2];
+static patch_t *kp_sjackpot[3];			//SCS ADD
+static patch_t *kp_wreckball[3];		//SCS ADD
+static patch_t *kp_masteremerald[18];	//SCS ADD
+static patch_t *kp_pickpockethyu[15];	//SCS ADD
+static patch_t *kp_yellowspogospring[3];//SCS ADD
+static patch_t *kp_bluepogospring[3];	//SCS ADD
+static patch_t *kp_timestone[30];		//SCS ADD
+static patch_t *kp_normalshield[3];		//SCS ADD
+static patch_t *kp_megachopper[3];		//SCS ADD
+static patch_t *kp_armashield[3];		//SCS ADD
+static patch_t *kp_aburnerjawz[3];		//SCS ADD
+static patch_t *kp_pressuremine[3];		//SCS ADD
+static patch_t *kp_chamblaster[3];		//SCS ADD
+static patch_t *kp_eggblaster[3];		//SCS ADD
+static patch_t *kp_ringgun[3];			//SCS ADD
+static patch_t *kp_butlerhyu[3];		//SCS ADD
+static patch_t *kp_octus[3];			//SCS ADD
+static patch_t *kp_inkblotches[8];		//SCS ADD
+//static patch_t *kp_pickpockcombo[2];	//SCS ADD
+static patch_t *kp_bar[4];
+static patch_t *kp_doublebar[4];
+static patch_t *kp_triplebar[4];
+static patch_t *kp_slotring[4];
+static patch_t *kp_seven[4];
+static patch_t *kp_jackpot[4];
 
-static patch_t *kp_check[6];
+static patch_t *kp_ringemeralds[7];	//SCS ADD
+static patch_t *kp_ringemeraldssmall[7];	//SCS ADD
+
+static patch_t *kp_check[12];
 
 static patch_t *kp_rival[2];
 static patch_t *kp_localtag[4][2];
@@ -218,7 +250,7 @@ static patch_t *kp_nametagstem;
 static patch_t *kp_bossbar[8];
 static patch_t *kp_bossret[4];
 
-static patch_t *kp_trickcool[2];
+static patch_t *kp_trickcool[20];				//SCS EDIT
 
 static patch_t *kp_voice_localactive[16];
 static patch_t *kp_voice_localactiveoverlay[16];
@@ -613,12 +645,34 @@ void K_LoadKartHUDGraphics(void)
 	HU_UpdatePatch(&kp_itemtimer[0], "K_ITIMER");
 	HU_UpdatePatch(&kp_itemmulsticker[0], "K_ITMUL");
 	HU_UpdatePatch(&kp_itemx, "K_ITX");
+	
+	//Octus Ink Blotches							//SCS ADD
+	HU_UpdatePatch(&kp_inkblotches[0], "INK_K_ISBG");
+	HU_UpdatePatch(&kp_inkblotches[1], "INK_K_ITBG");
+	HU_UpdatePatch(&kp_inkblotches[2], "INK_K_SPDMBG");
+	HU_UpdatePatch(&kp_inkblotches[3], "INK_K_STEXP");
+	HU_UpdatePatch(&kp_inkblotches[4], "INK_RNGBACKA");
+	HU_UpdatePatch(&kp_inkblotches[5], "INK_RNGBACKB");
+	HU_UpdatePatch(&kp_inkblotches[6], "INK_SMRNGBGA");
+	HU_UpdatePatch(&kp_inkblotches[7], "INK_SMRNGBGB");
+	
+	//Pickpocket Hyudoro combo HUD					//SCS ADD
+	//HU_UpdatePatch(&kp_pickpockcombo[0], "K_PHCL");
+	//HU_UpdatePatch(&kp_pickpockcombo[1], "K_PHCS");
+	
+	
 
 	HU_UpdatePatch(&kp_ringbg[0], "K_RBBG");
 	HU_UpdatePatch(&kp_ringbg[1], "K_SBBG");
 
 	HU_UpdatePatch(&kp_sadface[0], "K_ITSAD");
-	HU_UpdatePatch(&kp_sneaker[0], "K_ITSHOE");
+	sprintf(buffer, "K_ITSHOx");					//SCS ADD
+	for (i = 0; i < 3; i++)
+	{
+		buffer[7] = '1'+i;
+		HU_UpdatePatch(&kp_sneaker[i], "%s", buffer);
+	}
+	//HU_UpdatePatch(&kp_sneaker[0], "K_ITSHOE");
 	HU_UpdatePatch(&kp_rocketsneaker[0], "K_ITRSHE");
 
 	sprintf(buffer, "K_ITINVx");
@@ -627,7 +681,13 @@ void K_LoadKartHUDGraphics(void)
 		buffer[7] = '1'+i;
 		HU_UpdatePatch(&kp_invincibility[i], "%s", buffer);
 	}
-	HU_UpdatePatch(&kp_banana[0], "K_ITBANA");
+	sprintf(buffer, "K_ITBANx");					//SCS ADD
+	for (i = 0; i < 4; i++)
+	{
+		buffer[7] = '1'+i;
+		HU_UpdatePatch(&kp_banana[i], "%s", buffer);
+	}
+	//HU_UpdatePatch(&kp_banana[0], "K_ITBANA");
 	HU_UpdatePatch(&kp_eggman[0], "K_ITEGGM");
 	sprintf(buffer, "K_ITORBx");
 	for (i = 0; i < 4; i++)
@@ -635,7 +695,13 @@ void K_LoadKartHUDGraphics(void)
 		buffer[7] = '1'+i;
 		HU_UpdatePatch(&kp_orbinaut[i], "%s", buffer);
 	}
-	HU_UpdatePatch(&kp_jawz[0], "K_ITJAWZ");
+	sprintf(buffer, "K_ITJAWx");				//SCS ADD
+	for (i = 0; i < 2; i++)
+	{
+		buffer[7] = '1'+i;
+		HU_UpdatePatch(&kp_jawz[i], "%s", buffer);
+	}
+	//HU_UpdatePatch(&kp_jawz[0], "K_ITJAWZ");
 	HU_UpdatePatch(&kp_mine[0], "K_ITMINE");
 	HU_UpdatePatch(&kp_landmine[0], "K_ITLNDM");
 	HU_UpdatePatch(&kp_ballhog[0], "K_ITBHOG");
@@ -654,12 +720,62 @@ void K_LoadKartHUDGraphics(void)
 	HU_UpdatePatch(&kp_gachabom[0], "K_ITGBOM");
 	HU_UpdatePatch(&kp_stoneshoe[0], "K_ITSTON");
 	HU_UpdatePatch(&kp_toxomister[0], "K_ITTOX");
+	HU_UpdatePatch(&kp_sjackpot[0], "K_ITSJP");				//SCS ADD
+	HU_UpdatePatch(&kp_wreckball[0], "K_ITGHZB");			//SCS ADD
+	sprintf(buffer, "K_ITEMRx");							//SCS ADD
+	for (i = 0; i < 6; i++)
+	{
+		buffer[7] = '1'+i;
+		HU_UpdatePatch(&kp_masteremerald[i], "%s", buffer);
+	}
+	sprintf(buffer, "K_ITPCKx");							//SCS ADD
+	for (i = 0; i < 9; i++)
+	{
+		buffer[7] = '1'+i;
+		HU_UpdatePatch(&kp_pickpockethyu[i], "%s", buffer);
+	}
+	HU_UpdatePatch(&kp_yellowspogospring[0], "K_ITYOGO");			//SCS ADD
+	HU_UpdatePatch(&kp_bluepogospring[0], "K_ITBOGO");			//SCS ADD
+	sprintf(buffer, "K_ITTSNx");							//SCS ADD
+	for (i = 0; i < 9; i++)
+	{
+		buffer[7] = '1'+i;
+		HU_UpdatePatch(&kp_timestone[i], "%s", buffer);
+	}
+	HU_UpdatePatch(&kp_timestone[9], "K_ITTSN10");
+	HU_UpdatePatch(&kp_normalshield[0], "K_ITSHLD");			//SCS ADD
+	HU_UpdatePatch(&kp_megachopper[0], "K_ITMCHP");			//SCS ADD
+	HU_UpdatePatch(&kp_armashield[0], "K_ITARMA");			//SCS ADD
+	HU_UpdatePatch(&kp_aburnerjawz[0], "K_ITABJZ");			//SCS ADD
+	HU_UpdatePatch(&kp_pressuremine[0], "K_ITPRMN");			//SCS ADD
+	HU_UpdatePatch(&kp_chamblaster[0], "K_ITCBLR");			//SCS ADD
+	HU_UpdatePatch(&kp_eggblaster[0], "K_ITXEGB");			//SCS ADD
+	HU_UpdatePatch(&kp_ringgun[0], "K_ITXSNP");			//SCS ADD
+	HU_UpdatePatch(&kp_butlerhyu[0], "K_ITHYUB");			//SCS ADD
+	HU_UpdatePatch(&kp_octus[0], "K_ITTAKN");			//SCS ADD
 	HU_UpdatePatch(&kp_bar[0], "K_RBBAR");
 	HU_UpdatePatch(&kp_doublebar[0], "K_RBBAR2");
 	HU_UpdatePatch(&kp_triplebar[0], "K_RBBAR3");
 	HU_UpdatePatch(&kp_slotring[0], "K_RBRING");
 	HU_UpdatePatch(&kp_seven[0], "K_RBSEV");
 	HU_UpdatePatch(&kp_jackpot[0], "K_RBJACK");
+	
+
+	HU_UpdatePatch(&kp_ringemeralds[0], "K_REME1");	//SCS ADD
+	HU_UpdatePatch(&kp_ringemeralds[1], "K_REME2");	//SCS ADD
+	HU_UpdatePatch(&kp_ringemeralds[2], "K_REME3");	//SCS ADD
+	HU_UpdatePatch(&kp_ringemeralds[3], "K_REME4");	//SCS ADD
+	HU_UpdatePatch(&kp_ringemeralds[4], "K_REME5");	//SCS ADD
+	HU_UpdatePatch(&kp_ringemeralds[5], "K_REME6");	//SCS ADD
+	HU_UpdatePatch(&kp_ringemeralds[6], "K_REME7");	//SCS ADD
+	
+	HU_UpdatePatch(&kp_ringemeraldssmall[0], "K_REMS1");	//SCS ADD
+	HU_UpdatePatch(&kp_ringemeraldssmall[1], "K_REMS2");	//SCS ADD
+	HU_UpdatePatch(&kp_ringemeraldssmall[2], "K_REMS3");	//SCS ADD
+	HU_UpdatePatch(&kp_ringemeraldssmall[3], "K_REMS4");	//SCS ADD
+	HU_UpdatePatch(&kp_ringemeraldssmall[4], "K_REMS5");	//SCS ADD
+	HU_UpdatePatch(&kp_ringemeraldssmall[5], "K_REMS6");	//SCS ADD
+	HU_UpdatePatch(&kp_ringemeraldssmall[6], "K_REMS7");	//SCS ADD
 
 	sprintf(buffer, "FSMFGxxx");
 	for (i = 0; i < FLAMESHIELD_MAX; i++)
@@ -686,7 +802,7 @@ void K_LoadKartHUDGraphics(void)
 	HU_UpdatePatch(&kp_itemmulsticker[1], "K_ISMUL");
 
 	HU_UpdatePatch(&kp_sadface[1], "K_ISSAD");
-	HU_UpdatePatch(&kp_sneaker[1], "K_ISSHOE");
+	HU_UpdatePatch(&kp_sneaker[3], "K_ISSHOE");			//SCS EDIT
 	HU_UpdatePatch(&kp_rocketsneaker[1], "K_ISRSHE");
 	sprintf(buffer, "K_ISINVx");
 	for (i = 0; i < 6; i++)
@@ -694,10 +810,10 @@ void K_LoadKartHUDGraphics(void)
 		buffer[7] = '1'+i;
 		HU_UpdatePatch(&kp_invincibility[i+7], "%s", buffer);
 	}
-	HU_UpdatePatch(&kp_banana[1], "K_ISBANA");
+	HU_UpdatePatch(&kp_banana[4], "K_ISBANA");		//SCS EDIT
 	HU_UpdatePatch(&kp_eggman[1], "K_ISEGGM");
 	HU_UpdatePatch(&kp_orbinaut[4], "K_ISORBN");
-	HU_UpdatePatch(&kp_jawz[1], "K_ISJAWZ");
+	HU_UpdatePatch(&kp_jawz[2], "K_ISJAWZ");		//SCS EDIT
 	HU_UpdatePatch(&kp_mine[1], "K_ISMINE");
 	HU_UpdatePatch(&kp_landmine[1], "K_ISLNDM");
 	HU_UpdatePatch(&kp_ballhog[1], "K_ISBHOG");
@@ -716,12 +832,60 @@ void K_LoadKartHUDGraphics(void)
 	HU_UpdatePatch(&kp_gachabom[1], "K_ISGBOM");
 	HU_UpdatePatch(&kp_stoneshoe[1], "K_ISSTON");
 	HU_UpdatePatch(&kp_toxomister[1], "K_ISTOX");
+	HU_UpdatePatch(&kp_sjackpot[1], "K_ISSJP");				//SCS ADD
+	HU_UpdatePatch(&kp_wreckball[1], "K_ISGHZB");			//SCS ADD
+	sprintf(buffer, "K_ISEMRx");							//SCS ADD
+	for (i = 0; i < 6; i++)
+	{
+		buffer[7] = '1'+i;
+		HU_UpdatePatch(&kp_masteremerald[i+6], "%s", buffer);
+	}
+	sprintf(buffer, "K_ISPCKx");							//SCS ADD
+	for (i = 0; i < 3; i++)
+	{
+		buffer[7] = '1'+i;
+		HU_UpdatePatch(&kp_pickpockethyu[i+9], "%s", buffer);
+	}
+	HU_UpdatePatch(&kp_yellowspogospring[1], "K_ISYOGO");			//SCS ADD
+	HU_UpdatePatch(&kp_bluepogospring[1], "K_ISBOGO");			//SCS ADD
+	sprintf(buffer, "K_ISTSNx");							//SCS ADD
+	for (i = 0; i < 9; i++)
+	{
+		buffer[7] = '1'+i;
+		HU_UpdatePatch(&kp_timestone[i+10], "%s", buffer);
+	}
+	HU_UpdatePatch(&kp_timestone[19], "K_ISTSN10");
+	HU_UpdatePatch(&kp_normalshield[1], "K_ISSHLD");			//SCS ADD
+	HU_UpdatePatch(&kp_megachopper[1], "K_ISMCHP");			//SCS ADD
+	HU_UpdatePatch(&kp_armashield[1], "K_ISARMA");			//SCS ADD
+	HU_UpdatePatch(&kp_aburnerjawz[1], "K_ISABJZ");			//SCS ADD
+	HU_UpdatePatch(&kp_pressuremine[1], "K_ISPRMN");			//SCS ADD
+	HU_UpdatePatch(&kp_chamblaster[1], "K_ISCBLR");			//SCS ADD
+	HU_UpdatePatch(&kp_eggblaster[1], "K_ISXEGB");			//SCS ADD
+	HU_UpdatePatch(&kp_ringgun[1], "K_ISXSNP");			//SCS ADD
+	HU_UpdatePatch(&kp_butlerhyu[1], "K_ISHYUB");			//SCS ADD
+	HU_UpdatePatch(&kp_octus[1], "K_ISTAKN");			//SCS ADD
 	HU_UpdatePatch(&kp_bar[1], "K_SBBAR");
 	HU_UpdatePatch(&kp_doublebar[1], "K_SBBAR2");
 	HU_UpdatePatch(&kp_triplebar[1], "K_SBBAR3");
 	HU_UpdatePatch(&kp_slotring[1], "K_SBRING");
 	HU_UpdatePatch(&kp_seven[1], "K_SBSEV");
 	HU_UpdatePatch(&kp_jackpot[1], "K_SBJACK");
+	
+
+	HU_UpdatePatch(&kp_bar[2], "K_ISBAR1");					//SCS ADD START
+	HU_UpdatePatch(&kp_doublebar[2], "K_ISBAR2");
+	HU_UpdatePatch(&kp_triplebar[2], "K_ISBAR3");
+	HU_UpdatePatch(&kp_slotring[2], "K_ISBING");
+	HU_UpdatePatch(&kp_seven[2], "K_ISSEVE");
+	HU_UpdatePatch(&kp_jackpot[2], "K_ISJACK");
+	
+	HU_UpdatePatch(&kp_bar[3], "K_ISPYBAR1");
+	HU_UpdatePatch(&kp_doublebar[3], "K_ISPYBAR2");
+	HU_UpdatePatch(&kp_triplebar[3], "K_ISPYBAR3");
+	HU_UpdatePatch(&kp_slotring[3], "K_ISPYRING");
+	HU_UpdatePatch(&kp_seven[3], "K_ISPYSEVE");
+	HU_UpdatePatch(&kp_jackpot[3], "K_ISPYJACK");			//SCS ADD END
 
 	sprintf(buffer, "FSMFSxxx");
 	for (i = 0; i < 120; i++)
@@ -746,7 +910,7 @@ void K_LoadKartHUDGraphics(void)
 	HU_UpdatePatch(&kp_itembg[5], "ISPYBGD");
 
 	//HU_UpdatePatch(&kp_sadface[2], "ISPYSAD");
-	HU_UpdatePatch(&kp_sneaker[2], "ISPYSHOE");
+	HU_UpdatePatch(&kp_sneaker[4], "ISPYSHOE");			//SCS EDIT
 	HU_UpdatePatch(&kp_rocketsneaker[2], "ISPYRSHE");
 	sprintf(buffer, "ISPYINVx");
 	for (i = 0; i < 6; i++)
@@ -754,10 +918,10 @@ void K_LoadKartHUDGraphics(void)
 		buffer[7] = '1'+i;
 		HU_UpdatePatch(&kp_invincibility[i+13], "%s", buffer);
 	}
-	HU_UpdatePatch(&kp_banana[2], "ISPYBANA");
+	HU_UpdatePatch(&kp_banana[5], "ISPYBANA");		//SCS EDIT
 	HU_UpdatePatch(&kp_eggman[2], "ISPYEGGM");
 	HU_UpdatePatch(&kp_orbinaut[5], "ISPYORBN");
-	HU_UpdatePatch(&kp_jawz[2], "ISPYJAWZ");
+	HU_UpdatePatch(&kp_jawz[3], "ISPYJAWZ");		//SCS EDIT
 	HU_UpdatePatch(&kp_mine[2], "ISPYMINE");
 	HU_UpdatePatch(&kp_landmine[2], "ISPYLNDM");
 	HU_UpdatePatch(&kp_ballhog[2], "ISPYBHOG");
@@ -776,14 +940,52 @@ void K_LoadKartHUDGraphics(void)
 	HU_UpdatePatch(&kp_gachabom[2], "ISPYGBOM");
 	HU_UpdatePatch(&kp_stoneshoe[2], "ISPYSTON");
 	HU_UpdatePatch(&kp_toxomister[2], "ISPYTOX");
-
-	// CHECK indicators
-	sprintf(buffer, "K_CHECKx");
+	HU_UpdatePatch(&kp_sjackpot[2], "ISPYSJP");				//SCS ADD
+	HU_UpdatePatch(&kp_wreckball[2], "ISPYGHZB");			//SCS ADD
+	sprintf(buffer, "ISPYEMRx");							//SCS ADD
 	for (i = 0; i < 6; i++)
 	{
 		buffer[7] = '1'+i;
+		HU_UpdatePatch(&kp_masteremerald[i+12], "%s", buffer);
+	}
+	sprintf(buffer, "ISPYPCKx");							//SCS ADD
+	for (i = 0; i < 3; i++)
+	{
+		buffer[7] = '1'+i;
+		HU_UpdatePatch(&kp_pickpockethyu[i+12], "%s", buffer);
+	}
+	HU_UpdatePatch(&kp_yellowspogospring[2], "ISPYYOGO");			//SCS ADD
+	HU_UpdatePatch(&kp_bluepogospring[2], "ISPYBOGO");			//SCS ADD
+	sprintf(buffer, "ISPYSTNx");							//SCS ADD
+	for (i = 0; i < 9; i++)
+	{
+		buffer[7] = '1'+i;
+		HU_UpdatePatch(&kp_timestone[i+20], "%s", buffer);
+	}
+	HU_UpdatePatch(&kp_timestone[29], "ISPYSTN10");
+	HU_UpdatePatch(&kp_normalshield[2], "ISPYSHLD");			//SCS ADD
+	HU_UpdatePatch(&kp_megachopper[2], "ISPYMCHP");			//SCS ADD
+	HU_UpdatePatch(&kp_armashield[2], "ISPYARMA");			//SCS ADD
+	HU_UpdatePatch(&kp_aburnerjawz[2], "ISPYABJZ");			//SCS ADD
+	HU_UpdatePatch(&kp_pressuremine[2], "ISPYPRMN");			//SCS ADD
+	HU_UpdatePatch(&kp_chamblaster[2], "ISPYCBLR");			//SCS ADD
+	HU_UpdatePatch(&kp_eggblaster[2], "ISPYXEGB");			//SCS ADD
+	HU_UpdatePatch(&kp_ringgun[2], "ISPYXSNP");			//SCS ADD
+	HU_UpdatePatch(&kp_butlerhyu[2], "ISPYHYUB");			//SCS ADD
+	HU_UpdatePatch(&kp_octus[2], "ISPYTAKN");			//SCS ADD
+
+	// CHECK indicators
+	sprintf(buffer, "K_CHECKx");
+	for (i = 0; i < 9; i++)
+	{
+		//buffer[6] = '0'+(i / 10);
+		//buffer[7] = '0'+((i+1) % 10);
+		buffer[7] = '1'+i;
 		HU_UpdatePatch(&kp_check[i], "%s", buffer);
 	}
+	HU_UpdatePatch(&kp_check[9], "K_CHECKA");
+	HU_UpdatePatch(&kp_check[10], "K_CHECKB");
+	HU_UpdatePatch(&kp_check[11], "K_CHECKC");
 
 	// Rival indicators
 	sprintf(buffer, "K_RIVALx");
@@ -905,8 +1107,28 @@ void K_LoadKartHUDGraphics(void)
 
 	HU_UpdatePatch(&kp_nametagstem, "K_NAMEST");
 
-	HU_UpdatePatch(&kp_trickcool[0], "K_COOL1");
-	HU_UpdatePatch(&kp_trickcool[1], "K_COOL2");
+	//HU_UpdatePatch(&kp_trickcool[0], "K_COOL1");
+	//HU_UpdatePatch(&kp_trickcool[1], "K_COOL2");
+	HU_UpdatePatch(&kp_trickcool[0], "TRKTXT_0");		//SCS ADD
+	HU_UpdatePatch(&kp_trickcool[1], "TRKTXT_1");
+	HU_UpdatePatch(&kp_trickcool[2], "TRKTXT_2");
+	HU_UpdatePatch(&kp_trickcool[3], "TRKTXT_3");
+	HU_UpdatePatch(&kp_trickcool[4], "TRKTXT_4");
+	HU_UpdatePatch(&kp_trickcool[5], "TRKTXT_5");
+	HU_UpdatePatch(&kp_trickcool[6], "TRKTXT_6");
+	HU_UpdatePatch(&kp_trickcool[7], "TRKTXT_7");
+	HU_UpdatePatch(&kp_trickcool[8], "TRKTXT_8");
+	HU_UpdatePatch(&kp_trickcool[9], "TRKTXT_9");
+	HU_UpdatePatch(&kp_trickcool[10], "TRKTXTs0");
+	HU_UpdatePatch(&kp_trickcool[11], "TRKTXTs1");
+	HU_UpdatePatch(&kp_trickcool[12], "TRKTXTs2");
+	HU_UpdatePatch(&kp_trickcool[13], "TRKTXTs3");
+	HU_UpdatePatch(&kp_trickcool[14], "TRKTXTs4");
+	HU_UpdatePatch(&kp_trickcool[15], "TRKTXTs5");
+	HU_UpdatePatch(&kp_trickcool[16], "TRKTXTs6");
+	HU_UpdatePatch(&kp_trickcool[17], "TRKTXTs7");
+	HU_UpdatePatch(&kp_trickcool[18], "TRKTXTs8");
+	HU_UpdatePatch(&kp_trickcool[19], "TRKTXTs9");
 
 	HU_UpdatePatch(&kp_autoroulette, "A11YITEM");
 	HU_UpdatePatch(&kp_autoring, "A11YRING");
@@ -1112,23 +1334,29 @@ const char *K_GetItemPatch(UINT8 item, boolean tiny)
 	switch (item)
 	{
 		case KITEM_SNEAKER:
+			return (tiny ? "K_ISSHOE" : "K_ITSHO1");	//SCS EDIT
 		case KRITEM_DUALSNEAKER:
+			return (tiny ? "K_ISSHOE" : "K_ITSHO2");	//SCS ADD
 		case KRITEM_TRIPLESNEAKER:
-			return (tiny ? "K_ISSHOE" : "K_ITSHOE");
+			return (tiny ? "K_ISSHOE" : "K_ITSHO3");	//SCS ADD
 		case KITEM_ROCKETSNEAKER:
 			return (tiny ? "K_ISRSHE" : "K_ITRSHE");
 		case KITEM_INVINCIBILITY:
 			return (tiny ? "K_ISINV1" : "K_ITINV1");
 		case KITEM_BANANA:
+			return (tiny ? "K_ISBANA" : "K_ITBAN1");	//SCS EDIT
 		case KRITEM_TRIPLEBANANA:
-			return (tiny ? "K_ISBANA" : "K_ITBANA");
+			return (tiny ? "K_ISBANA" : "K_ITBAN3");	//SCS ADD
+		case KRITEM_DECABANANA:							//SCS ADD
+			return (tiny ? "K_ISBANA" : "K_ITBAN4");
 		case KITEM_EGGMAN:
 			return (tiny ? "K_ISEGGM" : "K_ITEGGM");
 		case KITEM_ORBINAUT:
 			return (tiny ? "K_ISORBN" : "K_ITORB1");
 		case KITEM_JAWZ:
+			return (tiny ? "K_ISJAWZ" : "K_ITJAW1");	//SCS EDIT
 		case KRITEM_DUALJAWZ:
-			return (tiny ? "K_ISJAWZ" : "K_ITJAWZ");
+			return (tiny ? "K_ISJAWZ" : "K_ITJAW2");	//SCS ADD
 		case KITEM_MINE:
 			return (tiny ? "K_ISMINE" : "K_ITMINE");
 		case KITEM_LANDMINE:
@@ -1170,6 +1398,41 @@ const char *K_GetItemPatch(UINT8 item, boolean tiny)
 			return (tiny ? "K_ISTOX" : "K_ITTOX");
 		case KITEM_STONESHOE:
 			return (tiny ? "K_ISSTON" : "K_ITSTON");
+		case KITEM_SUPERJACKPOT:							//SCS ADD
+			return (tiny ? "K_ISSJP" : "K_ITSJP");
+		case KITEM_WRECKINGBALL:							//SCS ADD
+			return (tiny ? "K_ISGHZB" : "K_ITGHZB");
+		case KITEM_MASTEREMERALD:							//SCS ADD
+			return (tiny ? "K_ISEMR1" : "K_ITEMR1");
+		case KITEM_PICKPOCKETHYU:							//SCS ADD
+			return (tiny ? "K_ISPCK1" : "K_ITPCK1");
+		case KITEM_YOGOSPRING:								//SCS ADD
+			return (tiny ? "K_ISYOGO" : "K_ITYOGO");
+		case KITEM_TIMESTONE:								//SCS ADD
+			return (tiny ? "K_ISTSN1" : "K_ITTSN1");
+		case KITEM_BOGOSPRING:								//SCS ADD
+			return (tiny ? "K_ISBOGO" : "K_ITBOGO");
+		case KITEM_NORMALSHIELD:							//SCS ADD
+			return (tiny ? "K_ISSHLD" : "K_ITSHLD");
+		case KITEM_MEGACHOPPER:								//SCS ADD
+			return (tiny ? "K_ISMCHP" : "K_ITMCHP");
+		case KITEM_ARMASHIELD:								//SCS ADD
+			return (tiny ? "K_ISARMA" : "K_ITARMA");
+		case KITEM_ABURNERJAWZ:								//SCS ADD
+		case KRITEM_DUALABURNERJAWZ:		
+			return (tiny ? "K_ISABJZ" : "K_ITABJZ");
+		case KITEM_PRESSUREMINE:							//SCS ADD
+			return (tiny ? "K_ISPRMN" : "K_ITPRMN");
+		case KITEM_CHAMBLASTER:								//SCS ADD
+			return (tiny ? "K_ISCBLR" : "K_ITCBLR");
+		case KITEM_EGGBLASTER:								//SCS ADD
+			return (tiny ? "K_ISXEGB" : "K_ITXEGB");
+		case KITEM_RINGGUN:									//SCS ADD
+			return (tiny ? "K_ISXSNP" : "K_ITXSNP");
+		case KITEM_BUTLERHYU:								//SCS ADD
+			return (tiny ? "K_ISHYUB" : "K_ITHYUB");
+		case KITEM_OCTUS:									//SCS ADD
+			return (tiny ? "K_ISTAKN" : "K_ITTAKN");
 		default:
 			return (tiny ? "K_ISSAD" : "K_ITSAD");
 	}
@@ -1205,6 +1468,23 @@ static patch_t *K_GetCachedItemPatch(INT32 item, UINT8 offset)
 		kp_gachabom,
 		kp_stoneshoe,
 		kp_toxomister,
+		kp_sjackpot,			//SCS ADD
+		kp_wreckball,			//SCS ADD
+		kp_masteremerald,		//SCS ADD
+		kp_pickpockethyu,		//SCS ADD
+		kp_yellowspogospring,	//SCS ADD
+		kp_timestone,			//SCS ADD
+		kp_bluepogospring,		//SCS ADD
+		kp_normalshield,		//SCS ADD
+		kp_megachopper,			//SCS ADD
+		kp_armashield,			//SCS ADD
+		kp_aburnerjawz,			//SCS ADD
+		kp_pressuremine,		//SCS ADD
+		kp_chamblaster,			//SCS ADD
+		kp_eggblaster,			//SCS ADD
+		kp_ringgun,				//SCS ADD
+		kp_butlerhyu,			//SCS ADD
+		kp_octus				//SCS ADD
 	};
 
 	if (item == KITEM_SAD || (item > KITEM_NONE && item < NUMKARTITEMS))
@@ -1224,9 +1504,29 @@ patch_t *K_GetSmallStaticCachedItemPatch(kartitems_t item)
 		case KITEM_INVINCIBILITY:
 			offset = 7;
 			break;
+		
+		case KITEM_MASTEREMERALD:
+			offset = 6;
+			break;
+
+		case KITEM_PICKPOCKETHYU:
+			offset = 9;
+			break;
 
 		case KITEM_ORBINAUT:
 			offset = 4;
+			break;
+			
+		case KITEM_BANANA:			//SCS ADD
+			offset = 4;
+			break;
+			
+		case KITEM_SNEAKER:			//SCS ADD
+			offset = 3;
+			break;
+			
+		case KITEM_JAWZ:			//SCS ADD
+			offset = 2;
 			break;
 
 		default:
@@ -1550,6 +1850,26 @@ void K_DrawMapThumbnail2(fixed_t x, fixed_t y, fixed_t width, UINT32 flags, UINT
 	K_DrawLikeMapThumbnail(x, y, width, flags, PictureOfLevel, colormap, accordion);
 }
 
+void K_DrawMapThumbnail2Widescreen(fixed_t x, fixed_t y, fixed_t width, UINT32 flags, UINT16 map, const UINT8 *colormap, fixed_t accordion)		//SCS - RADIO START
+{
+	patch_t *PictureOfLevel = NULL;
+
+	if (map >= nummapheaders || !mapheaderinfo[map])
+	{
+		PictureOfLevel = nolvl;
+	}
+	else if (!mapheaderinfo[map]->thumbnailPic)
+	{
+		PictureOfLevel = blanklvl;
+	}
+	else
+	{
+		PictureOfLevel = static_cast<patch_t*>(mapheaderinfo[map]->thumbnailPic);
+	}
+
+	K_DrawLikeMapThumbnailWidescreen(x, y, width, flags, PictureOfLevel, colormap, accordion);
+}																																				//SCS - RADIO END
+
 void K_DrawLikeMapThumbnail(fixed_t x, fixed_t y, fixed_t width, UINT32 flags, patch_t *patch, const UINT8 *colormap, fixed_t accordion)
 {
 	fixed_t scale = FixedDiv(width, (320 << FRACBITS));
@@ -1566,6 +1886,14 @@ void K_DrawLikeMapThumbnail(fixed_t x, fixed_t y, fixed_t width, UINT32 flags, p
 		colormap
 	);
 }
+
+void K_DrawLikeMapThumbnailWidescreen(fixed_t x, fixed_t y, fixed_t width, UINT32 flags, patch_t *patch, const UINT8 *colormap, fixed_t accordion)	//SCS - RADIO START
+{
+	if (flags & V_FLIP)
+		x += FixedMul(width, accordion);
+
+	V_DrawAdaptiveScaledFullScreenPatch(patch, const_cast<uint8_t*>(colormap), flags|V_NOSCALEPATCH);
+}																																					//SCS - RADIO END
 
 void K_DrawMapAsFace(INT32 x, INT32 y, UINT32 flags, UINT16 map, const UINT8 *colormap, fixed_t accordion, INT32 scalefactor)
 {
@@ -1625,6 +1953,35 @@ void K_DrawMapAsFace(INT32 x, INT32 y, UINT32 flags, UINT16 map, const UINT8 *co
 	V_ClearClipRect();
 }
 
+// RadioRacers
+static trackingResult_t K_getRoulettePositionForTrackingPlayer(void)				//SCS - RADIO START
+{
+	trackingResult_t result;
+
+	// No player object? Not bothering.
+	const boolean doesPlayerHaveMo = !((stplyr->mo == NULL || P_MobjWasRemoved(stplyr->mo)));
+	if (!doesPlayerHaveMo)
+		return result;
+
+	vector3_t v = {
+		R_InterpolateFixed(stplyr->mo->old_x, stplyr->mo->x) + stplyr->mo->sprxoff,
+		R_InterpolateFixed(stplyr->mo->old_y, stplyr->mo->y) + stplyr->mo->spryoff,
+		R_InterpolateFixed(stplyr->mo->old_z, stplyr->mo->z) + stplyr->mo->sprzoff + (stplyr->mo->height >> 1),
+	};
+
+	vector3_t v2 = {
+		0, 
+		0, 
+		64 * stplyr->mo->scale * P_MobjFlip(stplyr->mo)
+	};
+
+	FV3_Add(&v,&v2);
+	
+	K_ObjectTracking(&result, &v, false);
+
+	return result;
+}																					//SCS - RADIO END
+
 // see also K_DrawNameTagItemSpy
 static void K_drawKartItem(void)
 {
@@ -1637,9 +1994,14 @@ static void K_drawKartItem(void)
 	patch_t *localpatch[3] = { kp_nodraw, kp_nodraw, kp_nodraw };
 	UINT8 localamt[3] = {0, 0, 0};
 	patch_t *localbg = ((offset) ? kp_itembg[2] : kp_itembg[0]);
+	patch_t *localinkblotch = ((offset) ? kp_inkblotches[0] : kp_inkblotches[1]);		//SCS ADD
+	//patch_t *localhyucombo = ((offset) ? kp_pickpockcombo[1] : kp_pickpockcombo[0]);	//SCS ADD
 	patch_t *localinv = ((offset) ? kp_invincibility[((leveltime % (6*3)) / 3) + 7] : kp_invincibility[(leveltime % (7*3)) / 3]);
+	patch_t *localmemer = ((offset) ? kp_masteremerald[((leveltime % (6*3)) / 3) + 6] : kp_masteremerald[(leveltime % (6*3)) / 3]);
+	patch_t *localpickpocket = ((offset) ? kp_pickpockethyu[((leveltime % (3*3)) / 3) + 9] : kp_pickpockethyu[(leveltime % (9*3)) / 3]);
+	patch_t *localtimestone = ((offset) ? kp_timestone[((leveltime % (10*3)) / 3) + 10] : kp_timestone[(leveltime % (10*3)) / 3]);
 	INT32 fx = 0, fy = 0, fflags = 0;	// final coords for hud and flags...
-	const INT32 numberdisplaymin = ((!offset && stplyr->itemtype == KITEM_ORBINAUT) ? 5 : 2);
+	const INT32 numberdisplaymin = (!offset && (stplyr->itemtype == KITEM_ORBINAUT || stplyr->itemtype == KITEM_BANANA) ? 5 : !offset && stplyr->itemtype == KITEM_SNEAKER ? 4 : !offset && stplyr->itemtype == KITEM_JAWZ ? 3 : 2);		//SCS EDIT
 	INT32 itembar = 0;
 	INT32 maxl = 0; // itembar's normal highest value
 	const INT32 barlength = (offset ? 12 : 26);
@@ -1654,6 +2016,13 @@ static void K_drawKartItem(void)
 
 	boolean flashOnOne = false;
 	boolean flashOnTwo = false;
+
+	// RadioRacers
+	const boolean isHudTranslucencyAlreadyLow = (cv_translucenthud.value << V_ALPHASHIFT) <= V_TRANSLUCENT;			//SCS - RADIO START
+	boolean shouldDrawOnPlayer = false;
+	INT32 baseVideoFlags = V_HUDTRANS|V_SLIDEIN;
+	fixed_t baseHudScale = FRACUNIT;
+	float baseHudScaleFloat = (float)((float)(baseHudScale) / (FRACUNIT));											//SCS - RADIO END
 
 	if (stplyr->itemRoulette.itemList.len > 0)
 	{
@@ -1674,16 +2043,49 @@ static void K_drawKartItem(void)
 					localpatch[i] = localinv;
 					localamt[i] = amt;
 					break;
+					
+				case KITEM_MASTEREMERALD:
+					localpatch[i] = localmemer;			//SCS ADD
+					localamt[i] = amt;
+					break;
+					
+				case KITEM_PICKPOCKETHYU:
+					localpatch[i] = localpickpocket;			//SCS ADD
+					localamt[i] = amt;
+					break;
 
+				case KITEM_TIMESTONE:
+					localpatch[i] = localtimestone;			//SCS ADD
+					localamt[i] = amt;
+					break;							
+				
 				case KITEM_ORBINAUT:
 					localpatch[i] = kp_orbinaut[(offset ? 4 : std::min(amt-1, 3))];
-					if (amt > 4)
+					if (amt > 4 || offset)	//SCS EDIT - Fixing this so the amounts show in 3P/4P splitscreen no matter what, since there aren't unique icons for the items there.
+						localamt[i] = amt;
+					break;
+					
+				case KITEM_BANANA:
+					localpatch[i] = kp_banana[(offset ? 4 : std::min(amt-1, 3))];			//SCS ADD
+					if (amt > 4 || offset)	//SCS EDIT
+						localamt[i] = amt;
+					break;
+					
+				case KITEM_SNEAKER:
+					localpatch[i] = kp_sneaker[(offset ? 3 : std::min(amt-1, 2))];			//SCS ADD
+					if (amt > 3 || offset)	//SCS EDIT
+						localamt[i] = amt;
+					break;
+					
+				case KITEM_JAWZ:
+					localpatch[i] = kp_jawz[(offset ? 2 : std::min(amt-1, 1))];			//SCS ADD
+					if (amt > 2 || offset)	//SCS EDIT
 						localamt[i] = amt;
 					break;
 
 				default:
 					localpatch[i] = K_GetCachedItemPatch(item, offset);
-					if (item != KITEM_BALLHOG || amt != 5)
+					if (item != KITEM_BALLHOG && item != KITEM_CHAMBLASTER && item != KITEM_EGGBLASTER)// || amt != 5)		//SCS EDIT
 						localamt[i] = amt;
 					break;
 			}
@@ -1706,12 +2108,19 @@ static void K_drawKartItem(void)
 
 		if (stplyr->stealingtimer < 0)
 		{
-			localpatch[1] = kp_hyudoro[offset];
+			if (stplyr->bstealingtimer < 0)
+				localpatch[1] = kp_butlerhyu[offset];				//SCS ADD
+			else
+				localpatch[1] = kp_hyudoro[offset];
+			
 			flashOnTwo = true;
 		}
 		else if ((stplyr->stealingtimer > 0) && (leveltime & 2))
 		{
-			localpatch[1] = kp_hyudoro[offset];
+			if (stplyr->bstealingtimer > 0)
+				localpatch[1] = kp_butlerhyu[offset];				//SCS ADD
+			else
+				localpatch[1] = kp_hyudoro[offset];
 		}
 		else if (stplyr->eggmanexplode > 1)
 		{
@@ -1729,12 +2138,64 @@ static void K_drawKartItem(void)
 			localpatch[1] = kp_ballhog[offset];
 			flashOnOne = true;
 		}
+		else if (stplyr->normalshieldboostcharge > 0)					//SCS ADD
+		{
+			itembar = stplyr->normalshieldboostcharge % NORMSHIELDINCREMENT;
+			maxl = NORMSHIELDINCREMENT;
+
+			localpatch[1] = kp_normalshield[offset];
+			flashOnOne = true;
+		}
+		else if (stplyr->megachoppertimer > 1)						//SCS ADD
+		{
+			itembar = stplyr->megachoppertimer;
+			maxl = (itemtime*2) - barlength;
+
+			localpatch[1] = kp_megachopper[offset];
+			flashOnOne = true;
+		}
+		else if (stplyr->gunusagetimer > 1)						//SCS ADD
+		{
+			itembar = stplyr->gunusagetimer;
+			maxl = (itemtime*3) - barlength;
+
+			localpatch[1] = kp_chamblaster[offset];
+			flashOnOne = true;
+		}
+		else if (stplyr->armageddonshieldboosttimer > 1)						//SCS ADD
+		{
+			itembar = stplyr->armageddonshieldboosttimer;
+			maxl = (itemtime*6) - barlength;
+
+			localpatch[1] = kp_armashield[offset];
+			flashOnOne = true;
+		}
 		else if (stplyr->rocketsneakertimer > 1)
 		{
 			itembar = stplyr->rocketsneakertimer;
 			maxl = (itemtime*3) - barlength;
 
 			localpatch[1] = kp_rocketsneaker[offset];
+			flashOnOne = true;
+		}
+		else if (stplyr->itemtype == KITEM_RINGGUN)	//SCS ADD
+		{
+			itembar = stplyr->playerringgunpower;
+			
+			if (itembar > 100)
+				itembar = 100;
+			
+			maxl = (125 - barlength);
+
+			localpatch[1] = kp_ringgun[offset];
+			flashOnOne = false;
+		}
+		else if (stplyr->timestonefrozentimer > 1)	//SCS ADD
+		{
+			itembar = stplyr->timestonefrozentimer;
+			maxl = (itemtime*4) - barlength;
+			
+			localpatch[1] = kp_timestone[offset];
 			flashOnOne = true;
 		}
 		else if (stplyr->sadtimer > 0)
@@ -1757,9 +2218,36 @@ static void K_drawKartItem(void)
 					localpatch[1] = localinv;
 					localbg = kp_itembg[offset+1];
 					break;
+					
+				case KITEM_MASTEREMERALD:
+					localpatch[1] = localmemer;				//SCS ADD
+					localbg = kp_itembg[offset+1];
+					break;
+					
+				case KITEM_PICKPOCKETHYU:
+					localpatch[1] = localpickpocket;				//SCS ADD
+					localbg = kp_itembg[offset+1];
+					break;
+					
+				case KITEM_TIMESTONE:
+					localpatch[1] = localtimestone;				//SCS ADD
+					localbg = kp_itembg[offset+1];
+					break;
 
 				case KITEM_ORBINAUT:
 					localpatch[1] = kp_orbinaut[(offset ? 4 : std::min(stplyr->itemamount-1, 3))];
+					break;
+					
+				case KITEM_BANANA:
+					localpatch[1] = kp_banana[(offset ? 4 : std::min(stplyr->itemamount-1, 3))];			//SCS ADD
+					break;
+					
+				case KITEM_SNEAKER:
+					localpatch[1] = kp_sneaker[(offset ? 3 : std::min(stplyr->itemamount-1, 2))];			//SCS ADD
+					break;
+					
+				case KITEM_JAWZ:
+					localpatch[1] = kp_jawz[(offset ? 2 : std::min(stplyr->itemamount-1, 1))];			//SCS ADD
 					break;
 
 				case KITEM_SPB:
@@ -1841,7 +2329,51 @@ static void K_drawKartItem(void)
 	{
 		fx = ITEM_X;
 		fy = ITEM_Y;
-		fflags = V_SNAPTOTOP|V_SNAPTOLEFT|V_SPLITSCREEN;
+
+		// We are NOT supporting this for splitscreen, the vanilla layout is easier to read.			//SCS - RADIO START
+		if (cv_rouletteonplayer.value == 1 && r_splitscreen == 0)
+		{
+			itembox_tracking_coordinates_t coords = RR_getRouletteCoordinatesForKartItem();
+
+			// if(result.x != 0 && result.y != 0)
+			if(coords.valid_coords && stplyr->itemtype == KITEM_NONE)									//SCS EDIT	- I don't want it drawn while I have an item, only while the roulette spins
+			{
+				shouldDrawOnPlayer = true;
+				//localinkblotch = kp_inkblotches[0];
+				const boolean rouletteIsActive = (stplyr->itemRoulette.active == true);
+				/**
+				 * This solution WILL obscure the player's view.
+				 * The item roulette background is transparent .. but some items are pretty loud visually (e.g. flame shield)
+				 * Making it scale any smaller than 75% is unreasonable (it spins pretty fast towards the end of a race)..
+				 * so we'll just make it a bit translucent.
+				 */
+				baseVideoFlags = rouletteIsActive ? V_HUDTRANS : V_TRANSLUCENT; 
+
+				baseHudScale = RR_getItemBoxHudScale();
+				baseHudScaleFloat = RR_getItemBoxHudScaleFloat();
+				rouletteCrop = RR_getRouletteCroppingForKartItem(rouletteCrop);
+
+				fx = coords.x;
+				fy = coords.y;
+
+				roulette_offset_spacing_t roulette_offset_spacing = RR_getRouletteSpacingOffsetForKartItem(
+					rouletteOffset
+				);
+				rouletteSpace = roulette_offset_spacing.space;
+				rouletteOffset = roulette_offset_spacing.offset;
+
+				if (isHudTranslucencyAlreadyLow || stplyr->exiting)
+					baseVideoFlags = V_HUDTRANS;
+
+				// For drawing the backup item
+				itemRouletteX = fx;
+				itemRouletteY = fy;
+				itemRouletteFlags = baseVideoFlags;
+
+			}
+		} else {																					//SCS - RADIO END
+			fflags = V_SNAPTOTOP|V_SNAPTOLEFT|V_SPLITSCREEN;
+		}		//SCS - RADIO
 	}
 
 	if (r_splitscreen == 1)
@@ -1854,7 +2386,25 @@ static void K_drawKartItem(void)
 	{
 		boxmap = R_GetTranslationColormap(TC_ALLWHITE, SKINCOLOR_WHITE, GTC_CACHE);
 	}
-	V_DrawMappedPatch(fx, fy, V_HUDTRANS|V_SLIDEIN|fflags, localbg, boxmap);
+	//V_DrawMappedPatch(fx, fy, V_HUDTRANS|V_SLIDEIN|fflags, localbg, boxmap);
+	
+	/**
+	 * Normally, this would just follow the V_HUDTRANS flag from the get-go.
+	 * But if you're playing with the HUD 100% opaque, it's gonna block vision easily. 
+	 * At the very least, I'll enforce a slightly lower translucency.. until their hud transluency is low enough.
+	 */
+	INT32 itemBackgroundFlags = baseVideoFlags|fflags;				//SCS - RADIO START
+	if (shouldDrawOnPlayer) 
+	{
+		itemBackgroundFlags = V_70TRANS|fflags;
+		if (isHudTranslucencyAlreadyLow || stplyr->exiting)
+			itemBackgroundFlags = V_HUDTRANS;
+	}
+	V_DrawFixedPatch(
+		(fx<<FRACBITS), (fy<<FRACBITS), 
+		baseHudScale, itemBackgroundFlags,
+		localbg, 0
+	);																//SCS - RADIO END
 
 	// Need to draw these in a particular order, for sorting.
 	V_SetClipRect(
@@ -1866,20 +2416,55 @@ static void K_drawKartItem(void)
 	auto draw_item = [&](fixed_t y, int i)
 	{
 		const UINT8 *colormap = (localcolor[i] ? R_GetTranslationColormap(colormode[i], localcolor[i], GTC_CACHE) : NULL);
+		// INT32 stupidflags = baseVideoFlags|fflags;			//SCS - RADIO
+		// if (i == 0 || i == 2) {
+
+		// 	INT32 offset = rouletteOffset / FRACUNIT;
+		// 	if (i == 0) {
+		// 		if (offset > 0) {
+		// 			if (offset > 9)
+		// 				offset = 9;
+		// 			transnum_t alpha = static_cast<transnum_t>(offset);
+		// 			stupidflags = (alpha << V_ALPHASHIFT);
+		// 		}
+		// 	} else {
+		// 		if (offset < 0) {
+		// 			INT32 absoffset = abs(offset);
+		// 			if (absoffset < 1)
+		// 				absoffset = 1;
+		// 			if (absoffset > 8)
+		// 				absoffset = 8;
+					
+		// 			CONS_Printf("offset %d / calc offset %d\n", absoffset, absoffset);
+		// 			stupidflags = (static_cast<transnum_t>(absoffset) << V_ALPHASHIFT);
+		// 		}
+		// 	}
+		// }
 		V_DrawFixedPatch(
 			fx<<FRACBITS, (fy<<FRACBITS) + rouletteOffset + y,
-			FRACUNIT, V_HUDTRANS|V_SLIDEIN|fflags,
+			//FRACUNIT, V_HUDTRANS|V_SLIDEIN|fflags,
+			baseHudScale, baseVideoFlags|fflags,			//SCS - RADIO
 			localpatch[i], colormap
 		);
 		if (localamt[i] > 1)
 		{
+			INT32 splitScreenOffset = (r_splitscreen > 1 ? 15 : 33);				//SCS - RADIO START
+			// If this boolean is true, there should be no splitscreen
+			if (shouldDrawOnPlayer)
+			{
+				splitScreenOffset = (int)(33 * baseHudScaleFloat);
+			}																		//SCS - RADIO END
+				
 			using srb2::Draw;
 			Draw(
 				fx + rouletteCrop.x + FixedToFloat(rouletteSpace/2),
-				fy + rouletteCrop.y + FixedToFloat(rouletteOffset + y + rouletteSpace) - (r_splitscreen > 1 ? 15 : 33))
+				//fy + rouletteCrop.y + FixedToFloat(rouletteOffset + y + rouletteSpace) - (r_splitscreen > 1 ? 15 : 33))
+				fy + rouletteCrop.y + FixedToFloat(rouletteOffset + y + rouletteSpace) - (splitScreenOffset))			//SCS - RADIO
 				.font(r_splitscreen > 1 ? Draw::Font::kRollingNum4P : Draw::Font::kRollingNum)
 				.align(Draw::Align::kCenter)
-				.flags(V_HUDTRANS|V_SLIDEIN|fflags)
+				//.flags(V_HUDTRANS|V_SLIDEIN|fflags)
+				.flags(baseVideoFlags|fflags)			//SCS - RADIO START
+				.scale(baseHudScaleFloat)				//SCS - RADIO END
 				.colormap(colormap)
 				.text("{}", localamt[i]);
 		}
@@ -1903,45 +2488,116 @@ static void K_drawKartItem(void)
 		UINT8 fakeitemamount = stplyr->itemamount - std::min(stplyr->itemamount - 1, (stplyr->ballhogcharge / BALLHOGINCREMENT));
 
 		boolean transflag = V_HUDTRANS;
+		
+		// RadioRacers
+		if (shouldDrawOnPlayer && stplyr->itemtype != KITEM_NONE)			//SCS - RADIO START  		SCS EDIT - I don't want it floating next to me all the time, only while the roulette is spinning
+		{
+			transflag = V_40TRANS;
+			/**
+			 * RadioRacers
+			 * 
+			 * Flame Shield and Eggman Fakes get unique exceptions. 
+			 * This is because there are other visual elements that are more important than just the item icon.
+			 * 
+			 * For Eggman Fakes, it's the impending timer.
+			 * For Flame shields, it's the flame meter (more on that below).
+			 * For rocket sneakers, it's the duration bar.
+			 * For the garden top, it's the green arrow.
+			 */
+			if (stplyr->itemtype == KITEM_FLAMESHIELD || stplyr->itemtype == KITEM_GARDENTOP || stplyr->eggmanexplode > 1 || stplyr->rocketsneakertimer > 1 || stplyr->timestonefrozentimer > 1		//SCS EDIT
+			|| stplyr->megachoppertimer > 1 || stplyr->gunusagetimer > 1 || stplyr->armageddonshieldboosttimer > 1 || stplyr->normalshieldboostcharge > 1) {										//SCS EDIT
+				transflag = V_60TRANS;
+			} 
+
+			if (isHudTranslucencyAlreadyLow || stplyr->exiting)
+				transflag = V_HUDTRANS;
+		}								//SCS - RADIO END
 
 		if (cv_reducevfx.value && (flashOnOne || flashOnTwo))
 		{
 			transflag = V_HUDTRANSHALF;
 		}
 
+		INT32 localpatchflags = (shouldDrawOnPlayer && stplyr->itemtype != KITEM_NONE) ? (transflag|fflags) : (transflag|V_SLIDEIN|fflags);		//SCS - RADIO		//SCS EDIT
 		if (fakeitemamount >= numberdisplaymin && stplyr->itemRoulette.active == false)
 		{
 			// Then, the numbers:
-			V_DrawScaledPatch(
-				fx + (flipamount ? 48 : 0), fy,
-				V_HUDTRANS|V_SLIDEIN|fflags|(flipamount ? V_FLIP : 0),
-				kp_itemmulsticker[offset]
-			); // flip this graphic for p2 and p4 in split and shift it.
+			// V_DrawScaledPatch(
+			// 	fx + (flipamount ? 48 : 0), fy,
+			// 	V_HUDTRANS|V_SLIDEIN|fflags|(flipamount ? V_FLIP : 0),
+			// 	kp_itemmulsticker[offset]
+			// ); // flip this graphic for p2 and p4 in split and shift it.
+
+			V_DrawFixedPatch(													//SCS - RADIO START
+				((fx + (flipamount ? 48 : 0))<<FRACBITS), (fy<<FRACBITS), 
+				baseHudScale, baseVideoFlags|fflags|(flipamount ? V_FLIP : 0),
+				kp_itemmulsticker[offset], 0
+			);																	//SCS - RADIO END
 
 			V_DrawFixedPatch(
 				fx<<FRACBITS, (fy<<FRACBITS) + rouletteOffset,
-				FRACUNIT, transflag|V_SLIDEIN|fflags,
+				//FRACUNIT, transflag|V_SLIDEIN|fflags,
+				baseHudScale, localpatchflags,				//SCS - RADIO
 				localpatch[1], (localcolor[1] ? R_GetTranslationColormap(colormode[1], localcolor[1], GTC_CACHE) : NULL)
 			);
+			
+			/**
+			 * RadioRacers
+			 * 
+			 * Similar philosophy with the flame shield/eggman fake.
+			 * In this case, the player needs to know the quantity of an item. That's a given.
+			 * That information doesn't need to be at FULL opacity though.
+			 */
+			INT32 itemAmountFlags = V_HUDTRANS|V_SLIDEIN;														//SCS - RADIO START
+			
+			if (shouldDrawOnPlayer && stplyr->itemtype != KITEM_NONE)											//SCS EDIT
+				itemAmountFlags = (stplyr->exiting || isHudTranslucencyAlreadyLow) ? V_HUDTRANS : V_40TRANS;	//SCS - RADIO END
 
 			if (offset)
 			{
 				if (flipamount) // reminder that this is for 3/4p's right end of the screen.
-					V_DrawString(fx+2, fy+31, V_HUDTRANS|V_SLIDEIN|fflags, va("x%d", fakeitemamount));
+					// V_DrawString(fx+2, fy+31, V_HUDTRANS|V_SLIDEIN|fflags, va("x%d", fakeitemamount));
+					V_DrawStringScaled(																			//SCS - RADIO START
+						((fx+2)<<FRACBITS),
+						((fy+31)<<FRACBITS),
+						baseHudScale, baseHudScale, baseHudScale,
+						itemAmountFlags|fflags, NULL, HU_FONT, va("x%d", fakeitemamount)
+					);																							//SCS - RADIO END
 				else
-					V_DrawString(fx+24, fy+31, V_HUDTRANS|V_SLIDEIN|fflags, va("x%d", fakeitemamount));
+					// V_DrawString(fx+24, fy+31, V_HUDTRANS|V_SLIDEIN|fflags, va("x%d", fakeitemamount));
+					V_DrawStringScaled(																			//SCS - RADIO START
+						((fx+24)<<FRACBITS),
+						((fy+31)<<FRACBITS),
+						baseHudScale, baseHudScale, baseHudScale,
+						itemAmountFlags|fflags, NULL, HU_FONT, va("x%d", fakeitemamount)
+					);																							//SCS - RADIO END
 			}
 			else
 			{
-				V_DrawScaledPatch(fy+28, fy+41, V_HUDTRANS|V_SLIDEIN|fflags, kp_itemx);
-				V_DrawTimerString(fx+38, fy+36, V_HUDTRANS|V_SLIDEIN|fflags, va("%d", fakeitemamount));
+				//V_DrawScaledPatch(fy+28, fy+41, V_HUDTRANS|V_SLIDEIN|fflags, kp_itemx);
+				//V_DrawTimerString(fx+38, fy+36, V_HUDTRANS|V_SLIDEIN|fflags, va("%d", fakeitemamount));
+				// 22, 30																						//SCS - RADIO START
+				V_DrawFixedPatch(
+					((fx + (int)(28 * baseHudScaleFloat) + 1)<<FRACBITS), 
+					((fy + (int)(41 * baseHudScaleFloat))<<FRACBITS), 
+					baseHudScale, itemAmountFlags|fflags,
+					kp_itemx, 0
+				);
+				// 28, 27
+				V_DrawStringScaled(
+					((fx + (int)(38 * baseHudScaleFloat))<<FRACBITS),
+					((fy + (int)(36 * baseHudScaleFloat))<<FRACBITS),
+					baseHudScale, baseHudScale, baseHudScale,
+					itemAmountFlags|fflags, NULL, TIMER_FONT, va("x%d", fakeitemamount)
+				);																								//SCS - RADIO END
 			}
 		}
 		else
 		{
 			V_DrawFixedPatch(
 				fx<<FRACBITS, (fy<<FRACBITS) + rouletteOffset,
-				FRACUNIT, transflag|V_SLIDEIN|fflags,
+				//FRACUNIT, transflag|V_SLIDEIN|fflags,
+				baseHudScale, localpatchflags,						//SCS - RADIO
 				localpatch[1], (localcolor[1] ? R_GetTranslationColormap(colormode[1], localcolor[1], GTC_CACHE) : NULL)
 			);
 		}
@@ -1953,9 +2609,19 @@ static void K_drawKartItem(void)
 		const INT32 fill = ((itembar*barlength)/maxl);
 		const INT32 length = std::min(barlength, fill);
 		const INT32 height = (offset ? 1 : 2);
-		const INT32 x = (offset ? 17 : 11), y = (offset ? 27 : 35);
+		//const INT32 x = (offset ? 17 : 11), y = (offset ? 27 : 35);
+		INT32 x = (offset ? 17 : 11), y = (offset ? 27 : 35);					//SCS - RADIO
 
-		V_DrawScaledPatch(fx+x, fy+y, V_HUDTRANS|V_SLIDEIN|fflags, kp_itemtimer[offset]);
+		//V_DrawScaledPatch(fx+x, fy+y, V_HUDTRANS|V_SLIDEIN|fflags, kp_itemtimer[offset]);
+		INT32 itemTimerFlags = V_HUDTRANS|V_SLIDEIN|fflags;						//SCS - RADIO START
+		if (shouldDrawOnPlayer && stplyr->itemtype != KITEM_NONE) {				//SCS EDIT
+			x = (int) (11 * baseHudScaleFloat) - 5;
+			y = (int) (35 * baseHudScaleFloat) + 5;
+
+			itemTimerFlags = V_HUDTRANS|fflags;
+		}
+
+		V_DrawScaledPatch(fx+x, fy+y, itemTimerFlags, kp_itemtimer[offset]);	//SCS - RADIO END
 		// The left dark "AA" edge
 		V_DrawFill(fx+x+1, fy+y+1, (length == 2 ? 2 : 1), height, 12|fflags);
 		// The bar itself
@@ -1970,7 +2636,17 @@ static void K_drawKartItem(void)
 
 	// Quick Eggman numbers
 	if (stplyr->eggmanexplode > 1)
-		V_DrawScaledPatch(fx+17, fy+13-offset, V_HUDTRANS|V_SLIDEIN|fflags, kp_eggnum[std::min<INT32>(5, G_TicsToSeconds(stplyr->eggmanexplode))]);
+	{
+		// V_DrawScaledPatch(fx+17, fy+13-offset, V_HUDTRANS|V_SLIDEIN|fflags, kp_eggnum[std::min<INT32>(5, G_TicsToSeconds(stplyr->eggmanexplode))]);
+		// 13, 9
+		INT32 eggmanNumbersFlags = (shouldDrawOnPlayer && stplyr->itemtype != KITEM_NONE) ? V_HUDTRANS|fflags : V_HUDTRANS|V_SLIDEIN|fflags;		//SCS - RADIO START		//SCS EDIT
+		V_DrawFixedPatch(
+			((fx + (int)(17 * baseHudScaleFloat)) << FRACBITS), 
+			((fy + (int)(13 * baseHudScaleFloat) - offset) << FRACBITS), 
+			baseHudScale, eggmanNumbersFlags|fflags,
+			kp_eggnum[std::min<INT32>(5, G_TicsToSeconds(stplyr->eggmanexplode))], 0
+		);																																			//SCS - RADIO END
+	}
 
 	if (stplyr->itemtype == KITEM_FLAMESHIELD && stplyr->flamelength > 0)
 	{
@@ -1984,6 +2660,25 @@ static void K_drawKartItem(void)
 
 		INT32 xo = 6, yo = 4;
 		INT32 flip = 0;
+		
+		/**
+		 * RadioRacers
+		 * 
+		 * Flame Shield gets a unique exception. 
+		 * We wouldn't want to focus on the item icon, you'd want to focus on the flame meter.
+		 */
+		INT32 flameMeterFlags = fflags|flip;									//SCS - RADIO START
+		if (shouldDrawOnPlayer && stplyr->itemtype != KITEM_NONE)				//SCS EDIT
+		{
+			xo = (int) (xo * baseHudScaleFloat);
+			yo = (int) (yo * baseHudScaleFloat);
+			if(stplyr->exiting || isHudTranslucencyAlreadyLow)
+			{
+				flameMeterFlags |= V_HUDTRANS;
+			} else {
+				flameMeterFlags |= V_30TRANS;
+			}
+		}																		//SCS - RADIO END
 
 		if (offset)
 		{
@@ -2003,21 +2698,59 @@ static void K_drawKartItem(void)
 		*/
 
 		if (bf >= 0 && bf < numframes)
-			V_DrawScaledPatch(fx-xo, fy-yo, V_HUDTRANS|V_SLIDEIN|fflags|flip, kp_flameshieldmeter_bg[bf][offset]);
+			// V_DrawScaledPatch(fx-xo, fy-yo, V_HUDTRANS|V_SLIDEIN|fflags|flip, kp_flameshieldmeter_bg[bf][offset]);
+
+			V_DrawFixedPatch(							//SCS - RADIO START
+				((fx-xo)<<FRACBITS), 
+				((fy-yo)<<FRACBITS), 
+				baseHudScale, flameMeterFlags,
+				kp_flameshieldmeter_bg[bf][offset], 0	//SCS - RADIO END
+			);
 
 		if (ff >= 0 && ff < numframes && stplyr->flamemeter > 0)
 		{
 			if ((stplyr->flamemeter > flamemax) && (leveltime & 1))
 			{
 				UINT8 *fsflash = R_GetTranslationColormap(TC_BLINK, SKINCOLOR_WHITE, GTC_CACHE);
-				V_DrawMappedPatch(fx-xo, fy-yo, V_HUDTRANS|V_SLIDEIN|fflags|flip, kp_flameshieldmeter[ff][offset], fsflash);
+				// V_DrawMappedPatch(fx-xo, fy-yo, V_HUDTRANS|V_SLIDEIN|fflags|flip, kp_flameshieldmeter[ff][offset], fsflash);
+
+				V_DrawFixedPatch(														//SCS - RADIO START
+					((fx-xo)<<FRACBITS), ((fy-yo)<<FRACBITS), 
+					baseHudScale, flameMeterFlags,
+					kp_flameshieldmeter[ff][offset], fsflash
+				);																		//SCS - RADIO END
 			}
 			else
 			{
-				V_DrawScaledPatch(fx-xo, fy-yo, V_HUDTRANS|V_SLIDEIN|fflags|flip, kp_flameshieldmeter[ff][offset]);
+				// V_DrawScaledPatch(fx-xo, fy-yo, V_HUDTRANS|V_SLIDEIN|fflags|flip, kp_flameshieldmeter[ff][offset]);
+				V_DrawFixedPatch(														//SCS - RADIO START
+					((fx-xo)<<FRACBITS), ((fy-yo)<<FRACBITS), 
+					baseHudScale, flameMeterFlags,
+					kp_flameshieldmeter[ff][offset], 0
+				);																		//SCS - RADIO END
 			}
 		}
 	}
+	
+	if (stplyr->inkblotchtimer >= 10 || (stplyr->inkblotchtimer && stplyr->inkblotchtimer < 10 && leveltime % 2 == 0))			//SCS ADD - want it to flicker when about to disappear
+	{
+		if (shouldDrawOnPlayer)
+		{
+			V_DrawFixedPatch(
+				(fx<<FRACBITS), (fy<<FRACBITS), 
+				baseHudScale, V_HUDTRANS|V_SLIDEIN|fflags,
+				localinkblotch, 0
+			);
+		}
+		else
+			V_DrawMappedPatch(fx, fy, V_HUDTRANS|V_SLIDEIN|fflags, localinkblotch, boxmap);	
+		
+	}
+	
+	/*if (stplyr->pickpockethyucombo > 0)			//SCS ADD 
+	{
+		V_DrawMappedPatch(fx, fy, V_HUDTRANS|V_SLIDEIN|fflags, localhyucombo, boxmap);		
+	}*/
 }
 
 // So, like, we've already established that HUD code is unsavable, right?
@@ -2027,6 +2760,9 @@ static void K_drawBackupItem(void)
 	bool tiny = r_splitscreen > 1;
 	patch_t *localpatch[3] = { kp_nodraw, kp_nodraw, kp_nodraw };
 	patch_t *localinv = kp_invincibility[((leveltime % (6*3)) / 3) + 7 + tiny];
+	patch_t *localmemer = kp_masteremerald[((leveltime % (6*3)) / 3) + 6 + tiny];
+	patch_t *localpickpocket = kp_pickpockethyu[((leveltime % (3*3)) / 3) + 9 + tiny];
+	patch_t *localtimestone = kp_timestone[((leveltime % (10*3)) / 3) + 10 + tiny];
 	INT32 fx = 0, fy = 0, fflags = 0, tx = 0, ty = 0;	// final coords for hud and flags...
 	const INT32 numberdisplaymin = 2;
 	skincolornum_t localcolor[3] = { static_cast<skincolornum_t>(stplyr->skincolor) };
@@ -2040,9 +2776,33 @@ static void K_drawBackupItem(void)
 		case KITEM_INVINCIBILITY:
 			localpatch[1] = localinv;
 			break;
+			
+		case KITEM_MASTEREMERALD:
+			localpatch[1] = localmemer;		//SCS ADD
+			break;
+
+		case KITEM_PICKPOCKETHYU:
+			localpatch[1] = localpickpocket;		//SCS ADD
+			break;
+			
+		case KITEM_TIMESTONE:
+			localpatch[1] = localtimestone;		//SCS ADD
+			break;
 
 		case KITEM_ORBINAUT:
 			localpatch[1] = kp_orbinaut[tiny+4];
+			break;
+			
+		case KITEM_BANANA:
+			localpatch[1] = kp_banana[tiny+4];		//SCS ADD
+			break;
+			
+		case KITEM_SNEAKER:
+			localpatch[1] = kp_sneaker[tiny+3];		//SCS ADD
+			break;
+			
+		case KITEM_JAWZ:
+			localpatch[1] = kp_jawz[tiny+2];		//SCS ADD
 			break;
 
 		default:
@@ -2097,6 +2857,20 @@ static void K_drawBackupItem(void)
 	}
 
 	boolean transflag = V_HUDTRANS;
+	
+	// Radio
+	boolean drawingOnPlayer = (cv_rouletteonplayer.value == 1 && r_splitscreen == 0 && stplyr->itemtype == KITEM_NONE && !stplyr->ringboxdelay);				//SCS - RADIO START			//SCS EDIT - Only draw the backup item next to me while the roulette is spinning
+	const fixed_t baseHudScaleFixed = (drawingOnPlayer) ? RR_getItemBoxHudScale() : FRACUNIT;
+	const float_t baseHudScaleFloat = RR_getItemBoxHudScaleFloat();
+	INT32 backupitemflags = transflag|V_SLIDEIN|fflags;
+	
+	if (drawingOnPlayer) {
+		backupitemflags = V_20TRANS;
+		fx = itemRouletteX + ((int)(30 * baseHudScaleFloat));
+		fy = itemRouletteY - ((int)(10 * baseHudScaleFloat));
+		tx = (int)(25 * baseHudScaleFloat);
+		ty = (int)(30 * baseHudScaleFloat);
+	}																								//SCS - RADIO END
 
 	// I feel like the cardinal sin of all evolving HUDcode is, like, assuming the old offsets do something that makes sense.
 
@@ -2113,17 +2887,28 @@ static void K_drawBackupItem(void)
 
 		V_DrawFixedPatch(
 			fx<<FRACBITS, (fy<<FRACBITS),
-			FRACUNIT, transflag|V_SLIDEIN|fflags,
+			//FRACUNIT, transflag|V_SLIDEIN|fflags,
+			baseHudScaleFixed, backupitemflags,				//SCS - RADIO
 			localpatch[1], (localcolor[1] ? R_GetTranslationColormap(colormode[1], localcolor[1], GTC_CACHE) : NULL)
 		);
 
-		V_DrawString(fx+tx, fy+ty, V_HUDTRANS|V_SLIDEIN|fflags, va("x%d", stplyr->backupitemamount));
+		//V_DrawString(fx+tx, fy+ty, V_HUDTRANS|V_SLIDEIN|fflags, va("x%d", stplyr->backupitemamount));
+		if (drawingOnPlayer) {																				//SCS - RADIO START
+			V_DrawStringScaled(
+				(fx+tx)<<FRACBITS, (fy+ty)<<FRACBITS,
+				baseHudScaleFixed, baseHudScaleFixed, baseHudScaleFixed,
+				backupitemflags, NULL, TINY_FONT, va("x%d", stplyr->backupitemamount)
+			);
+		} else {
+			V_DrawString(fx+tx, fy+ty, backupitemflags, va("x%d", stplyr->backupitemamount));
+		}																									//SCS - RADIO END
 	}
 	else
 	{
 		V_DrawFixedPatch(
 			fx<<FRACBITS, (fy<<FRACBITS),
-			FRACUNIT, transflag|V_SLIDEIN|fflags,
+			//FRACUNIT, transflag|V_SLIDEIN|fflags,
+			baseHudScaleFixed, backupitemflags,						//SCS - RADIO
 			localpatch[1], (localcolor[1] ? R_GetTranslationColormap(colormode[1], localcolor[1], GTC_CACHE) : NULL)
 		);
 	}
@@ -2159,6 +2944,12 @@ static void K_drawKartSlotMachine(void)
 	vector2_t rouletteCrop = {10, 10};
 	INT32 i;
 
+	// RadioRacers
+	boolean shouldDrawOnPlayer = false;						//SCS - RADIO START
+	INT32 baseVideoFlags = V_HUDTRANS|V_SLIDEIN;
+	fixed_t baseHudScale = FRACUNIT;						//SCS - RADIO END
+	
+
 	if (stplyr->itemRoulette.itemList.len > 0)
 	{
 		// Init with item roulette stuff.
@@ -2193,17 +2984,18 @@ static void K_drawKartSlotMachine(void)
 		localcolor[1] = SKINCOLOR_WHITE;
 
 		// This looks kinda wild with the white-background patch.
-		/*
+		// RadioRacers: and that's why I'm re-enabling it				//SCS - RADIO
 		switch (stplyr->ringboxaward)
 		{
 			case 5: // JACKPOT!
-				localcolor[1] = K_RainbowColor(leveltime);
+				//localcolor[1] = K_RainbowColor(leveltime);
+				localcolor[1] = static_cast<skincolornum_t>(K_RainbowColor(leveltime));		//SCS - RADIO
 				break;
 			default:
 				localcolor[1] = SKINCOLOR_WHITE;
 				break;
 		}
-		*/
+		
 	}
 
 	// pain and suffering defined below
@@ -2236,7 +3028,35 @@ static void K_drawKartSlotMachine(void)
 	{
 		fx = ITEM_X;
 		fy = ITEM_Y;
+
+		// We are NOT supporting this for splitscreen, the vanilla layout is easier to read.
+		if (cv_rouletteonplayer.value == 1 && r_splitscreen == 0)													//SCS - RADIO START
+		{
+			itembox_tracking_coordinates_t coords = RR_getRouletteCoordinatesForRingBox();
+
+			// if(result.x != 0 && result.y != 0)
+			if(coords.valid_coords && !stplyr->ringboxdelay)														//SCS EDIT - I don't want it floating by me after I stop the slots
+			{
+				baseVideoFlags = V_HUDTRANS;
+				shouldDrawOnPlayer = true;
+
+				baseHudScale = RR_getRingBoxHudScale();
+				float baseHudScaleFloat = RR_getRingBoxHudScaleFloat();
+
+				fx = coords.x;
+				fy = coords.y;
+
+				roulette_offset_spacing_t roulette_offset_spacing = RR_getRouletteSpacingOffsetForRingBox(
+					rouletteOffset
+				);
+				boxoffy += abs((boxoffy) - (int)(boxoffy*baseHudScaleFloat));
+				rouletteCrop = RR_getRouletteCroppingForRingBox(rouletteCrop);
+				rouletteSpace = roulette_offset_spacing.space;
+				rouletteOffset = roulette_offset_spacing.offset;
+			}
+		} else {																									//SCS - RADIO END
 		fflags = V_SNAPTOTOP|V_SNAPTOLEFT|V_SPLITSCREEN;
+		}		//SCS - RADIO
 	}
 
 	if (r_splitscreen == 1)
@@ -2244,12 +3064,19 @@ static void K_drawKartSlotMachine(void)
 		fy -= 5;
 	}
 
-	V_DrawScaledPatch(fx, fy, V_HUDTRANS|V_SLIDEIN|fflags, localbg);
+	//V_DrawScaledPatch(fx, fy, V_HUDTRANS|V_SLIDEIN|fflags, localbg);
+	V_DrawFixedPatch(													//SCS - RADIO START
+		(fx<<FRACBITS), (fy<<FRACBITS), 
+		baseHudScale, baseVideoFlags|fflags,
+		localbg, 0
+	);
 
+	INT32 clipRectFlags = (shouldDrawOnPlayer ? 0 : V_SLIDEIN|fflags);	//SCS - RADIO END
 	V_SetClipRect(
 		((fx + rouletteCrop.x + boxoffx + splitbsx) << FRACBITS), ((fy + rouletteCrop.y + boxoffy - vstretch + splitbsy) << FRACBITS),
 		rouletteSpace + (hstretch<<FRACBITS), rouletteSpace + (vstretch<<FRACBITS),
-		V_SLIDEIN|fflags
+		//V_SLIDEIN|fflags
+		clipRectFlags				//SCS - RADIO
 	);
 
 	// item box has special layering, transparency, different sized patches, other fucked up shit
@@ -2259,7 +3086,8 @@ static void K_drawKartSlotMachine(void)
 	{
 		V_DrawFixedPatch(
 			((fx)<<FRACBITS), ((fy)<<FRACBITS) + rouletteOffset,
-			FRACUNIT, V_HUDTRANS|V_SLIDEIN|fflags,
+			//FRACUNIT, V_HUDTRANS|V_SLIDEIN|fflags,
+			baseHudScale, baseVideoFlags|fflags,				//SCS - RADIO
 			localpatch[i], (localcolor[i] ? R_GetTranslationColormap(colormode[i], localcolor[i], GTC_CACHE) : NULL)
 		);
 
@@ -2582,7 +3410,8 @@ void K_DrawKartPositionNumXY(
 	{
 		fx = K_DrawKartPositionNumPatch(
 			(num % 10), splitIndex, color,
-			fx, fy, scale, V_SPLITSCREEN|fflags
+			//fx, fy, scale, V_SPLITSCREEN|fflags
+			fx, fy, scale, V_SPLITSCREEN|V_HUDTRANS|fflags			//SCS - RADIO
 		);
 		num /= 10;
 	} while (num);
@@ -2591,7 +3420,8 @@ void K_DrawKartPositionNumXY(
 static void K_DrawKartPositionNum(UINT8 num)
 {
 	UINT8 splitIndex = (r_splitscreen > 0) ? 1 : 0;
-	fixed_t scale = FRACUNIT;
+	// RADIO: It's pretty big already
+	fixed_t scale = FRACUNIT/2;							//SCS - RADIO (dividing it by 2)
 	fixed_t fx = 0, fy = 0;
 	transnum_t trans = static_cast<transnum_t>(0);
 	INT32 fflags = 0;
@@ -2621,8 +3451,9 @@ static void K_DrawKartPositionNum(UINT8 num)
 	// pain and suffering defined below
 	if (!r_splitscreen)
 	{
+		const boolean isDrawingInput = gamestate == GS_LEVEL && cv_drawinput.value && cv_inputdisplaytogglesize.value;		//SCS - RADIO
 		fx = BASEVIDWIDTH << FRACBITS;
-		fy = BASEVIDHEIGHT << FRACBITS;
+		fy = (BASEVIDHEIGHT - (isDrawingInput ? 14 : 10)) << FRACBITS;														//SCS - RADIO
 		fflags = V_SNAPTOBOTTOM|V_SNAPTORIGHT;
 	}
 	else if (r_splitscreen == 1)	// for this splitscreen, we'll use case by case because it's a bit different.
@@ -2906,7 +3737,11 @@ void PositionFacesInfo::draw_1p()
 			else
 				colormap = R_GetTranslationColormap(workingskin, static_cast<skincolornum_t>(players[rankplayer[i]].mo->color), GTC_CACHE);
 
-			V_DrawMappedPatch(FACE_X + xoff, Y + yoff, V_HUDTRANS|V_SLIDEIN|V_SNAPTOLEFT|flipflag, faceprefix[workingskin][FACE_RANK], colormap);
+			if (cv_hud_usehighresportraits.value) {			//SCS - RADIO START
+				V_DrawSmallMappedPatch(FACE_X + xoff, Y + yoff, V_HUDTRANS|V_SLIDEIN|V_SNAPTOLEFT|flipflag, faceprefix[workingskin][FACE_WANTED], colormap);
+			} else {										//SCS - RADIO END
+				V_DrawMappedPatch(FACE_X + xoff, Y + yoff, V_HUDTRANS|V_SLIDEIN|V_SNAPTOLEFT|flipflag, faceprefix[workingskin][FACE_RANK], colormap);
+			}												//SCS - RADIO
 
 			if (LUA_HudEnabled(hud_battlebumpers))
 			{
@@ -3069,6 +3904,11 @@ static boolean K_drawKartPositionFaces(void)
 
 	if (!LUA_HudEnabled(hud_minirankings))
 		return false;	// Don't proceed but still return true for free play above if HUD is disabled.
+	
+	boolean showstandings = cv_toggle_race_standings.value;			//SCS - RADIO START
+	if (!showstandings && (gametyperules & GTR_POINTLIMIT)) {
+		showstandings = true;
+	}																//SCS - RADIO END
 
 	if (K_InRaceDuel())
 		return false;
@@ -3076,7 +3916,8 @@ static boolean K_drawKartPositionFaces(void)
 	switch (r_splitscreen)
 	{
 	case 0:
-		state.draw_1p();
+		if (showstandings)			//SCS - RADIO
+			state.draw_1p();
 		break;
 
 	case 1:
@@ -4079,12 +4920,28 @@ static boolean K_DrawingLaps()
 	return (numlaps != 1 && !K_InRaceDuel() && (UINT16)stplyr->exp != UINT16_MAX);
 }
 
+static UINT16 K_GetDisplayEXP()									//SCS - RADIO START
+{
+	UINT16 displayEXP = stplyr->karthud[khud_exp];
+
+	// Odds debugger
+	if (cv_vorpal.value)
+	{
+		displayEXP = 100 * K_EffectiveGradingFactor(stplyr) / FRACUNIT;
+	}
+
+	return displayEXP;
+}																//SCS - RADIO END
+
 static boolean K_drawKartLaps(void)
 {
 	INT32 splitflags = V_SNAPTOBOTTOM|V_SNAPTOLEFT|V_SPLITSCREEN;
 	INT32 bump = 0;
 	INT32 basebump = 0;
 	boolean drewsticker = false;
+	
+	const boolean DRAW_EXP_ON_PLAYER = cv_exponplayer.value == 1;			//SCS - RADIO START
+	const boolean DRAW_RINGS_ON_PLAYER = cv_ringsonplayer.value == 1;		//SCS - RADIO END
 
 	UINT16 displayEXP = stplyr->karthud[khud_exp];
 
@@ -4171,7 +5028,13 @@ static boolean K_drawKartLaps(void)
 		}
 		else
 		{
-			K_DrawSticker(LAPS_X+13, LAPS_Y+5, 25+bump, V_HUDTRANS|V_SLIDEIN|splitflags, false);
+			//K_DrawSticker(LAPS_X+13, LAPS_Y+5, 25+bump, V_HUDTRANS|V_SLIDEIN|splitflags, false);
+			int lapstickerwidth = 25 + bump;																//SCS - RADIO START
+			if (DRAW_EXP_ON_PLAYER) {
+				lapstickerwidth = 25;
+			}
+
+			K_DrawSticker(LAPS_X+13, LAPS_Y+5, lapstickerwidth, V_HUDTRANS|V_SLIDEIN|splitflags, false);	//SCS - RADIO END
 			drewsticker = true;
 
 			// Laps
@@ -4192,6 +5055,9 @@ static boolean K_drawKartLaps(void)
 	boolean dance = (stplyr->exp > (UINT32)stplyr->karthud[khud_exp]);
 	INT32 danceflag = dance ? V_STRINGDANCE : 0;
 	UINT16 dancecolor = dance ? SKINCOLOR_AQUAMARINE : 0;
+	INT32 expFlags = V_HUDTRANS|V_SLIDEIN|splitflags;			//SCS - RADIO START
+	INT32 EXP_X = LAPS_X;
+	INT32 EXP_Y = LAPS_Y;										//SCS - RADIO END
 
 	// EXP
 	if (displayEXP == UINT16_MAX)
@@ -4235,11 +5101,24 @@ static boolean K_drawKartLaps(void)
 			K_DrawMarginSticker(fr-1+(flipflag ? 2 : 0), fy+1, 25+bump, V_HUDTRANS|V_SLIDEIN|splitflags, true, flipflag);
 										// WHAT IS THIS?
 										// WHAT ARE YOU FUCKING TALKING ABOUT?
-		V_DrawMappedPatch(fr, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_exp[1], R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_MUSTARD, GTC_CACHE));
-		auto transflag = K_GetTransFlagFromFixed(K_EffectiveGradingFactor(stplyr), true);
-		skincolornum_t overlaycolor = K_EffectiveGradingFactor(stplyr) < FRACUNIT ? SKINCOLOR_RUBY : SKINCOLOR_ULTRAMARINE ;
-		auto colormap = R_GetTranslationColormap(TC_RAINBOW, overlaycolor, GTC_CACHE);
-		V_DrawMappedPatch(fr, fy, transflag|V_SLIDEIN|splitflags, kp_exp[1], colormap);
+										
+		if (franticitems)
+		{
+			V_DrawMappedPatch(fr, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_exp[1], R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_PURPLE, GTC_CACHE));
+		}
+		else
+		{
+			V_DrawMappedPatch(fr, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_exp[1], R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_MUSTARD, GTC_CACHE));
+			auto transflag = K_GetTransFlagFromFixed(K_EffectiveGradingFactor(stplyr), true);
+			skincolornum_t overlaycolor = K_EffectiveGradingFactor(stplyr) < FRACUNIT ? SKINCOLOR_RUBY : SKINCOLOR_ULTRAMARINE ;
+			auto colormap = R_GetTranslationColormap(TC_RAINBOW, overlaycolor, GTC_CACHE);
+			V_DrawMappedPatch(fr, fy, transflag|V_SLIDEIN|splitflags, kp_exp[1], colormap);
+		}
+		
+		/*if (stplyr->inkblotchtimer >= 10 || (stplyr->inkblotchtimer && stplyr->inkblotchtimer < 10 && leveltime % 2 == 0))			//SCS ADD - want it to flicker when about to disappear
+		{
+			V_DrawScaledPatch(fr, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_inkblotches[3]);			
+		}*/
 
 		// EXP
 
@@ -4254,18 +5133,53 @@ static boolean K_drawKartLaps(void)
 	}
 	else
 	{
+		if (DRAW_EXP_ON_PLAYER) {				//SCS - RADIO START
+			if (!DRAW_RINGS_ON_PLAYER) {
+				trackingResult_t result;
+
+				expFlags &= ~V_SLIDEIN;
+				expFlags &= ~splitflags;
+
+				const boolean doesPlayerHaveMo = !((stplyr->mo == NULL || P_MobjWasRemoved(stplyr->mo)));
+				if (doesPlayerHaveMo)
+				{
+					// Get X,Y coordinates for player relative to the HUD
+					RR_GetTrackingCoordinatesForPlayer(&result, doesPlayerHaveMo);
+
+					// Add some offset so it's directly below the player (in Software)
+					EXP_X = (result.x / FRACUNIT) - 25; 
+					EXP_Y = (result.y / FRACUNIT);
+				} 
+				drewsticker = false;
+				bump = 0;
+			} else {
+				return drewsticker;
+			}
+		}										//SCS - RADIO END
+
 		if (!drewsticker)
-			K_DrawSticker(LAPS_X+13, LAPS_Y+5, 25+bump, V_HUDTRANS|V_SLIDEIN|splitflags, false);
+			K_DrawSticker(EXP_X+13, EXP_Y+5, 25+bump, expFlags, false);								//SCS - RADIO
+			//K_DrawSticker(LAPS_X+13, LAPS_Y+5, 25+bump, V_HUDTRANS|V_SLIDEIN|splitflags, false);
 
-		V_DrawMappedPatch(LAPS_X+bump, LAPS_Y, V_HUDTRANS|V_SLIDEIN|splitflags, kp_exp[0], R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_MUSTARD, GTC_CACHE));
-
-		auto transflag = K_GetTransFlagFromFixed(K_EffectiveGradingFactor(stplyr), true);
-		skincolornum_t overlaycolor = K_EffectiveGradingFactor(stplyr) < FRACUNIT ? SKINCOLOR_RUBY : SKINCOLOR_ULTRAMARINE ;
-		auto colormap = R_GetTranslationColormap(TC_RAINBOW, overlaycolor, GTC_CACHE);
-		V_DrawMappedPatch(LAPS_X+bump, LAPS_Y, transflag|V_SLIDEIN|splitflags, kp_exp[0], colormap);
+		if (franticitems)
+		{
+			//V_DrawMappedPatch(LAPS_X+bump, LAPS_Y, V_HUDTRANS|V_SLIDEIN|splitflags, kp_exp[0], R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_PURPLE, GTC_CACHE));
+			V_DrawMappedPatch(EXP_X+bump, EXP_Y, expFlags, kp_exp[0], R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_PURPLE, GTC_CACHE));								//SCS - RADIO
+		}
+		else
+		{
+			//V_DrawMappedPatch(LAPS_X+bump, LAPS_Y, V_HUDTRANS|V_SLIDEIN|splitflags, kp_exp[0], R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_MUSTARD, GTC_CACHE));
+			V_DrawMappedPatch(EXP_X+bump, EXP_Y, expFlags, kp_exp[0], R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_MUSTARD, GTC_CACHE));								//SCS - RADIO
+			auto transflag = K_GetTransFlagFromFixed(K_EffectiveGradingFactor(stplyr), true);
+			skincolornum_t overlaycolor = K_EffectiveGradingFactor(stplyr) < FRACUNIT ? SKINCOLOR_RUBY : SKINCOLOR_ULTRAMARINE ;
+			auto colormap = R_GetTranslationColormap(TC_RAINBOW, overlaycolor, GTC_CACHE);
+			//V_DrawMappedPatch(LAPS_X+bump, LAPS_Y, transflag|V_SLIDEIN|splitflags, kp_exp[0], colormap);
+			V_DrawMappedPatch(EXP_X+bump, EXP_Y, transflag|expFlags, kp_exp[0], colormap);																				//SCS - RADIO
+		}
 
 		using srb2::Draw;
-		Draw row = Draw(LAPS_X+23+bump, LAPS_Y+3).flags(V_HUDTRANS|V_SLIDEIN|splitflags|danceflag).font(Draw::Font::kThinTimer).colorize(dancecolor);
+		//Draw row = Draw(LAPS_X+23+bump, LAPS_Y+3).flags(V_HUDTRANS|V_SLIDEIN|splitflags|danceflag).font(Draw::Font::kThinTimer).colorize(dancecolor);
+		Draw row = Draw(EXP_X+23+bump, EXP_Y+3).flags(expFlags|danceflag).font(Draw::Font::kThinTimer).colorize(dancecolor);											//SCS - RADIO
 		row.text("{:03}", displayEXP);
 	}
 
@@ -4287,6 +5201,68 @@ static void K_DrawLivesDigits(INT32 x, INT32 y, INT32 width, INT32 flags, patch_
 	V_DrawScaledPatch(x, y, flags, font[stplyr->lives % 10]);
 }
 
+// RadioRacers: Split K_drawKartSpeedometer functionality into different util functions, for reusability
+static UINT8 K_GetKartSpeedometerLabel()																	//SCS - RADIO START
+{
+	UINT8 labeln = 0;
+
+	if (!stplyr->exiting) // Keep the same speed value as when you crossed the finish line!
+	{
+		switch (cv_kartspeedometer.value)
+		{
+			case 1: // Sonic Drift 2 style percentage
+			default:
+				labeln = 0;
+				break;
+			case 2: // Kilometers
+				labeln = 1;
+				break;
+			case 3: // Miles
+				labeln = 2;
+				break;
+			case 4: // Fracunits
+				labeln = 3;
+				break;
+		}
+	}
+
+	return labeln;
+}
+
+static void K_GetKartSpeedometerNumbers(uint8_t numbers[3])
+{
+	static fixed_t convSpeed;
+
+	if (!stplyr->exiting) // Keep the same speed value as when you crossed the finish line!
+	{
+		switch (cv_kartspeedometer.value)
+		{
+			case 1: // Sonic Drift 2 style percentage
+			default:
+				convSpeed = (stplyr->speed * 100) / K_GetKartSpeed(stplyr, false, true); // Based on top speed!
+				break;
+			case 2: // Kilometers
+				convSpeed = FixedDiv(FixedMul(stplyr->speed, 142371), mapobjectscale) / FRACUNIT; // 2.172409058
+				break;
+			case 3: // Miles
+				convSpeed = FixedDiv(FixedMul(stplyr->speed, 88465), mapobjectscale) / FRACUNIT; // 1.349868774
+				break;
+			case 4: // Fracunits
+				convSpeed = FixedDiv(stplyr->speed, mapobjectscale) / FRACUNIT; // 1.0. duh.
+				break;
+		}
+	}
+
+	// Don't overflow
+	// (negative speed IS really high speed :V)
+	if (convSpeed > 999 || convSpeed < 0)
+		convSpeed = 999;
+
+	numbers[0] = ((convSpeed / 100) % 10);
+	numbers[1] = ((convSpeed / 10) % 10);
+	numbers[2] = (convSpeed % 10);
+}																											//SCS - RADIO END
+
 static void K_drawRingCounter(boolean gametypeinfoshown)
 {
 	const boolean uselives = G_GametypeUsesLives();
@@ -4296,7 +5272,22 @@ static void K_drawRingCounter(boolean gametypeinfoshown)
 	INT32 ringflip = 0;
 	UINT8 *ringmap = NULL;
 	boolean colorring = false;
-	INT32 ringx = 0, fy = 0;
+	//INT32 ringx = 0, fy = 0;
+	INT32 ringx = 0, fy = 0, lives_y = 0;					//SCS - RADIO
+	
+	UINT16 superringcolor = SKINCOLOR_SAPPHIRE;
+	if (stplyr->momentboost)
+	{
+		if (!cv_reducevfx.value)
+		{
+			if (leveltime % 2)
+				superringcolor = SKINCOLOR_GOLD;
+		}
+		else
+		{
+			superringcolor = SKINCOLOR_GOLD;
+		}
+	}
 
 	rn[0] = ((abs(stplyr->hudrings) / 10) % 10);
 	rn[1] = (abs(stplyr->hudrings) % 10);
@@ -4367,6 +5358,15 @@ static void K_drawRingCounter(boolean gametypeinfoshown)
 		{
 			fy -= 10;
 		}
+		
+		if (stplyr->inkblotchtimer >= 10 || (stplyr->inkblotchtimer && stplyr->inkblotchtimer < 10 && leveltime % 2 == 0))			//SCS ADD - want it to flicker when about to disappear
+		{
+			if (uselives)
+				V_DrawScaledPatch(fx-2 + (flipflag ? (SHORT(kp_inkblotches[6]->width) - 3) : 0), fy-3, V_HUDTRANS|V_SLIDEIN, kp_inkblotches[6]);
+			else
+				V_DrawScaledPatch(fx-2 + (flipflag ? (SHORT(kp_inkblotches[7]->width) - 3) : 0), fy-3, V_HUDTRANS|V_SLIDEIN, kp_inkblotches[7]);
+			
+		}
 
 		// Rings
 		if (!uselives)
@@ -4377,13 +5377,12 @@ static void K_drawRingCounter(boolean gametypeinfoshown)
 		}
 		else
 			V_DrawScaledPatch(fx-2 + (flipflag ? (SHORT(kp_ringstickersplit[0]->width) - 3) : 0), fy, V_HUDTRANS|V_SLIDEIN|splitflags|flipflag, kp_ringstickersplit[0]);
-
-
+		
 		UINT8 ampx = 2 + 8;
 		UINT8 ampy = 1 + 8;
 		UINT8 odx = 11;
 		UINT8 ody = 9;
-
+		
 		if (stplyr->overdrive)
 		{
 			V_DrawMappedPatch(fr-odx, fy-3-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_overdrive[1][leveltime%32], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));
@@ -4402,6 +5401,17 @@ static void K_drawRingCounter(boolean gametypeinfoshown)
 					V_DrawMappedPatch(fr-ampx, fy-3-ampy, V_ADD|V_HUDTRANS|V_SLIDEIN|splitflags, kp_amps_underlay[leveltime%12], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));
 				}
 			}
+		}
+		
+		if (stplyr->masteremeraldinvincibility && stplyr->orbitmasteremerald == NULL)			//SCS ADD  Display the emeralds once the Master Emerald is done orbiting us
+		{
+			V_DrawMappedPatch(fr-odx, fy-8-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringemeraldssmall[0], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_WHITE), GTC_CACHE));
+			V_DrawMappedPatch(fr-odx, fy-8-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringemeraldssmall[1], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_RUBY), GTC_CACHE));
+			V_DrawMappedPatch(fr-odx, fy-8-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringemeraldssmall[2], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_YELLOW), GTC_CACHE));
+			V_DrawMappedPatch(fr-odx, fy-8-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringemeraldssmall[3], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_GREEN), GTC_CACHE));
+			V_DrawMappedPatch(fr-odx, fy-8-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringemeraldssmall[4], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_AQUAMARINE), GTC_CACHE));
+			V_DrawMappedPatch(fr-odx, fy-8-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringemeraldssmall[5], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_BLUE), GTC_CACHE));
+			V_DrawMappedPatch(fr-odx, fy-8-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringemeraldssmall[6], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_PURPLE), GTC_CACHE));
 		}
 
 		INT32 hr = stplyr->hudrings;
@@ -4450,54 +5460,132 @@ static void K_drawRingCounter(boolean gametypeinfoshown)
 		if (stplyr->superringdisplay && !(stplyr->superringalert % 2))
 		{
 			using srb2::Draw;
-			Draw row = Draw(fr+19+superoffset, fy).flags(V_HUDTRANS|V_SLIDEIN|splitflags).font(Draw::Font::kPing).colorize(SKINCOLOR_SAPPHIRE);
+			Draw row = Draw(fr+19+superoffset, fy).flags(V_HUDTRANS|V_SLIDEIN|splitflags).font(Draw::Font::kPing).colorize(superringcolor);
 			row.text("+{:01}", abs(stplyr->superringdisplay));
 		}
 	}
-	else
+	else			//SCS NOTE - Drawing in single-player screen
 	{
+		const boolean DRAW_RINGS_ON_PLAYER = cv_ringsonplayer.value == 1;										//SCS - RADIO START
+		const boolean DRAW_SPEEDO_ON_PLAYER = (cv_kartspeedometer.value && cv_speedometeronplayer.value);
+		const boolean DRAW_EXP_ON_PLAYER = cv_exponplayer.value == 1;;
+		INT32 ringcounterflags = V_HUDTRANS|V_SLIDEIN|splitflags;
+		INT32 RINGC_X = LAPS_X;
+
 		fy = LAPS_Y;
+		lives_y = LAPS_Y;
+
+		// RadioRacers: Copying driftgauge here
+		if (DRAW_RINGS_ON_PLAYER) {
+			trackingResult_t result;
+
+			ringcounterflags &= ~V_SLIDEIN;
+			ringcounterflags &= ~splitflags;
+
+			const boolean doesPlayerHaveMo = !((stplyr->mo == NULL || P_MobjWasRemoved(stplyr->mo)));
+			if (doesPlayerHaveMo)
+			{
+				// Get X,Y coordinates for player relative to the HUD
+				RR_GetTrackingCoordinatesForPlayer(&result, doesPlayerHaveMo);
+
+				// Add some offset so it's directly below the player (in Software)
+				fy = (result.y / FRACUNIT); 
+				RINGC_X = (result.x / FRACUNIT) - 20;
+			} 
+		}																										//SCS - RADIO END
+		
+		//fy = LAPS_Y;		//SCS - RADIO (commented out)
 
 		if (gametypeinfoshown)
 		{
-			fy -= 11;
+			lives_y -= 11;				//SCS - RADIO START
+			if (!DRAW_RINGS_ON_PLAYER)	//SCS - RADIO END
+				fy -= 11;
 
-			if ((gametyperules & (GTR_BUMPERS|GTR_CIRCUIT)) == GTR_BUMPERS)
+			if ((gametyperules & (GTR_BUMPERS|GTR_CIRCUIT)) == GTR_BUMPERS)		//SCS - RADIO START
+			{
+				lives_y -= 4;
+				if (!DRAW_RINGS_ON_PLAYER)										//SCS - RADIO END
 				fy -= 4;
+			}																	//SCS - RADIO
 		}
 		else
 		{
-			fy += 9;
+			lives_y += 9;				//SCS - RADIO START
+			if (!DRAW_RINGS_ON_PLAYER)	//SCS - RADIO END
+				fy += 9;
 		}
 
+		// If the cvar isn't active AND we're using lives..															//SCS - RADIO START
+		INT32 ringstickerwidth = (uselives && !DRAW_RINGS_ON_PLAYER) ? (stplyr->lives >= 10 ? 70 : 64) : 33;
+
+		if (DRAW_RINGS_ON_PLAYER && DRAW_SPEEDO_ON_PLAYER && !DRAW_EXP_ON_PLAYER) 
+		{
+			// Speedometer has a width of 42, add some extra pixels for padding
+			ringstickerwidth += 42;
+			RINGC_X += 24;
+		}
+
+		if (DRAW_RINGS_ON_PLAYER && DRAW_EXP_ON_PLAYER && !DRAW_SPEEDO_ON_PLAYER)
+		{
+			// Exp has a width of 24~
+			ringstickerwidth += 35;
+			RINGC_X += 20;
+		}																											//SCS - RADIO END
+		
 		// Rings
+		int RINGC_STICKER_X = RINGC_X + 7;																			//SCS - RADIO START
+		if (DRAW_RINGS_ON_PLAYER && (DRAW_SPEEDO_ON_PLAYER && !DRAW_EXP_ON_PLAYER))
+			RINGC_STICKER_X = (RINGC_X - 42) +7;
+		if (DRAW_RINGS_ON_PLAYER && (DRAW_EXP_ON_PLAYER && !DRAW_SPEEDO_ON_PLAYER))
+			RINGC_STICKER_X = (RINGC_X - 37) +8;																	//SCS - RADIO END
 		using srb2::Draw;
-		Draw(LAPS_X+7, fy+1)
+		/*Draw(LAPS_X+7, fy+1)
 			.flags(V_HUDTRANS|V_SLIDEIN|splitflags)
 			.align(Draw::Align::kCenter)
 			.width(uselives ? (stplyr->lives >= 10 ? 70 : 64) : 33)
-			.small_sticker();
+			.small_sticker();*/
+		Draw(RINGC_STICKER_X, fy+1)				//SCS - RADIO START
+			.flags(ringcounterflags)
+			.align(Draw::Align::kCenter)
+			.width(ringstickerwidth)
+			.small_sticker();					//SCS - RADIO END
 
 		if (stplyr->overdrive)
 		{
-			V_DrawMappedPatch(LAPS_X+7-8, fy-5-8, V_HUDTRANS|V_SLIDEIN|splitflags, kp_overdrive[0][leveltime%32], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));
+			//V_DrawMappedPatch(LAPS_X+7-8, fy-5-8, V_HUDTRANS|V_SLIDEIN|splitflags, kp_overdrive[0][leveltime%32], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));
+			V_DrawMappedPatch(RINGC_X+7-8, fy-5-8, ringcounterflags, kp_overdrive[0][leveltime%32], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));					//SCS - RADIO
 		}
 		else
 		{
-			V_DrawMappedPatch(LAPS_X+ringx+7, fy-5, V_HUDTRANS|V_SLIDEIN|splitflags|ringflip, kp_ring[ringanim_realframe], (colorring ? ringmap : NULL));
+			//V_DrawMappedPatch(LAPS_X+ringx+7, fy-5, V_HUDTRANS|V_SLIDEIN|splitflags|ringflip, kp_ring[ringanim_realframe], (colorring ? ringmap : NULL));
+			V_DrawMappedPatch(RINGC_X+ringx+7, fy-5, ringcounterflags|ringflip, kp_ring[ringanim_realframe], (colorring ? ringmap : NULL));						//SCS - RADIO
 
 			if (stplyr->amps)
 			{
 				UINT8 amplevel = std::min(stplyr->amps / AMPLEVEL, 6);
 
-				V_DrawMappedPatch(LAPS_X+7-7, fy-5-8, V_HUDTRANS|V_SLIDEIN|splitflags, kp_amps[amplevel][leveltime%12], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));
+				//V_DrawMappedPatch(LAPS_X+7-7, fy-5-8, V_HUDTRANS|V_SLIDEIN|splitflags, kp_amps[amplevel][leveltime%12], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));
+				V_DrawMappedPatch(RINGC_X+7-7, fy-5-8, ringcounterflags, kp_amps[amplevel][leveltime%12], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));						//SCS - RADIO
 				if (amplevel == 6)
 				{
-					V_DrawMappedPatch(LAPS_X+7-7, fy-5-8, V_ADD|V_HUDTRANS|V_SLIDEIN|splitflags, kp_amps_underlay[leveltime%12], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));
+					//V_DrawMappedPatch(LAPS_X+7-7, fy-5-8, V_ADD|V_HUDTRANS|V_SLIDEIN|splitflags, kp_amps_underlay[leveltime%12], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));
+					V_DrawMappedPatch(RINGC_X+7-7, fy-5-8, V_ADD|ringcounterflags, kp_amps_underlay[leveltime%12], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));			//SCS - RADIO
 				}
 			}
 		}
 
+		if (stplyr->masteremeraldinvincibility && stplyr->orbitmasteremerald == NULL)			//SCS ADD  Display the emeralds once the Master Emerald is done orbiting us
+		{
+			V_DrawMappedPatch(RINGC_X-10, fy-22, V_HUDTRANS|V_SLIDEIN, kp_ringemeralds[0], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_WHITE), GTC_CACHE));	
+			V_DrawMappedPatch(RINGC_X-10, fy-22, V_HUDTRANS|V_SLIDEIN, kp_ringemeralds[1], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_RUBY), GTC_CACHE));	
+			V_DrawMappedPatch(RINGC_X-10, fy-22, V_HUDTRANS|V_SLIDEIN, kp_ringemeralds[2], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_YELLOW), GTC_CACHE));	
+			V_DrawMappedPatch(RINGC_X-10, fy-22, V_HUDTRANS|V_SLIDEIN, kp_ringemeralds[3], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_GREEN), GTC_CACHE));	
+			V_DrawMappedPatch(RINGC_X-10, fy-22, V_HUDTRANS|V_SLIDEIN, kp_ringemeralds[4], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_AQUAMARINE), GTC_CACHE));	
+			V_DrawMappedPatch(RINGC_X-10, fy-22, V_HUDTRANS|V_SLIDEIN, kp_ringemeralds[5], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_BLUE), GTC_CACHE));	
+			V_DrawMappedPatch(RINGC_X-10, fy-22, V_HUDTRANS|V_SLIDEIN, kp_ringemeralds[6], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_PURPLE), GTC_CACHE));		
+		}
+		
 		INT32 hr = stplyr->hudrings;
 
 		if (stplyr->baildrop)
@@ -4510,9 +5598,11 @@ static void K_drawRingCounter(boolean gametypeinfoshown)
 		// "use magic numbers" - jartha 2024-03-05
 		if (hr < 0) // Draw the minus for ring debt
 		{
-			V_DrawMappedPatch(LAPS_X+23-1, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringdebtminus, ringmap);
+			//V_DrawMappedPatch(LAPS_X+23-1, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringdebtminus, ringmap);
+			V_DrawMappedPatch(RINGC_X+23-1, fy, ringcounterflags, kp_ringdebtminus, ringmap);					//SCS - RADIO
 			using srb2::Draw;
-			Draw row = Draw(LAPS_X+29+0, fy-4).flags(V_HUDTRANS|V_SLIDEIN|splitflags).font(Draw::Font::kThinTimer).colormap(ringmap);
+			//Draw row = Draw(LAPS_X+29+0, fy-4).flags(V_HUDTRANS|V_SLIDEIN|splitflags).font(Draw::Font::kThinTimer).colormap(ringmap);
+			Draw row = Draw(RINGC_X+29+0, fy-4).flags(ringcounterflags).font(Draw::Font::kThinTimer).colormap(ringmap);						//SCS - RADIO
 			row.text("{:02}", abs(hr));
 			// V_DrawMappedPatch(LAPS_X+29, fy, V_HUDTRANS|V_SLIDEIN|splitflags, fontv[TALLNUM_FONT].font[rn[0]], ringmap);
 			// V_DrawMappedPatch(LAPS_X+35, fy, V_HUDTRANS|V_SLIDEIN|splitflags, fontv[TALLNUM_FONT].font[rn[1]], ringmap);
@@ -4520,15 +5610,23 @@ static void K_drawRingCounter(boolean gametypeinfoshown)
 		else
 		{
 			using srb2::Draw;
-			Draw row = Draw(LAPS_X+23+3, fy-4).flags(V_HUDTRANS|V_SLIDEIN|splitflags).font(Draw::Font::kThinTimer).colormap(ringmap);
+			//Draw row = Draw(LAPS_X+23+3, fy-4).flags(V_HUDTRANS|V_SLIDEIN|splitflags).font(Draw::Font::kThinTimer).colormap(ringmap);
+			Draw row = Draw(RINGC_X+23+3, fy-4).flags(ringcounterflags).font(Draw::Font::kThinTimer).colormap(ringmap);						//SCS - RADIO
 			row.text("{:02}", abs(hr));
 			// V_DrawMappedPatch(LAPS_X+23, fy, V_HUDTRANS|V_SLIDEIN|splitflags, fontv[TALLNUM_FONT].font[rn[0]], ringmap);
 			// V_DrawMappedPatch(LAPS_X+29, fy, V_HUDTRANS|V_SLIDEIN|splitflags, fontv[TALLNUM_FONT].font[rn[1]], ringmap);
 		}
 
 		// SPB ring lock
-		if (stplyr->pflags & PF_RINGLOCK)
-			V_DrawScaledPatch(LAPS_X-5, fy-17, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringspblock[stplyr->karthud[khud_ringspblock]]);
+		//if (stplyr->pflags & PF_RINGLOCK)
+			//V_DrawScaledPatch(LAPS_X-5, fy-17, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringspblock[stplyr->karthud[khud_ringspblock]]);
+		if (stplyr->pflags & PF_RINGLOCK) {																								//SCS - RADIO START
+			// Use the debt animation when drawing rings on player
+			// The overanimated SPB icon can be distracting
+			int framenum = (DRAW_RINGS_ON_PLAYER) ? (14 + (leveltime % 2)) : stplyr->karthud[khud_ringspblock];
+
+			V_DrawScaledPatch(RINGC_X-5, fy-17, ringcounterflags, kp_ringspblock[framenum]);
+		}																																//SCS - RADIO END
 
 		UINT32 greyout = V_HUDTRANS;
 
@@ -4537,11 +5635,75 @@ static void K_drawRingCounter(boolean gametypeinfoshown)
 			greyout = V_HUDTRANSHALF;
 		}
 
+		// Speedometer																														//SCS - RADIO START
+		if (DRAW_SPEEDO_ON_PLAYER && !DRAW_EXP_ON_PLAYER && DRAW_RINGS_ON_PLAYER)
+		{
+			uint8_t speedometer_numbers[3];
+			K_GetKartSpeedometerNumbers(speedometer_numbers);
+			// int ringtext_x = ((stplyr->hudrings < 0) ? RINGC_X+29+0 : RINGC_X+23+3) + 10;
+			int ringtext_x = RINGC_X - 42;
+
+			using srb2::Draw;
+			V_DrawScaledPatch(ringtext_x+7, fy, ringcounterflags, kp_facenum[speedometer_numbers[0]]);
+			V_DrawScaledPatch(ringtext_x+13, fy, ringcounterflags, kp_facenum[speedometer_numbers[1]]);
+			V_DrawScaledPatch(ringtext_x+19, fy, ringcounterflags, kp_facenum[speedometer_numbers[2]]);
+			V_DrawScaledPatch(ringtext_x+29, fy, ringcounterflags, kp_speedometerlabel[K_GetKartSpeedometerLabel()]);
+			
+			if (stplyr->inkblotchtimer >= 10 || (stplyr->inkblotchtimer && stplyr->inkblotchtimer < 10 && leveltime % 2 == 0))			//SCS ADD - want it to flicker when about to disappear
+			{
+				V_DrawScaledPatch(ringtext_x-7, fy-15, ringcounterflags, kp_inkblotches[2]);
+			}
+		}
+
+		// Exp
+		if (DRAW_EXP_ON_PLAYER && !DRAW_SPEEDO_ON_PLAYER && DRAW_RINGS_ON_PLAYER)
+		{
+			const int exp_x = RINGC_X - 36;
+			const INT32 exp_y = fy - 7;
+
+			V_DrawMappedPatch(exp_x, exp_y, V_HUDTRANS, kp_exp[0], R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_MUSTARD, GTC_CACHE));
+	
+			auto transflag = K_GetTransFlagFromFixed(K_EffectiveGradingFactor(stplyr), true);
+			skincolornum_t overlaycolor = K_EffectiveGradingFactor(stplyr) < FRACUNIT ? SKINCOLOR_RUBY : SKINCOLOR_ULTRAMARINE ;
+			auto colormap = R_GetTranslationColormap(TC_RAINBOW, overlaycolor, GTC_CACHE);
+
+			V_DrawMappedPatch(exp_x, exp_y, V_HUDTRANS|transflag, kp_exp[0], colormap);
+	
+			boolean dance = (stplyr->exp > (UINT32)stplyr->karthud[khud_exp]);
+			INT32 danceflag = dance ? V_STRINGDANCE : 0;
+			UINT16 dancecolor = dance ? SKINCOLOR_AQUAMARINE : 0;
+
+			using srb2::Draw;
+			Draw row = Draw(exp_x+23, exp_y+3).flags(V_HUDTRANS|danceflag).font(Draw::Font::kThinTimer).colorize(dancecolor);
+			row.text("{:03}", K_GetDisplayEXP());
+		}																																	//SCS - RADIO END
+
 		// Lives
 		if (uselives)
 		{
+			INT32 facerank_x = 46;									//SCS - RADIO START
+			INT32 lifecount_x = 65;
+
+			if (DRAW_RINGS_ON_PLAYER) {
+				facerank_x = 13;
+				lifecount_x = 32;
+
+				using srb2::Draw;
+				Draw(LAPS_X+7, lives_y+1)
+					.flags(V_HUDTRANS|V_SLIDEIN|splitflags)
+					.align(Draw::Align::kCenter)
+					.width(stplyr->lives >= 10 ? 37 : 31)
+					.small_sticker();
+			}
+
+			// radio
+			UINT32 livesflags = V_SLIDEIN|splitflags|greyout;
+			if (DRAW_RINGS_ON_PLAYER)
+				livesflags = V_HUDTRANS|V_SLIDEIN|splitflags;		//SCS - RADIO END
+			
 			UINT8 *colormap = R_GetTranslationColormap(stplyr->skin, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE);
-			V_DrawMappedPatch(LAPS_X+46, fy-5, V_SLIDEIN|splitflags|greyout, faceprefix[stplyr->skin][FACE_RANK], colormap);
+			//V_DrawMappedPatch(LAPS_X+46, fy-5, V_SLIDEIN|splitflags|greyout, faceprefix[stplyr->skin][FACE_RANK], colormap);
+			V_DrawMappedPatch(LAPS_X+facerank_x, lives_y-5, livesflags, faceprefix[stplyr->skin][FACE_RANK], colormap);				//SCS - RADIO
 			SINT8 livescount = 0;
 			if (stplyr->lives > 0)
 			{
@@ -4550,15 +5712,26 @@ static void K_drawRingCounter(boolean gametypeinfoshown)
 					livescount = 10;
 			}
 			using srb2::Draw;
-			Draw row = Draw(LAPS_X+65, fy-4).flags(V_SLIDEIN|splitflags|greyout).font(Draw::Font::kThinTimer);
+			//Draw row = Draw(LAPS_X+65, fy-4).flags(V_SLIDEIN|splitflags|greyout).font(Draw::Font::kThinTimer);
+			Draw row = Draw(LAPS_X+lifecount_x, lives_y-4).flags(livesflags).font(Draw::Font::kThinTimer);			//SCS - RADIO
 			row.text("{}", livescount);
 		}
 
 		if (stplyr->superringdisplay && !(stplyr->superringalert % 2))
 		{
 			using srb2::Draw;
-			Draw row = Draw(LAPS_X+23+3+15, fy-4).flags(V_HUDTRANS|V_SLIDEIN|splitflags).font(Draw::Font::kThinTimer).colorize(SKINCOLOR_SAPPHIRE);
+			//Draw row = Draw(LAPS_X+23+3+15, fy-4).flags(V_HUDTRANS|V_SLIDEIN|splitflags).font(Draw::Font::kThinTimer).colorize(superringcolor);
+			Draw row = Draw(RINGC_X+23+3+15, fy-4).flags(ringcounterflags).font(Draw::Font::kThinTimer).colorize(superringcolor);					//SCS - RADIO
 			row.text("+{:01}", abs(stplyr->superringdisplay));
+		}
+		
+		if (stplyr->inkblotchtimer >= 10 || (stplyr->inkblotchtimer && stplyr->inkblotchtimer < 10 && leveltime % 2 == 0))			//SCS ADD - want it to flicker when about to disappear
+		{
+			if (uselives)
+				V_DrawScaledPatch(DRAW_RINGS_ON_PLAYER ? RINGC_STICKER_X : LAPS_X-7, fy-12, V_HUDTRANS|V_SLIDEIN|splitflags, kp_inkblotches[5]);
+			else
+				V_DrawScaledPatch(DRAW_RINGS_ON_PLAYER ? RINGC_STICKER_X : LAPS_X-7, fy-12, V_HUDTRANS|V_SLIDEIN|splitflags, kp_inkblotches[4]);
+			
 		}
 	}
 }
@@ -4567,7 +5740,9 @@ static void K_drawRingCounter(boolean gametypeinfoshown)
 
 static void K_drawKartAccessibilityIcons(boolean gametypeinfoshown, INT32 fx)
 {
-    INT32 fy = LAPS_Y-14;
+    //INT32 fy = LAPS_Y-14;
+	boolean showbluespheres = (gametyperules & GTR_SPHERES);														//SCS - RADIO START
+	INT32 fy = LAPS_Y - ((cv_ringsonplayer.value == 1 && !showbluespheres && !G_GametypeUsesLives()) ? 0 : 14);		//SCS - RADIO END
     INT32 splitflags = V_SNAPTOLEFT|V_SNAPTOBOTTOM|V_SPLITSCREEN;
 
     boolean mirror = false;
@@ -4704,7 +5879,15 @@ static void K_drawKartSpeedometer(boolean gametypeinfoshown)
 	UINT8 labeln = 0;
 	UINT8 numbers[3];
 	INT32 splitflags = V_SNAPTOBOTTOM|V_SNAPTOLEFT|V_SPLITSCREEN;
-	INT32 fy = LAPS_Y-14;
+	//INT32 fy = LAPS_Y-14;													//SCS - RADIO
+
+	// Radio
+	boolean isBattle = false;																						//SCS - RADIO START
+	INT32 SPEEDC_X = LAPS_X;
+	INT32 speedometerFlags = V_HUDTRANS|V_SLIDEIN|splitflags;
+
+	boolean showbluespheres = (gametyperules & GTR_SPHERES);
+	INT32 fy = LAPS_Y - ((cv_ringsonplayer.value == 1 && !showbluespheres && !G_GametypeUsesLives()) ? 0 : 14);		//SCS - RADIO END
 
 	if (battleprisons)
 	{
@@ -4748,8 +5931,10 @@ static void K_drawKartSpeedometer(boolean gametypeinfoshown)
 	{
 		fy -= 11;
 
-		if ((gametyperules & (GTR_BUMPERS|GTR_CIRCUIT)) == GTR_BUMPERS)
+		if ((gametyperules & (GTR_BUMPERS|GTR_CIRCUIT)) == GTR_BUMPERS){
+			isBattle = true;			//SCS - RADIO
 			fy -= 4;
+		}
 	}
 	else
 	{
@@ -4761,13 +5946,58 @@ static void K_drawKartSpeedometer(boolean gametypeinfoshown)
 	{
 		fy += 14;
 	}
+	
+	// Radio
+	// Don't track on player during battle
+	if (!isBattle) {																	//SCS - RADIO START
+		const boolean DRAW_RINGS_ON_PLAYER = cv_ringsonplayer.value == 1;
+		const boolean DRAW_SPEEDO_ON_PLAYER = cv_speedometeronplayer.value == 1;
 
-	using srb2::Draw;
+		/**
+		 * Speedometer and rings being drawn on player at the same time?
+		 * Handled in K_drawRingCounter
+		 */
+		if (DRAW_SPEEDO_ON_PLAYER) {
+			if (!DRAW_RINGS_ON_PLAYER) {
+				trackingResult_t result;
+
+				speedometerFlags &= ~V_SLIDEIN;
+				speedometerFlags &= ~splitflags;
+
+				const boolean doesPlayerHaveMo = !((stplyr->mo == NULL || P_MobjWasRemoved(stplyr->mo)));
+				if (doesPlayerHaveMo)
+				{
+					// Get X,Y coordinates for player relative to the HUD
+					RR_GetTrackingCoordinatesForPlayer(&result, doesPlayerHaveMo);
+
+					// Add some offset so it's directly below the player (in Software)
+					fy = (result.y / FRACUNIT); 
+					SPEEDC_X = (result.x / FRACUNIT) - 25;
+				} 
+			} else {
+				return;
+			}
+		}
+	}																					//SCS - RADIO END
+
+	/*using srb2::Draw;
 	Draw(LAPS_X+7, fy+1).flags(V_HUDTRANS|V_SLIDEIN|splitflags).align(Draw::Align::kCenter).width(42).small_sticker();
 	V_DrawScaledPatch(LAPS_X+7, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_facenum[numbers[0]]);
 	V_DrawScaledPatch(LAPS_X+13, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_facenum[numbers[1]]);
 	V_DrawScaledPatch(LAPS_X+19, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_facenum[numbers[2]]);
-	V_DrawScaledPatch(LAPS_X+29, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_speedometerlabel[labeln]);
+	V_DrawScaledPatch(LAPS_X+29, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_speedometerlabel[labeln]);*/
+	using srb2::Draw;
+	Draw(SPEEDC_X+7, fy+1).flags(speedometerFlags).align(Draw::Align::kCenter).width(42).small_sticker();
+	V_DrawScaledPatch(SPEEDC_X+7, fy, speedometerFlags, kp_facenum[numbers[0]]);
+	V_DrawScaledPatch(SPEEDC_X+13, fy, speedometerFlags, kp_facenum[numbers[1]]);
+	V_DrawScaledPatch(SPEEDC_X+19, fy, speedometerFlags, kp_facenum[numbers[2]]);
+	V_DrawScaledPatch(SPEEDC_X+29, fy, speedometerFlags, kp_speedometerlabel[labeln]);
+	
+	if (stplyr->inkblotchtimer >= 10 || (stplyr->inkblotchtimer && stplyr->inkblotchtimer < 10 && leveltime % 2 == 0))			//SCS ADD - want it to flicker when about to disappear
+	{
+		//V_DrawScaledPatch(LAPS_X-7, fy-15, V_HUDTRANS|V_SLIDEIN|splitflags, kp_inkblotches[2]);
+		V_DrawScaledPatch(SPEEDC_X-7, fy-15, speedometerFlags, kp_inkblotches[2]);
+	}
 
 	/*
 	// debug for Speed Assist
@@ -4783,6 +6013,11 @@ static void K_drawBlueSphereMeter(boolean gametypeinfoshown)
 	// see also K_DrawNameTagSphereMeter
 	const UINT8 segColors[] = {73, 64, 52, 54, 55, 35, 34, 33, 202, 180, 181, 182, 164, 165, 166, 153, 152};
 	const UINT8 sphere = std::clamp(static_cast<int>(stplyr->spheres), 0, 40);
+	
+	const boolean DRAW_SPHERES_ON_PLAYER = cv_spheremeteronplayer.value == 1;				//SCS - RADIO START
+	const boolean CUSTOM_EMERALD_HUD = cv_customemeraldhud.value >= 1;
+	const boolean SHOULD_SCALE_METER = (CUSTOM_EMERALD_HUD || DRAW_SPHERES_ON_PLAYER);
+	const fixed_t SPHERE_METER_SCALE = (SHOULD_SCALE_METER) ? (4*FRACUNIT)/5 : FRACUNIT;	//SCS - RADIO END
 
 	UINT8 numBars = std::min((sphere / 10), +maxBars);
 	UINT8 colorIndex = (sphere * sizeof(segColors)) / (40 + 1);
@@ -4790,40 +6025,78 @@ static void K_drawBlueSphereMeter(boolean gametypeinfoshown)
 	UINT8 i;
 	INT32 splitflags = V_HUDTRANS|V_SLIDEIN|V_SNAPTOBOTTOM|V_SNAPTOLEFT|V_SPLITSCREEN;
 	INT32 flipflag = 0;
-	INT32 xstep = 15;
+	//INT32 xstep = 15;
+	INT32 xstep = (SHOULD_SCALE_METER) ? 12 : 15;	//SCS - RADIO
 
 	// pain and suffering defined below
 	if (r_splitscreen < 2)	// don't change shit for THIS splitscreen.
 	{
 		fx = LAPS_X;
 		fy = LAPS_Y-4;
-
-		if (battleprisons)
+		
+		if (DRAW_SPHERES_ON_PLAYER && r_splitscreen == 0)		//SCS - RADIO START
 		{
-			if (r_splitscreen == 1)
+			vector3_t v;
+			trackingResult_t result;
+
+			splitflags = V_HUDTRANS;
+
+			const boolean doesPlayerHaveMo = !((stplyr->mo == NULL || P_MobjWasRemoved(stplyr->mo)));
+			if (doesPlayerHaveMo)
 			{
-				fy -= 8;
+				v.x = R_InterpolateFixed(stplyr->mo->old_x, stplyr->mo->x);
+				v.y = R_InterpolateFixed(stplyr->mo->old_y, stplyr->mo->y);
+				v.z = R_InterpolateFixed(stplyr->mo->old_z, stplyr->mo->z);
+
+				// Legacy GL perspective
+				v.z += FixedMul(-15*FRACUNIT, stplyr->mo->scale);
+				
+				K_ObjectTracking(&result, &v, false);
+
+				// Add some offset so it's directly below the player (in Software)
+				fy = (result.y / FRACUNIT); 
+				fx = (result.x / FRACUNIT) - ((scaleInt(kp_spheresticker->width, SPHERE_METER_SCALE))/2);
+			} 
+		}
+
+		if (!SHOULD_SCALE_METER) {		//SCS - RADIO END
+			if (battleprisons)
+			{
+				if (r_splitscreen == 1)
+				{
+					fy -= 8;
+				}
+				else
+				{
+					fy -= 5;
+				}
 			}
-			else
+			else if (r_splitscreen == 1)
 			{
 				fy -= 5;
 			}
-		}
-		else if (r_splitscreen == 1)
-		{
-			fy -= 5;
-		}
 
-		if (gametypeinfoshown)
-		{
-			fy -= 11 + 4;
-		}
-		else
-		{
-			fy += 9;
-		}
+			if (gametypeinfoshown)
+			{
+				fy -= 11 + 4;
+			}
+			else
+			{
+				fy += 9;
+			}
 
-		V_DrawScaledPatch(fx, fy, splitflags|flipflag, kp_spheresticker);
+			V_DrawScaledPatch(fx, fy, splitflags|flipflag, kp_spheresticker);
+		} else {																		//SCS - RADIO START
+			if (r_splitscreen == 0) {
+				const INT32 new_fy = (CUSTOM_EMERALD_HUD && !DRAW_SPHERES_ON_PLAYER) ? fy-17 : fy;
+				V_DrawFixedPatch(
+					((fx)*FRACUNIT), 
+					(new_fy)<<FRACBITS, 
+					SPHERE_METER_SCALE, 
+					splitflags|flipflag, 
+					kp_spheresticker, NULL);
+			}
+		}																				//SCS - RADIO END
 	}
 	else
 	{
@@ -4857,7 +6130,8 @@ static void K_drawBlueSphereMeter(boolean gametypeinfoshown)
 
 	if (r_splitscreen < 2)
 	{
-		fx += 25;
+		//fx += 25;
+		fx += (SHOULD_SCALE_METER) ? scaleInt(25, SPHERE_METER_SCALE) : 25;			//SCS - RADIO
 	}
 	else
 	{
@@ -4866,11 +6140,22 @@ static void K_drawBlueSphereMeter(boolean gametypeinfoshown)
 
 	for (i = 0; i <= numBars; i++)
 	{
-		UINT8 segLen = (r_splitscreen < 2) ? 10 : 5;
+		//UINT8 segLen = (r_splitscreen < 2) ? 10 : 5;
+		int SPHERE_BAR_LENGTH = 10;										//SCS - RADIO START
+		if (SHOULD_SCALE_METER)
+		{
+			SPHERE_BAR_LENGTH = scaleInt(SPHERE_BAR_LENGTH, SPHERE_METER_SCALE);
+		}
+		UINT8 segLen = (r_splitscreen < 2) ? SPHERE_BAR_LENGTH: 5;		//SCS - RADIO END
 
 		if (i == numBars)
 		{
 			segLen = (sphere % 10);
+			if (SHOULD_SCALE_METER) {					//SCS - RADIO START
+				if (segLen > SPHERE_BAR_LENGTH) {
+					segLen = SPHERE_BAR_LENGTH;
+				}
+			}											//SCS - RADIO END
 			if (r_splitscreen < 2)
 				;
 			else
@@ -4885,9 +6170,27 @@ static void K_drawBlueSphereMeter(boolean gametypeinfoshown)
 
 		if (r_splitscreen < 2)
 		{
-			V_DrawFill(fx, fy + 6, segLen, 3, segColors[std::max(colorIndex-1, 0)] | splitflags);
+			/*V_DrawFill(fx, fy + 6, segLen, 3, segColors[std::max(colorIndex-1, 0)] | splitflags);
 			V_DrawFill(fx, fy + 7, segLen, 1, segColors[std::max(colorIndex-2, 0)] | splitflags);
-			V_DrawFill(fx, fy + 9, segLen, 3, segColors[colorIndex] | splitflags);
+			V_DrawFill(fx, fy + 9, segLen, 3, segColors[colorIndex] | splitflags);*/
+			INT32 new_fy = fy;																					//SCS - RADIO START
+			int yCoords[3] = {6, 7, 9};
+
+			if (r_splitscreen == 0)
+			{
+				if (SHOULD_SCALE_METER)
+				{
+					yCoords[0] = scaleInt(yCoords[0], SPHERE_METER_SCALE) - 1;
+					yCoords[1] = scaleInt(yCoords[1], SPHERE_METER_SCALE);
+					yCoords[2] = scaleInt(yCoords[2], SPHERE_METER_SCALE);
+
+					if (CUSTOM_EMERALD_HUD && !DRAW_SPHERES_ON_PLAYER)
+						new_fy = fy-17;
+				}
+			}
+			V_DrawFill(fx, new_fy + yCoords[0], segLen, 3, segColors[std::max(colorIndex-1, 0)] | splitflags);
+			V_DrawFill(fx, new_fy + yCoords[1], segLen, 1, segColors[std::max(colorIndex-2, 0)] | splitflags);
+			V_DrawFill(fx, new_fy + yCoords[2], segLen, 3, segColors[colorIndex] | splitflags);					//SCS - RADIO END
 		}
 		else
 		{
@@ -5119,7 +6422,7 @@ static void K_drawKartWanted(void)
 
 static void K_drawKartPlayerCheck(void)
 {
-	const fixed_t maxdistance = FixedMul(1280 * mapobjectscale, K_GetKartGameSpeedScalar(gamespeed));
+	const fixed_t maxdistance = FixedMul(4000 * mapobjectscale, K_GetKartGameSpeedScalar(gamespeed));		//SCS edit - Distance was 2000
 	UINT8 i;
 	INT32 splitflags = V_SNAPTOBOTTOM|V_SPLITSCREEN;
 	fixed_t y = CHEK_Y * FRACUNIT;
@@ -5176,34 +6479,74 @@ static void K_drawKartPlayerCheck(void)
 		pPos.z = R_InterpolateFixed(stplyr->mo->old_z, stplyr->mo->z);
 
 		distance = R_PointToDist2(pPos.x, pPos.y, v.x, v.y);
+		
+		colormap = R_GetTranslationColormap(TC_DEFAULT, static_cast<skincolornum_t>(checkplayer->mo->color), GTC_CACHE);
 
-		if (distance > maxdistance)
+		/*if (distance > maxdistance)
 		{
 			// Too far away
 			continue;
-		}
-
-		if ((checkplayer->invincibilitytimer <= 0) && (leveltime & 2) && !(cv_reducevfx.value))
-		{
-			pnum++; // white frames
-		}
-
-		if (checkplayer->itemtype == KITEM_GROW || checkplayer->growshrinktimer > 0)
-		{
-			pnum += 4;
-		}
-		else if (checkplayer->itemtype == KITEM_INVINCIBILITY || checkplayer->invincibilitytimer)
-		{
-			pnum += 2;
-		}
-
+		}*/
+		// RADIO
 		K_ObjectTracking(&result, &v, true);
 
-		if (result.onScreen == true)
+		// Otherwise, too far away
+		if (distance < maxdistance)
 		{
-			colormap = R_GetTranslationColormap(TC_DEFAULT, static_cast<skincolornum_t>(checkplayer->mo->color), GTC_CACHE);
-			V_DrawFixedPatch(result.x, y, FRACUNIT, V_HUDTRANS|V_SPLITSCREEN|splitflags, kp_check[pnum], colormap);
+			// boolean is_charging = checkplayer->instaWhipCharge >= INSTAWHIP_CHARGETIME;
+
+			// fixed_t patch_scale = FRACUNIT;
+				
+			// if (is_charging && (leveltime % 2) == 0) {
+			// 	patch_scale = FloatToFixed(1.3f);
+			// }
+
+			if ((checkplayer->invincibilitytimer <= 0) && (leveltime & 2) && !(cv_reducevfx.value))
+			{
+				pnum++; // white frames
+			}
+
+			if (checkplayer->itemtype == KITEM_MASTEREMERALD || checkplayer->masteremeraldinvincibility)
+			{
+				pnum += 10;
+			}
+			else if (checkplayer->eggmanexplode)		//SCS ADD
+			{
+				pnum += 8;
+			}
+			else if (checkplayer->itemtype == KITEM_FLAMESHIELD)	//SCS ADD
+			{
+				pnum += 6;
+			}
+			else if (checkplayer->itemtype == KITEM_GROW || checkplayer->growshrinktimer > 0)
+			{
+				pnum += 4;
+			}
+			else if (checkplayer->itemtype == KITEM_INVINCIBILITY || checkplayer->invincibilitytimer) //&& !checkplayer->masteremeraldinvincibility)
+			{
+				pnum += 2;
+			}
+			else if ((checkplayer->instaWhipCharge) && !(cv_reducevfx.value))
+			{
+				if (leveltime & 2)
+					R_GetTranslationColormap(TC_DEFAULT, static_cast<skincolornum_t>(SKINCOLOR_WHITE), GTC_CACHE);
+				else
+					R_GetTranslationColormap(TC_DEFAULT, static_cast<skincolornum_t>(SKINCOLOR_BLACK), GTC_CACHE);
+			}
+
+			K_ObjectTracking(&result, &v, true);
+
+			if (result.onScreen == true)
+			{
+				V_DrawFixedPatch(result.x, y, FRACUNIT, V_HUDTRANS|V_SPLITSCREEN|splitflags, kp_check[pnum], colormap);
+			}
 		}
+
+		// RADIO: Draw *dangerous* player checks
+		if (cv_show_dangerous_player_check.value && result.onScreen == false) {
+			RR_DrawDangerousPlayerCheck(checkplayer, distance, &result);	
+		}
+		
 	}
 }
 
@@ -5292,43 +6635,174 @@ static void K_DrawNameTagItemSpy(INT32 x, INT32 y, player_t *p, INT32 flags)
 	box.colorize(p->skincolor).patch(kp_itembg[tiny ? 4 : 2]);
 
 	INT32 item_type = KITEM_NONE;
+	UINT8 slot_type = KITEM_NONE;													//SCS ADD
 
 	if (p->itemRoulette.active == true && p->itemRoulette.ringbox == false)
 	{
 		item_type = 1 + (leveltime % (NUMKARTITEMS - 1));
 	}
+	else if (p->itemRoulette.ringbox == true && !p->ringboxaward)	//SCS ADD
+	{
+		slot_type = (leveltime % (7 - 1));
+	}
 	else if (!(p->itemflags & IF_ITEMOUT) || (leveltime & 1))
 	{
 		item_type = p->itemtype;
 	}
-
-	switch (item_type)
+	else if (p->ringboxaward)										//SCS ADD
 	{
-		case KITEM_NONE:
-		{
-			break;
-		}
+		slot_type = p->ringboxaward;
+	}
 
-		case KITEM_INVINCIBILITY:
+	if ((p->itemRoulette.active == true || p->itemamount || item_type != KITEM_NONE) && p->itemRoulette.ringbox == false)
+	{
+		switch (item_type)
 		{
-			box.patch(kp_invincibility[((leveltime % (6*3)) / 3) + (tiny ? 13 : 7)]);
-			break;
-		}
-
-		case KITEM_ORBINAUT:
-		{
-			box.patch(kp_orbinaut[4 + tiny]);
-			break;
-		}
-
-		default:
-		{
-			if (patch_t *ico = K_GetCachedItemPatch(item_type, 1 + tiny))
+			case KITEM_NONE:
 			{
-				box.patch(ico);
+				break;
 			}
-			break;
+
+			case KITEM_INVINCIBILITY:
+			{
+				box.patch(kp_invincibility[((leveltime % (6*3)) / 3) + (tiny ? 13 : 7)]);
+				break;
+			}
+			
+			case KITEM_MASTEREMERALD:
+			{
+				box.patch(kp_masteremerald[((leveltime % (6*3)) / 3) + (tiny ? 12 : 6)]);		//SCS ADD
+				break;			
+			}
+			
+			case KITEM_PICKPOCKETHYU:
+			{
+				box.patch(kp_pickpockethyu[((leveltime % (3*3)) / 3) + (tiny ? 12 : 9)]);		//SCS ADD
+				break;			
+			}
+			
+			case KITEM_TIMESTONE:
+			{
+				box.patch(kp_timestone[((leveltime % (10*3)) / 3) + (tiny ? 20 : 10)]);		//SCS ADD
+				break;			
+			}
+
+			case KITEM_ORBINAUT:
+			{
+				box.patch(kp_orbinaut[4 + tiny]);
+				break;
+			}
+			
+			case KITEM_BANANA:
+			{
+				box.patch(kp_banana[4 + tiny]);			//SCS ADD
+				break;
+			}
+			
+			case KITEM_SNEAKER:
+			{
+				box.patch(kp_sneaker[3 + tiny]);			//SCS ADD
+				break;
+			}
+			
+			case KITEM_JAWZ:
+			{
+				box.patch(kp_jawz[2 + tiny]);			//SCS ADD
+				break;
+			}
+
+			default:
+			{
+				if (patch_t *ico = K_GetCachedItemPatch(item_type, 1 + tiny))
+				{
+					box.patch(ico);
+				}
+				break;
+			}
 		}
+	}
+	
+	else if (p->itemRoulette.ringbox == true && !p->ringboxaward)								//SCS ADD
+	{
+		switch (slot_type)
+		{
+			case 5:												//JACKPOT
+			{
+				box.patch(kp_jackpot[tiny ? 3 : 2]);
+				break;
+			}
+			case 4:												//7
+			{
+				box.patch(kp_seven[tiny ? 3 : 2]);
+				break;
+			}
+			case 3:												//RING
+			{
+				box.patch(kp_slotring[tiny ? 3 : 2]);
+				break;
+			}
+			case 2:												//BAR x3
+			{
+				box.patch(kp_triplebar[tiny ? 3 : 2]);
+				break;
+			}
+			case 1:												//BAR x2
+			{
+				box.patch(kp_doublebar[tiny ? 3 : 2]);
+				break;
+			}
+			//default:
+			case 0:												//BAR
+			{
+				box.patch(kp_bar[tiny ? 3 : 2]);
+				break;
+			}
+			default:
+			{
+				break;
+			}
+		}
+	}
+	else if (p->ringboxaward)																	//SCS ADD - dumb that this has to be a separate switch statement, but whatever man
+	{
+		switch (p->ringboxaward)
+		{
+			case 5:												//JACKPOT
+			{
+				box.patch(kp_jackpot[tiny ? 3 : 2]);
+				break;
+			}
+			case 4:												//7
+			{
+				box.patch(kp_seven[tiny ? 3 : 2]);
+				break;
+			}
+			case 3:												//RING
+			{
+				box.patch(kp_slotring[tiny ? 3 : 2]);
+				break;
+			}
+			case 2:												//BAR x3
+			{
+				box.patch(kp_triplebar[tiny ? 3 : 2]);
+				break;
+			}
+			case 1:												//BAR x2
+			{
+				box.patch(kp_doublebar[tiny ? 3 : 2]);
+				break;
+			}
+			//default:
+			case 0:												//BAR
+			{
+				box.patch(kp_bar[tiny ? 3 : 2]);
+				break;
+			}
+			default:
+			{
+				break;
+			}
+		}		
 	}
 
 	if (p->itemamount > 1)
@@ -5385,7 +6859,7 @@ static void K_DrawLocalTagForPlayer(fixed_t x, fixed_t y, player_t *p, UINT8 id,
 static void K_DrawRivalTagForPlayer(fixed_t x, fixed_t y, player_t *p, UINT32 flags)
 {
 	if ((p->itemtype != KITEM_NONE && p->itemamount != 0)
-		|| (p->itemRoulette.active == true && p->itemRoulette.ringbox == false))
+		|| (p->itemRoulette.active == true) || (p->ringboxaward)) //&& p->itemRoulette.ringbox == false))	//SCS EDIT - I wanna show the slot machine roulette too
 	{
 		INT32 barx = 0, bary = 0;
 
@@ -5416,7 +6890,7 @@ static void K_DrawRivalTagForPlayer(fixed_t x, fixed_t y, player_t *p, UINT32 fl
 static void K_DrawCPUTagForPlayer(fixed_t x, fixed_t y, player_t *p, UINT32 flags)
 {
 	if ((p->itemtype != KITEM_NONE && p->itemamount != 0)
-		|| (p->itemRoulette.active == true && p->itemRoulette.ringbox == false))
+		|| (p->itemRoulette.active == true) || (p->ringboxaward)) //&& p->itemRoulette.ringbox == false))		//SCS EDIT - I wanna show the slot roulette too
 	{
 		INT32 barx = 0, bary = 0;
 
@@ -5504,7 +6978,7 @@ static void K_DrawNameTagForPlayer(fixed_t x, fixed_t y, player_t *p, UINT32 fla
 
 	// see also K_CullTargetList
 	if ((p->itemtype != KITEM_NONE && p->itemamount != 0)
-		|| (p->itemRoulette.active == true && p->itemRoulette.ringbox == false))
+		|| (p->itemRoulette.active == true) || (p->ringboxaward)) //&& p->itemRoulette.ringbox == false))	//SCS EDIT - I wanna see the slot roulette too
 	{
 		K_DrawNameTagItemSpy(barx, bary, p, hadflags);
 	}
@@ -5597,7 +7071,11 @@ void K_DrawPlayerTag(fixed_t x, fixed_t y, player_t *p, playertagtype_t type, bo
 		case PLAYERTAG_NAME:
 			flags |= foreground ? 0 : V_60TRANS;
 			K_DrawNameTagForPlayer(x, y, p, flags);
-			K_DrawTypingNotifier(x, y, p, flags);
+			
+			// RadioRacers: Don't REALLY need to hide this if a player is muted, but, consistency.
+			if (!IsPlayerMuted(p - players)) {															//SCS - RADIO
+				K_DrawTypingNotifier(x, y, p, flags);
+			}																							//SCS - RADIO
 			break;
 
 		default:
@@ -6330,6 +7808,18 @@ static void K_drawKartMinimap(void)
 					workingPic = kp_unknownminimap;
 					colormap = R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(K_RainbowColor(leveltime)), GTC_CACHE);
 				}
+			case MT_MONITOR:																				//SCS - RADIO START
+				if (cv_battle_toggle_emerald_on_minimap.value && Obj_MonitorGetEmerald(mobj) != 0) {
+					workingPic = static_cast<patch_t*>(W_CachePatchName("K_EMERC", GTC_CACHE));
+					colormap = R_GetTranslationColormap(TC_DEFAULT, static_cast<skincolornum_t>(K_GetChaosEmeraldColor(Obj_MonitorGetEmerald(mobj))), GTC_CACHE);
+				}
+				break;
+			case MT_EMERALD:
+				if (cv_battle_toggle_emerald_on_minimap.value) {
+					workingPic = static_cast<patch_t*>(W_CachePatchName("K_EMERC", GTC_CACHE));
+					colormap = R_GetTranslationColormap(TC_DEFAULT, static_cast<skincolornum_t>(mobj->color), GTC_CACHE);
+				}
+				break;																						//SCS - RADIO END
 			default:
 				break;
 		}
@@ -6552,7 +8042,8 @@ static void K_drawKartMinimap(void)
 
 static void K_drawKartFinish(boolean finish)
 {
-	INT32 timer, minsplitstationary, pnum = 0, splitflags = V_SPLITSCREEN;
+	//INT32 timer, minsplitstationary, pnum = 0, splitflags = V_SPLITSCREEN;
+	INT32 timer, minsplitstationary, pnum = 0, splitflags = V_SPLITSCREEN|V_HUDTRANS;	//SCS - RADIO
 	patch_t **kptodraw;
 
 	if (finish)
@@ -6794,11 +8285,16 @@ static void K_drawKartStartCountdown(void)
 
 	if (leveltime >= introtime && leveltime < starttime-(3*TICRATE))
 	{
+		if (!cv_hud_hideposition.value)			//SCS - RADIO START
+			return;								//SCS - RADIO END
+		
 		if (numbulbs > 1)
 			K_drawKartStartBulbs();
 	}
 	else
 	{
+		if (!cv_hud_hidecountdown.value)		//SCS - RADIO START
+			return;								//SCS - RADIO END
 
 		if (leveltime >= starttime-(2*TICRATE)) // 2
 			pnum++;
@@ -6827,12 +8323,50 @@ static void K_drawKartStartCountdown(void)
 			}
 		}
 
-		if ((leveltime % (2*5)) / 5) // blink
+		int flashrate = 5;
+		if (cv_reducevfx.value)
+		{
+			flashrate = 35;
+		}
+
+		if ((leveltime % (2*flashrate)) / flashrate) // blink
 			pnum += 5;
 		if (r_splitscreen) // splitscreen
 			pnum += 10;
 
 		V_DrawScaledPatch(STCD_X - (SHORT(kp_startcountdown[pnum]->width)/2), STCD_Y - (SHORT(kp_startcountdown[pnum]->height)/2), V_SPLITSCREEN|hudtransflags, kp_startcountdown[pnum]);
+
+		// replace with cvar check
+		if (!r_splitscreen && leveltime < starttime && cv_precise_countdown.value) {			//SCS - RADIO START
+			const tic_t centiseconds = G_TicsToCentiseconds(starttime - leveltime);
+			const INT32 centi_x = (STCD_X + (SHORT(kp_startcountdown[pnum]->width)/3));
+			const INT32 centi_y = (STCD_Y + (SHORT(kp_startcountdown[pnum]->height)/2) - 10);
+			const INT32 bar_x = (STCD_X - 50);
+			const INT32 bar_y = (STCD_Y + (SHORT(kp_startcountdown[pnum]->height)/2) + 4);
+
+			V_DrawStringScaled(
+				(centi_x) << FRACBITS,
+				(centi_y) << FRACBITS,
+				FloatToFixed(1.2f), FRACUNIT, FRACUNIT, V_HUDTRANS, NULL, HU_FONT,
+				va(".%d", centiseconds)
+			);
+
+			const int width = 100 * static_cast<float>(centiseconds/100.0f);
+			const float width_f = 100 * static_cast<float>(centiseconds/100.0f);
+
+			// Prevent awkward moments where the countdown starts and the bar is all the way on the left
+			// because this block of code starts on an exact second
+			if (centiseconds == 0) return;
+
+			V_DrawFill(bar_x, bar_y, width, 6, 132);
+
+			// Smoother movement
+			using srb2::Draw;
+			Draw(static_cast<float>(bar_x) + width_f, static_cast<float>(bar_y - 3))
+			.flags(V_HUDTRANS)
+			.patch("K_SPTLAP");
+		} 																						//SCS - RADIO END
+
 	}
 }
 
@@ -7000,11 +8534,17 @@ static void K_drawInput(void)
 	UINT8 viewnum = R_GetViewNumber();
 	boolean freecam = camera[viewnum].freecam;	//disable some hud elements w/ freecam
 
+	// Radio
+	isDrawingInput = false;				//SCS - RADIO
+
 	if (!cv_drawinput.value && !modeattacking && gametype != GT_TUTORIAL)
 		return;
 
 	if (stplyr->spectator || freecam || demo.attract)
 		return;
+	
+	// Radio
+	isDrawingInput = true;		//SCS - RADIO
 
 	INT32 def[4][3] = {
 		{247, 156, V_SNAPTOBOTTOM | V_SNAPTORIGHT}, // 1p
@@ -7014,7 +8554,19 @@ static void K_drawInput(void)
 	};
 	INT32 k = r_splitscreen <= 1 ? r_splitscreen : 2 + (viewnum & 1);
 	INT32 flags = def[k][2] | V_SPLITSCREEN;
-	char mode = ((stplyr->pflags & PF_ANALOGSTICK) ? '4' : '2') + (r_splitscreen > 1);
+	//char mode = ((stplyr->pflags & PF_ANALOGSTICK) ? '4' : '2') + (r_splitscreen > 1);
+
+	char mode = ((stplyr->pflags & PF_ANALOGSTICK) ? '4' : '2');		//SCS - RADIO START
+	if (cv_inputdisplaytoggle.value) {
+		mode = cv_inputdisplaytoggle.value;
+	}
+	mode += (r_splitscreen > 1);
+
+	if (cv_inputdisplaytogglesize.value) {
+		mode += 1;
+		def[k][0] = 290;
+		def[k][1] = 178;
+	}																	//SCS - RADIO START
 	bool local = !demo.playback && P_IsMachineLocalPlayer(stplyr);
 	fixed_t slide = K_GetDialogueSlide(FRACUNIT);
 	INT32 tallySlide = []() -> INT32
@@ -7205,14 +8757,28 @@ static void K_drawTrickCool(void)
 {
 
 	tic_t timer = TICRATE - stplyr->karthud[khud_trickcool];
+	SINT8 adjustedspeedlevel = stplyr->trickspeedlevel;
+	
+	if (splitscreen)
+	{
+		adjustedspeedlevel = adjustedspeedlevel + 10;
+		
+		if (adjustedspeedlevel < 10)
+			adjustedspeedlevel = 10;
+		
+	}
+	else if (adjustedspeedlevel > 9)
+	{
+		adjustedspeedlevel = 9;
+	}
 
 	if (timer <= 6)
 	{
-		V_DrawStretchyFixedPatch(TCOOL_X<<FRACBITS, TCOOL_Y<<FRACBITS, stretch[timer-1][0], stretch[timer-1][1], V_HUDTRANS|V_SPLITSCREEN, kp_trickcool[splitscreen ? 1 : 0], NULL);
+		V_DrawStretchyFixedPatch(TCOOL_X<<FRACBITS, TCOOL_Y<<FRACBITS, stretch[timer-1][0], stretch[timer-1][1], V_HUDTRANS|V_SPLITSCREEN, kp_trickcool[adjustedspeedlevel], NULL);	//SCS EDIT
 	}
 	else if (leveltime & 1)
 	{
-		V_DrawFixedPatch(TCOOL_X<<FRACBITS, (TCOOL_Y<<FRACBITS) - (timer-10)*FRACUNIT/2, FRACUNIT, V_HUDTRANS|V_SPLITSCREEN, kp_trickcool[splitscreen ? 1 : 0], NULL);
+		V_DrawFixedPatch(TCOOL_X<<FRACBITS, (TCOOL_Y<<FRACBITS) - (timer-10)*FRACUNIT/2, FRACUNIT, V_HUDTRANS|V_SPLITSCREEN, kp_trickcool[adjustedspeedlevel], NULL);	//SCS EDIT
 	}
 }
 
@@ -7241,7 +8807,8 @@ void K_drawKartFreePlay(void)
 		FRACUNIT,
 		FRACUNIT,
 		FRACUNIT,
-		V_SNAPTOBOTTOM|h_snap|V_SPLITSCREEN,
+		//V_SNAPTOBOTTOM|h_snap|V_SPLITSCREEN,
+		V_SNAPTOBOTTOM|h_snap|V_SPLITSCREEN|V_HUDTRANS,
 		KART_FONT,
 		"FREE PLAY"
 	) / (r_splitscreen > 1 ? 2 : 1);
@@ -7252,7 +8819,8 @@ void K_drawKartFreePlay(void)
 		FRACUNIT,
 		FRACUNIT,
 		FRACUNIT,
-		V_SNAPTOBOTTOM|h_snap|V_SPLITSCREEN,
+		//V_SNAPTOBOTTOM|h_snap|V_SPLITSCREEN,
+		V_SNAPTOBOTTOM|h_snap|V_SPLITSCREEN|V_HUDTRANS,
 		NULL,
 		KART_FONT,
 		"FREE PLAY"
@@ -7727,7 +9295,8 @@ static void K_DrawMessageFeed(void)
 		UINT32 vh = vid.height / vid.dupy;
 
 		UINT32 x = vw / 2;
-		UINT32 y = 10;
+		//UINT32 y = 10;
+		UINT32 y = 30;			//SCS EDIT - moving this down lower so it doesn't get blocked by the timer/Dynamite Derby timer
 
 		SINT8 shift = 0;
 		if (r_splitscreen >= 2)
@@ -7872,7 +9441,17 @@ void K_drawKartHUD(void)
 				K_drawKartPlayerCheck();
 
 		// nametags
-		if (LUA_HudEnabled(hud_names) && R_DrawPickups())
+		//if (LUA_HudEnabled(hud_names) && R_DrawPickups())
+
+		// radio
+		boolean force_show_nametags = cv_toggle_nametags.value;						//SCS - RADIO START
+
+		// if the player has nametags disabled, but they're playing battle..
+		if (gametyperules & GTR_POINTLIMIT) {
+			force_show_nametags = true;
+		}
+
+		if (LUA_HudEnabled(hud_names) && R_DrawPickups() && force_show_nametags)	//SCS - RADIO END
 			K_drawKartNameTags();
 
 		// Draw WANTED status
@@ -7884,7 +9463,13 @@ void K_drawKartHUD(void)
 		}
 #endif
 
-		if (LUA_HudEnabled(hud_minimap))
+		//if (LUA_HudEnabled(hud_minimap))
+		boolean showminimap = cv_toggle_race_minimap.value;							//SCS - RADIO START
+		// Show the minimap during battle, it's important information
+		if (!showminimap && (gametyperules & GTR_POINTLIMIT)) {
+			showminimap = true;
+		}
+		if (LUA_HudEnabled(hud_minimap) && showminimap)								//SCS - RADIO END
 			K_drawKartMinimap();
 	}
 
@@ -7908,6 +9493,12 @@ void K_drawKartHUD(void)
 			bool ta = modeattacking && !demo.playback;
 
 			tic_t realtime = stplyr->realtime;
+			
+			// RADIO: Little thing								//SCS - RADIO START
+			if (leveltime < starttime && gametype == GT_RACE)
+			{
+				realtime = starttime - leveltime;
+			}													//SCS - RADIO END
 
 			if (stplyr->karthud[khud_lapanimation]
 				&& !stplyr->exiting
@@ -7980,8 +9571,15 @@ void K_drawKartHUD(void)
 
 				std::string arrow = (ahead == 1 || ahead == -2) ? "(" : ")";
 
-				// vibes offset
-				row.x(-35).colormap(skincolor).patch(R_CanShowSkinInDemo(skin) ? faceprefix[skin][FACE_MINIMAP] : kp_unknownminimap);
+				if (skin != -1)
+				{
+					// vibes offset
+					row.x(-35).colormap(skincolor).patch(R_CanShowSkinInDemo(skin) ? faceprefix[skin][FACE_MINIMAP] : kp_unknownminimap);
+				}
+				else
+				{
+					ahead = -1;
+				}
 
 				if (pos > 1)
 					row.x(-35).font(Draw::Font::kPing).text(va("%d", pos));
@@ -7995,8 +9593,26 @@ void K_drawKartHUD(void)
 
 				// vibes offset TWO
 				row.colormap(textcolor).colorize(textcolor).x(15).text(text);
+				
+				// Radio, add cvar check																//SCS - RADIO START
+				// never supporting splitscreen
+				if (!splitscreen && cv_showexponsplit.value && stplyr->expsplit > 0) {
+					row
+                    .y(15)
+                    .scale(.9f)
+                    .colormap(R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_MUSTARD, GTC_CACHE))
+                    .patch(kp_exp[1]);
+					row
+						.x(15)
+						.y(15)
+						.font(Draw::Font::kPing)
+						.colorize(SKINCOLOR_MUSTARD)
+						.flags(V_20TRANS)
+						.text(va("+%d", stplyr->expsplit));
+				}																						//SCS - RADIO END
 			}
 
+			// RADIO - 2.4 removed timestamps
 			if (modeattacking || (gametyperules & GTR_TIMELIMIT) || cv_drawtimer.value)
 				K_drawKartTimestamp(realtime, TIME_X, TIME_Y + (ta ? 2 : 0), flags, 0);
 
@@ -8070,6 +9686,10 @@ void K_drawKartHUD(void)
 			}
 		}
 	}
+	
+	// RadioRacers: right about ... here		//SCS - RADIO START
+	RR_drawRidersFinishTicker();
+	RR_DrawHudFeed();							//SCS - RADIO END
 
 	if (!stplyr->spectator && !freecam) // Bottom of the screen elements, don't need in spectate mode
 	{
@@ -8137,9 +9757,16 @@ void K_drawKartHUD(void)
 				else if ((gametyperules & GTR_POWERSTONES) && !K_PlayerTallyActive(stplyr))
 				{
 					if (!battleprisons)
+					{																		//SCS - RADIO START
+						if (cv_customemeraldhud.value >= 1 && r_splitscreen == 0) {
+							RR_drawKartEmeralds();
+						} else {															//SCS - RADIO END
 						K_drawKartEmeralds();
+						}
+					}
 				}
-				else if (!islonesome && !K_Cooperative())
+				else if (!islonesome && !K_Cooperative() && cv_toggle_position_number.value)	//SCS - RADIO
+				//else if (!islonesome && !K_Cooperative())
 				{
 					K_DrawKartPositionNum(stplyr->position);
 				}
@@ -8284,12 +9911,14 @@ void K_drawKartHUD(void)
 			K_drawKartFinish(true);
 		else if (!(gametyperules & GTR_CIRCUIT))
 			;
-		else if (stplyr->karthud[khud_lapanimation] && !r_splitscreen)
+		//else if (stplyr->karthud[khud_lapanimation] && !r_splitscreen)
+		else if (stplyr->karthud[khud_lapanimation] && !r_splitscreen && cv_hud_hidelapemblem.value)		//SCS - RADIO
 			K_drawLapStartAnim();
 	}
 
 	// trick panel cool trick
-	if (stplyr->karthud[khud_trickcool])
+	//if (stplyr->karthud[khud_trickcool])
+	if (stplyr->karthud[khud_trickcool] && cv_toggle_trick_cool.value)		//SCS - RADIO
 		K_drawTrickCool();
 
 	if ((freecam || stplyr->spectator) && LUA_HudEnabled(hud_textspectator))
@@ -8303,6 +9932,9 @@ void K_drawKartHUD(void)
 	if (modeattacking || freecam) // everything after here is MP and debug only
 	{
 		K_drawInput();
+		// Radio
+		if (modeattacking && cv_gingeritemtimers.value)		//SCS - RADIO
+			RR_DrawItemTimers();							//SCS - RADIO
 		goto debug;
 	}
 
@@ -8317,7 +9949,11 @@ void K_drawKartHUD(void)
 		K_drawMiniPing();
 	}
 
-	K_drawKartPowerUps();
+	if (cv_gingeritemtimers.value) {		//SCS - RADIO START
+		RR_DrawItemTimers();
+	} else {								//SCS - RADIO END
+		K_drawKartPowerUps();
+	}										//SCS - RADIO
 
 	if (K_DirectorIsAvailable(viewnum) == true && LUA_HudEnabled(hud_textspectator))
 	{

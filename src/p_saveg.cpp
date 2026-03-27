@@ -455,6 +455,7 @@ static void P_NetArchivePlayers(savebuffer_t *save)
 		WRITEUINT8(save->p, players[i].position);
 		WRITEUINT8(save->p, players[i].oldposition);
 		WRITEUINT8(save->p, players[i].positiondelay);
+		WRITEUINT8(save->p, players[i].leaderpenalty);
 		WRITEUINT8(save->p, players[i].teamposition);
 		WRITEUINT8(save->p, players[i].teamimportance);
 		WRITEUINT32(save->p, players[i].distancetofinish);
@@ -467,6 +468,7 @@ static void P_NetArchivePlayers(savebuffer_t *save)
 		WRITEUINT32(save->p, players[i].lastairtime);
 		WRITEUINT16(save->p, players[i].bigwaypointgap);
 		WRITEUINT8(save->p, players[i].startboost);
+		WRITEUINT8(save->p, players[i].neostartboost);
 		WRITEUINT8(save->p, players[i].dropdashboost);
 		WRITEUINT8(save->p, players[i].aciddropdashboost);
 
@@ -478,6 +480,7 @@ static void P_NetArchivePlayers(savebuffer_t *save)
 		WRITEUINT8(save->p, players[i].wipeoutslow);
 		WRITEUINT8(save->p, players[i].justbumped);
 		WRITEUINT8(save->p, players[i].noEbrakeMagnet);
+		WRITEUINT8(save->p, players[i].wallSpikeDampen);
 		WRITEUINT8(save->p, players[i].tumbleBounces);
 		WRITEUINT16(save->p, players[i].tumbleHeight);
 		WRITEUINT16(save->p, players[i].stunned);
@@ -549,6 +552,7 @@ static void P_NetArchivePlayers(savebuffer_t *save)
 		WRITEUINT8(save->p, players[i].pickuprings);
 		WRITEUINT8(save->p, players[i].ringdelay);
 		WRITEUINT16(save->p, players[i].ringboost);
+		WRITEUINT16(save->p, players[i].momentboost);
 		WRITEUINT8(save->p, players[i].sparkleanim);
 		WRITEUINT16(save->p, players[i].superring);
 		WRITEUINT16(save->p, players[i].superringdisplay);
@@ -573,7 +577,47 @@ static void P_NetArchivePlayers(savebuffer_t *save)
 		WRITEUINT8(save->p, players[i].ballhogtap);
 
 		WRITEUINT16(save->p, players[i].hyudorotimer);
+		WRITESINT8(save->p, players[i].bstealingtimer);							//SCS ADD
 		WRITESINT8(save->p, players[i].stealingtimer);
+
+		WRITESINT8(save->p, players[i].masteremeraldinvincibility);				//SCS ADD
+		WRITESINT8(save->p, players[i].usedmasteremeraldduringringboxaward);	//SCS ADD
+		WRITEUINT16(save->p, players[i].playermasteremeraldringdraindelay);		//SCS ADD		
+		
+		WRITEUINT16(save->p, players[i].pickpockethyucombo);					//SCS ADD
+
+		WRITESINT8(save->p, players[i].timestonefrozen);						//SCS ADD
+		WRITESINT8(save->p, players[i].timestonefrozenringamount);				//SCS ADD
+		WRITEUINT16(save->p, players[i].timestonefrozentimer);					//SCS ADD
+		
+		WRITEUINT16(save->p, players[i].normalshieldboostcharge);				//SCS ADD
+		WRITEFIXED(save->p, players[i].normalshieldboosttap);					//SCS ADD
+		
+		WRITEUINT16(save->p, players[i].megachoppertimer);						//SCS ADD
+		WRITEUINT16(save->p, players[i].megachopperdelaytime);					//SCS ADD
+		
+		WRITEUINT16(save->p, players[i].armageddonshieldboosttimer);			//SCS ADD
+		WRITEUINT16(save->p, players[i].armageddonshieldboostdelay);			//SCS ADD
+		WRITEUINT16(save->p, players[i].armashielddraindelay);					//SCS ADD
+		WRITEFIXED(save->p, players[i].armashielddeployed);						//SCS ADD
+		
+		WRITESINT8(save->p, players[i].lastabjawztarget);						//SCS ADD
+		WRITESINT8(save->p, players[i].abjawztargetdelay);						//SCS ADD
+		
+		WRITEUINT16(save->p, players[i].gunusagetimer);							//SCS ADD
+		WRITESINT8(save->p, players[i].chamblasterrapidshots);					//SCS ADD		
+		WRITEUINT16(save->p, players[i].gunfiredelay);							//SCS ADD
+		WRITEUINT16(save->p, players[i].chamblasterreloadtimer);				//SCS ADD
+		
+		WRITESINT8(save->p, players[i].squishedtimer);							//SCS ADD
+		
+		WRITEUINT16(save->p, players[i].playerringgunpower);					//SCS ADD
+		WRITEFIXED(save->p, players[i].playerringguntap);						//SCS ADD		
+		WRITESINT8(save->p, players[i].playerringgundelay);						//SCS ADD
+		
+		WRITEUINT16(save->p, players[i].inkblotchtimer);						//SCS ADD
+		
+		WRITESINT8(save->p, players[i].trickspeedlevel);						//SCS ADD
 
 		WRITEUINT16(save->p, players[i].sneakertimer);
 		WRITEUINT8(save->p, players[i].numsneakers);
@@ -660,6 +704,7 @@ static void P_NetArchivePlayers(savebuffer_t *save)
 		WRITEUINT16(save->p, players[i].infinitether);
 
 		WRITEUINT8(save->p, players[i].finalfailsafe);
+		WRITEUINT8(save->p, players[i].freeRingShooterCooldown);
 
 		WRITEUINT8(save->p, players[i].lastsafelap);
 		WRITEUINT8(save->p, players[i].lastsafecheatcheck);
@@ -679,6 +724,7 @@ static void P_NetArchivePlayers(savebuffer_t *save)
 
 		WRITEUINT8(save->p, players[i].instaWhipCharge);
 		WRITEUINT8(save->p, players[i].defenseLockout);
+		WRITEUINT8(save->p, players[i].instaWhipChargeLockout);
 		WRITEUINT8(save->p, players[i].oldGuard);
 		WRITEUINT8(save->p, players[i].powerupVFXTimer);
 
@@ -1136,6 +1182,7 @@ static void P_NetUnArchivePlayers(savebuffer_t *save)
 		players[i].position = READUINT8(save->p);
 		players[i].oldposition = READUINT8(save->p);
 		players[i].positiondelay = READUINT8(save->p);
+		players[i].leaderpenalty = READUINT8(save->p);
 		players[i].teamposition = READUINT8(save->p);
 		players[i].teamimportance = READUINT8(save->p);
 		players[i].distancetofinish = READUINT32(save->p);
@@ -1148,6 +1195,7 @@ static void P_NetUnArchivePlayers(savebuffer_t *save)
 		players[i].lastairtime = READUINT32(save->p);
 		players[i].bigwaypointgap = READUINT16(save->p);
 		players[i].startboost = READUINT8(save->p);
+		players[i].neostartboost = READUINT8(save->p);
 		players[i].dropdashboost = READUINT8(save->p);
 		players[i].aciddropdashboost = READUINT8(save->p);
 
@@ -1159,6 +1207,7 @@ static void P_NetUnArchivePlayers(savebuffer_t *save)
 		players[i].wipeoutslow = READUINT8(save->p);
 		players[i].justbumped = READUINT8(save->p);
 		players[i].noEbrakeMagnet = READUINT8(save->p);
+		players[i].wallSpikeDampen = READUINT8(save->p);
 		players[i].tumbleBounces = READUINT8(save->p);
 		players[i].tumbleHeight = READUINT16(save->p);
 		players[i].stunned = READUINT16(save->p);
@@ -1230,6 +1279,7 @@ static void P_NetUnArchivePlayers(savebuffer_t *save)
 		players[i].pickuprings = READUINT8(save->p);
 		players[i].ringdelay = READUINT8(save->p);
 		players[i].ringboost = READUINT16(save->p);
+		players[i].momentboost = READUINT16(save->p);
 		players[i].sparkleanim = READUINT8(save->p);
 		players[i].superring = READUINT16(save->p);
 		players[i].superringdisplay = READUINT16(save->p);
@@ -1254,7 +1304,47 @@ static void P_NetUnArchivePlayers(savebuffer_t *save)
 		players[i].ballhogtap = READUINT8(save->p);
 
 		players[i].hyudorotimer = READUINT16(save->p);
+		players[i].bstealingtimer = READSINT8(save->p);							//SCS ADD
 		players[i].stealingtimer = READSINT8(save->p);
+		
+		players[i].masteremeraldinvincibility = READUINT8(save->p);				//SCS ADD
+		players[i].usedmasteremeraldduringringboxaward = READUINT8(save->p);	//SCS ADD
+		players[i].playermasteremeraldringdraindelay = READUINT16(save->p);		//SCS ADD
+		
+		players[i].pickpockethyucombo = READUINT16(save->p);					//SCS ADD
+		
+		players[i].timestonefrozen = READUINT8(save->p);						//SCS ADD
+		players[i].timestonefrozenringamount = READSINT8(save->p);				//SCS ADD
+		players[i].timestonefrozentimer = READUINT16(save->p);					//SCS ADD
+
+		players[i].normalshieldboostcharge = READUINT16(save->p);				//SCS ADD
+		players[i].normalshieldboosttap = READUINT8(save->p);					//SCS ADD
+		
+		players[i].megachoppertimer = READUINT16(save->p);						//SCS ADD
+		players[i].megachopperdelaytime = READUINT16(save->p);					//SCS ADD
+		
+		players[i].armageddonshieldboosttimer = READUINT16(save->p);			//SCS ADD
+		players[i].armageddonshieldboostdelay = READUINT16(save->p);			//SCS ADD
+		players[i].armashielddraindelay = READUINT16(save->p);					//SCS ADD
+		players[i].armashielddeployed = READUINT8(save->p);						//SCS ADD
+		
+		players[i].lastabjawztarget = READSINT8(save->p);						//SCS ADD
+		players[i].abjawztargetdelay = READUINT8(save->p);						//SCS ADD
+		
+		players[i].gunusagetimer = READUINT16(save->p);							//SCS ADD
+		players[i].chamblasterrapidshots = READSINT8(save->p);					//SCS ADD
+		players[i].gunfiredelay = READUINT16(save->p);							//SCS ADD
+		players[i].chamblasterreloadtimer = READUINT16(save->p);				//SCS ADD
+		
+		players[i].squishedtimer = READSINT8(save->p);							//SCS ADD
+		
+		players[i].playerringgunpower = READUINT16(save->p);					//SCS ADD
+		players[i].playerringguntap = READUINT8(save->p);						//SCS ADD
+		players[i].playerringgundelay = READSINT8(save->p);						//SCS ADD
+		
+		players[i].inkblotchtimer = READUINT16(save->p);						//SCS ADD
+		
+		players[i].trickspeedlevel = READSINT8(save->p);						//SCS ADD
 
 		players[i].sneakertimer = READUINT16(save->p);
 		players[i].numsneakers = READUINT8(save->p);
@@ -1340,6 +1430,7 @@ static void P_NetUnArchivePlayers(savebuffer_t *save)
 		players[i].infinitether = READUINT16(save->p);
 
 		players[i].finalfailsafe = READUINT8(save->p);
+		players[i].freeRingShooterCooldown = READUINT8(save->p);
 
 		players[i].lastsafelap = READUINT8(save->p);
 		players[i].lastsafecheatcheck = READUINT8(save->p);
@@ -1358,6 +1449,7 @@ static void P_NetUnArchivePlayers(savebuffer_t *save)
 
 		players[i].instaWhipCharge = READUINT8(save->p);
 		players[i].defenseLockout = READUINT8(save->p);
+		players[i].instaWhipChargeLockout = READUINT8(save->p);
 		players[i].oldGuard = READUINT8(save->p);
 		players[i].powerupVFXTimer = READUINT8(save->p);
 
@@ -6267,6 +6359,26 @@ static void P_RelinkPointers(void)
 		{
 			if (!RelinkMobj(&players[i].ballhogreticule))
 				CONS_Debug(DBG_GAMELOGIC, "ballhogreticule not found on player %d\n", i);
+		}
+		if (players[i].orbitmasteremerald)
+		{
+			if (!RelinkMobj(&players[i].orbitmasteremerald))
+				CONS_Debug(DBG_GAMELOGIC, "orbitmasteremerald not found on player %d\n", i);		//SCS ADD
+		}
+		if (players[i].lastpickpockethyudoro)
+		{
+			if (!RelinkMobj(&players[i].lastpickpockethyudoro))
+				CONS_Debug(DBG_GAMELOGIC, "lastpickpockethyudoro not found on player %d\n", i);		//SCS ADD
+		}
+		if (players[i].megachopper)
+		{
+			if (!RelinkMobj(&players[i].megachopper))
+				CONS_Debug(DBG_GAMELOGIC, "megachopper not found on player %d\n", i);		//SCS ADD
+		}
+		if (players[i].timestonelingeringeffect)
+		{
+			if (!RelinkMobj(&players[i].timestonelingeringeffect))
+				CONS_Debug(DBG_GAMELOGIC, "timestonelingeringeffect not found on player %d\n", i);		//SCS ADD
 		}
 		if (players[i].stumbleIndicator)
 		{

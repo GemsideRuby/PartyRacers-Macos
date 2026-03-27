@@ -349,17 +349,33 @@ class TiccmdBuilder
 		}
 	}
 
-	void analog_input()
+	void analog_input()				//SCS EDIT - Merge Request
 	{
+		fixed_t deadZone = cv_deadzone[pid].value;
+		const double deadZoneDecimal = (double) deadZone / FRACUNIT;
 		joystickvector.xaxis = G_PlayerInputAnalog(pid, gc_right, 0) - G_PlayerInputAnalog(pid, gc_left, 0);
-		joystickvector.yaxis = 0;
+		//joystickvector.yaxis = 0;
+		if (deadZoneDecimal <= 0)
+		{
+			joystickvector.yaxis = G_PlayerInputAnalog(pid, gc_down, 0) - G_PlayerInputAnalog(pid, gc_up, 0);
+		}
+		else
+		{
+			joystickvector.yaxis = 0;
+		}
 		handle_axis_deadzone();
 
 		// For kart, I've turned the aim axis into a digital axis because we only
 		// use it for aiming to throw items forward/backward and the vote screen
 		// This mean that the turn axis will still be gradient but up/down will be 0
 		// until the stick is pushed far enough
-		joystickvector.yaxis = G_PlayerInputAnalog(pid, gc_down, 0) - G_PlayerInputAnalog(pid, gc_up, 0);
+		//joystickvector.yaxis = G_PlayerInputAnalog(pid, gc_down, 0) - G_PlayerInputAnalog(pid, gc_up, 0);
+		//
+		// When the deadzone is set to 0 or lower, the aim axis returns to analog to avoid breaking the chasecam and freecam controls
+		if (deadZoneDecimal > 0)
+		{
+			joystickvector.yaxis = G_PlayerInputAnalog(pid, gc_down, 0) - G_PlayerInputAnalog(pid, gc_up, 0);
+		}
 
 		if (encoremode)
 		{

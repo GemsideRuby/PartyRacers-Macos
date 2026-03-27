@@ -1,3 +1,5 @@
+include(CheckCXXCompilerFlag)
+
 add_executable(SRB2SDL2 MACOSX_BUNDLE WIN32
 	comptime.c
 	cxxutil.hpp
@@ -128,6 +130,7 @@ add_executable(SRB2SDL2 MACOSX_BUNDLE WIN32
 	lua_itemroulettelib.c
 	lua_respawnvarslib.c
 	lua_waypointslib.c
+	lua_grandprixlib.c
 	lua_profile.cpp
 	k_kart.c
 	k_respawn.c
@@ -323,6 +326,28 @@ endif()
 
 if("${CMAKE_SYSTEM_NAME}" MATCHES "Darwin")
 	target_compile_definitions(SRB2SDL2 PRIVATE -DMACOSX)
+endif()
+
+
+# Enable SSE2 for IA-32.
+if(SRB2_SYSTEM_BITS EQUAL 32)
+	if(CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang|AppleClang)")
+		check_cxx_compiler_flag("-msse2" has_sse2)
+		if(has_sse2)
+			message(STATUS "Using SSE2 on IA-32")
+			target_compile_options(SRB2SDL2 PRIVATE "-msse2")
+		else()
+			message(FATAL_ERROR "Needs -msse2 compiler support")
+		endif()
+	elseif(MSVC)
+check_cxx_compiler_flag("/arch:sse2" has_sse2)
+		if(has_sse2)
+			message(STATUS "Using SSE2 on IA-32")
+			target_compile_options(SRB2SDL2 PRIVATE "/arch:SSE2")
+		else()
+			message(FATAL_ERROR "Needs /arch:SSE2 compiler support")
+		endif()
+	endif()
 endif()
 
 target_link_libraries(SRB2SDL2 PRIVATE ZLIB::ZLIB)
@@ -717,6 +742,7 @@ if(SRB2_CONFIG_ASAN)
 endif()
 
 add_subdirectory(audio)
+add_subdirectory(radioracers)						#SCS - RADIO
 add_subdirectory(core)
 add_subdirectory(hwr2)
 add_subdirectory(io)

@@ -12,6 +12,10 @@
 #include "../k_menu.h"
 #include "../v_video.h" // cv_globalgamma
 #include "../r_fps.h" // fps cvars
+#include "../r_main.h"									//SCS - RADIO START
+
+// Radio
+#include "../radioracers/rr_cvar.h"						//SCS - RADIO END
 
 // options menu
 menuitem_t OPTIONS_Video[] =
@@ -19,6 +23,9 @@ menuitem_t OPTIONS_Video[] =
 
 	{IT_STRING | IT_SUBMENU, "Resolution...", "Change the aspect ratio and image quality.",
 		NULL, {.submenu = &OPTIONS_VideoModesDef}, 0, 0},
+		
+	{IT_STRING | IT_CVAR, "Resolution Scale", "Change the scale that the HUD is drawn at. Targeted for higher resolutions.",	//SCS - RADIO START
+		NULL, {.cvar = &cv_highreshudscale}, 0, 0},																				//SCS - RADIO END
 
 	{IT_NOTHING|IT_SPACE, NULL, NULL,
 		NULL, {NULL}, 0, 0},
@@ -37,14 +44,32 @@ menuitem_t OPTIONS_Video[] =
 	{IT_STRING | IT_CVAR, "Screen Effect", "Uses a special effect when displaying the game.",
 		NULL, {.cvar = &cv_scr_effect}, 0, 0},
 		
+	/**																															//SCS - RADIO START
+	 * RadioRacers - FOV CVAR INFO
+	 * 
+	 * Pause Button -> Options -> Video Options -> Field of View
+	 * compared to
+	 * Pause Button -> Options -> Profile Setup -> Scroll to Profile -> Accessibility -> Field of View ....
+	 * 
+	 */
+
+	{IT_STRING | IT_CVAR, "Camera Height", "Tweak the camera HEIGHT for the first player (i.e. you).",
+		NULL, {.cvar = &cv_cam_height[0]}, 0, 0},
+
+	{IT_STRING | IT_CVAR, "Camera Distance", "Tweak the camera DISTANCE for the first player (i.e. you).",
+		NULL, {.cvar = &cv_cam_dist[0]}, 0, 0},
+	
+	{IT_STRING | IT_CVAR, "Field of View", "Tweak the FOV for the first player (i.e. you).",
+		NULL, {.cvar = &cv_fov[0]}, 0, 0},																						//SCS - RADIO END
+		
 	{IT_STRING | IT_SUBMENU, "Color Profile...", "Adjust the color profile of the game's display.",
 		NULL, {.submenu = &OPTIONS_VideoColorProfileDef}, 0, 0},
 
 	{IT_NOTHING|IT_SPACE, NULL, NULL,
 		NULL, {NULL}, 0, 0},
 
-	{IT_NOTHING|IT_SPACE, NULL, NULL,
-		NULL, {NULL}, 0, 0},
+	//{IT_NOTHING|IT_SPACE, NULL, NULL,			//SCS - RADIO (commented out)
+		//NULL, {NULL}, 0, 0},
 
 	{IT_STRING | IT_SUBMENU, "Advanced...", "Advanced performance options and experimental rendering features.",
 		NULL, {.submenu = &OPTIONS_VideoAdvancedDef}, 0, 0},

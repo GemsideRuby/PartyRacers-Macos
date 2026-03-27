@@ -105,6 +105,7 @@ boolean server = true; // true or false but !server == client
 #define client (!server)
 boolean nodownload = false;
 boolean serverrunning = false;
+boolean connectedtodedicated = false;
 INT32 serverplayer = 0;
 char motd[254], server_context[8]; // Message of the Day, Unique Context (even without Mumble support)
 
@@ -1271,6 +1272,7 @@ static boolean SV_SendServerConfig(INT32 node)
 	netbuffer->u.servercfg.gamestate = (UINT8)gamestate;
 	netbuffer->u.servercfg.gametype = (UINT8)gametype;
 	netbuffer->u.servercfg.modifiedgame = (UINT8)modifiedgame;
+	netbuffer->u.servercfg.dedicated = (boolean)dedicated;
 
 	netbuffer->u.servercfg.maxplayer = (UINT8)(min((dedicated ? MAXPLAYERS-1 : MAXPLAYERS), cv_maxconnections.value));
 	netbuffer->u.servercfg.allownewplayer = cv_allownewplayer.value;
@@ -1593,6 +1595,11 @@ UINT32 serverlistultimatecount = 0;
 boolean serverlistmode = false;
 
 static boolean resendserverlistnode[MAXNETNODES];
+
+// Radio
+serverextrainfo_t serverextrainfo[MAXNETNODES];								//SCS - RADIO START
+serverextrainfo_t serverextrainfoqueue[MAXNETNODES];						//SCS - RADIO END
+
 static tic_t serverlistepoch;
 
 static void SL_ClearServerList(INT32 connectedserver)
@@ -1608,6 +1615,8 @@ static void SL_ClearServerList(INT32 connectedserver)
 	serverlistcount = 0;
 
 	memset(resendserverlistnode, 0, sizeof resendserverlistnode);
+	memset(serverextrainfo, 0, sizeof serverextrainfo);
+	memset(serverextrainfoqueue, 0, sizeof serverextrainfoqueue);
 }
 
 static UINT32 SL_SearchServer(INT32 node)
@@ -1682,7 +1691,29 @@ static boolean SL_InsertServer(serverinfo_pak* info, SINT8 node)
 	serverlist[i].info = *info;
 	serverlist[i].node = node;
 	serverlist[i].cachedgtcalc = gtcalc;
+	
+	// Radio
+	serverextrainfo_t extrainfo = {									//SCS - RADIO START
+		.downloadsize = NULL
+	};
+	if (info->modifiedgame)
+	{
+		UINT32 totalfilesize = D_ParseFilesize(serverlist[i].info.fileneedednum, serverlist[i].info.fileneeded, 0);
 
+		// From CL_FinishedFileList
+		if (totalfilesize>>20 >= 10)
+			extrainfo.downloadsize = Z_StrDup(va("%u MB",totalfilesize>>20));
+		else
+			extrainfo.downloadsize = Z_StrDup(va("%u KB",totalfilesize>>10));
+	}
+	serverextrainfo[node].downloadsize = extrainfo.downloadsize;
+
+	// Player info was captured before server was added to server list
+	if (serverextrainfo[node].premature == true) {
+		memcpy(serverextrainfo[node].playerinfo, serverextrainfoqueue[node].playerinfo, sizeof(serverextrainfo[node].playerinfo));
+		serverextrainfo[node].premature = false;
+	}															//SCS - RADIO END
+	
 	// resort server list
 	M_SortServerList();
 
@@ -1711,6 +1742,7 @@ void CL_QueryServerList (msg_server_t *server_list)
 			SendAskInfo(node);
 
 			resendserverlistnode[node] = true;
+
 			// Leave this node open. It'll be closed if the
 			// request times out (CL_TimeoutServerList).
 		}
@@ -2247,7 +2279,7 @@ static boolean CL_ServerConnectionTicker(const char *tmpsave, tic_t *oldtic, tic
 #ifdef HAVE_THREADS
 			I_lock_mutex(&k_menu_mutex);
 #endif
-			M_UpdateMenuCMD(0, true);
+			M_UpdateMenuCMD(0, true, false);
 
 			if (cl_mode == CL_CONFIRMCONNECT)
 			{
@@ -2424,7 +2456,8 @@ static void CL_ConnectToServer(void)
 
 		CON_LogMessage(va(M_GetText("Version: %d.%d\n"),
 		 serverlist[i].info.version, serverlist[i].info.subversion));
-	}
+	}																			//SCS - RADIO END
+
 	SL_ClearServerList(servernode);
 
 	for (i = 0; i < MAXPLAYERS; i++)
@@ -2464,7 +2497,7 @@ static void CL_ConnectToServer(void)
 	// It works... sometimes but not always which is weird.
 
 	tmpsave[0] = '\0'; // TEMPORARY -- connectedservername is currently only set for YOUR server
-	if (joinedIP[0])	// false if we have "" which is \0
+	if (joinedIP[0]) // false if we have "" which is \0										//SCS - RADIO
 		M_AddToJoinedIPs(joinedIP, tmpsave); //connectedservername); -- as above
 
 	joinedIP[0] = '\0';	// And empty this for good measure regardless of whether or not we actually used it.
@@ -2502,6 +2535,7 @@ static void Command_connect(void)
 	// we don't request a restart unless the filelist differs
 
 	server = false;
+	connectedtodedicated = false;
 
 	// Get the server node.
 	if (netgame)
@@ -2573,6 +2607,9 @@ static void Command_connect(void)
 	{
 		setup_numplayers = 1;
 	}
+	
+	// Radio - reconnect
+	CV_Set(&cv_lastknownserver, I_GetNodeAddress(servernode));
 
 	CL_ConnectToServer();
 }
@@ -2698,6 +2735,7 @@ void CL_RemovePlayer(INT32 playernum, kickreason_t reason)
 			nodeingame[node] = false;
 			Net_CloseConnection(node);
 			ResetNode(node);
+			UnmutePlayerFromChat(node);			//SCS - RADIO
 		}
 	}
 
@@ -2729,6 +2767,19 @@ void CL_RemovePlayer(INT32 playernum, kickreason_t reason)
 
 	K_CheckBumpers();
 	P_CheckRacers();
+	
+	// Reset map headers' justPlayed and anger records
+	// when there are no players in a dedicated server.
+	// Otherwise maps get angry at newly-joined players
+	// that don't deserve it.
+	if (dedicated && D_NumPlayers() == 0)
+	{
+		for (INT32 i = 0; i < nummapheaders; i++)
+		{
+			mapheaderinfo[i]->justPlayed = 0;
+			mapheaderinfo[i]->anger = 0;
+		}
+	}
 }
 
 void CL_Reset(void)
@@ -2748,6 +2799,7 @@ void CL_Reset(void)
 	multiplayer = false;
 	servernode = 0;
 	server = true;
+	connectedtodedicated = false;
 	doomcom->numnodes = 1;
 	doomcom->numslots = 1;
 	SV_StopServer();
@@ -3594,6 +3646,7 @@ void SV_ResetServer(void)
 	memset(playerdelaytable, 0, sizeof playerdelaytable);
 
 	ClearAdminPlayers();
+	ClearMutedPlayers();					//SCS - RADIO
 	Schedule_Clear();
 	Automate_Clear();
 	K_ClearClientPowerLevels();
@@ -3699,6 +3752,7 @@ void D_QuitNetGame(void)
 
 	D_CloseConnection();
 	ClearAdminPlayers();
+	ClearMutedPlayers(); // RadioRacers - self-explanatory.			//SCS - RADIO
 	Schedule_Clear();
 	Automate_Clear();
 	K_ClearClientPowerLevels();
@@ -4261,6 +4315,11 @@ boolean Playing(void)
 	return (server && serverrunning) || (client && cl_mode == CL_CONNECTED);
 }
 
+boolean InADedicatedServer(void)
+{
+	return Playing() && (dedicated || connectedtodedicated);
+}
+
 boolean SV_SpawnServer(void)
 {
 #ifdef TESTERS
@@ -4363,6 +4422,7 @@ void SV_StartSinglePlayerServer(INT32 dogametype, boolean donetgame)
 {
 	INT32 lastgametype = gametype;
 	server = true;
+	connectedtodedicated = false;
 	multiplayer = (modeattacking == ATTACKING_NONE);
 	joinedIP[0] = '\0';	// Make sure to empty this so that we don't save garbage when we start our own game. (because yes we use this for netgames too....)
 
@@ -4700,6 +4760,27 @@ static void HandleConnect(SINT8 node)
 	}
 }
 
+// Radio
+static void reconnect_to_server(INT32 choice)														//SCS - RADIO START
+{
+	if (choice == MA_YES)
+	{
+		M_JoinIP(cv_lastknownserver.string);
+	}
+}
+
+// Also Radio
+static void ShowReconnectPrompt(const char* string) {
+	M_StartMessage(
+		"Server Disconnected", 
+		string, 
+		&reconnect_to_server, 
+		MM_YESNO, 
+		"Yes, please", 
+		"No!!!!"
+	);
+}																									//SCS - RADIO END
+
 /** Called when a PT_SERVERSHUTDOWN packet is received
   *
   * \param node The packet sender (should be the server)
@@ -4710,7 +4791,10 @@ static void HandleShutdown(SINT8 node)
 	(void)node;
 	LUA_HookBool(false, HOOK(GameQuit));
 	Command_ExitGame_f();
-	M_StartMessage("Server Disconnected", M_GetText("Server has shutdown\n"), NULL, MM_NOTHING, NULL, "Back to Menu");
+	//M_StartMessage("Server Disconnected", M_GetText("Server has shutdown\n"), NULL, MM_NOTHING, NULL, "Back to Menu");
+	ShowReconnectPrompt(																											//SCS - RADIO START
+		M_GetText("Server has shutdown\nWould you like to \x83re-connect\x80?")
+	);																																//SCS - RADIO END
 }
 
 /** Called when a PT_NODETIMEOUT packet is received
@@ -4723,7 +4807,10 @@ static void HandleTimeout(SINT8 node)
 	(void)node;
 	LUA_HookBool(false, HOOK(GameQuit));
 	Command_ExitGame_f();
-	M_StartMessage("Server Disconnected", M_GetText("Server Timeout\n"), NULL, MM_NOTHING, NULL, "Back to Menu");
+	//M_StartMessage("Server Disconnected", M_GetText("Server Timeout\n"), NULL, MM_NOTHING, NULL, "Back to Menu");
+	ShowReconnectPrompt(																											//SCS - RADIO START
+		M_GetText("Server Timeout\nWould you like to \x83re-connect\x80?")
+	);																																//SCS - RADIO END
 }
 
 // Called when a signature check fails and we suspect the server is playing games.
@@ -4737,7 +4824,10 @@ void HandleSigfail(const char *string)
 
 	LUA_HookBool(false, HOOK(GameQuit));
 	Command_ExitGame_f();
-	M_StartMessage("Server Disconnected", va(M_GetText("Signature check failed.\n(%s)\n"), string), NULL, MM_NOTHING, NULL, "Back to Menu");
+	//M_StartMessage("Server Disconnected", va(M_GetText("Signature check failed.\n(%s)\n"), string), NULL, MM_NOTHING, NULL, "Back to Menu");
+	ShowReconnectPrompt(																											//SCS - RADIO START
+		va(M_GetText("Signature check failed.\n(%s)\nWould you like to \x83re-connect\x80?"), string)
+	);																																//SCS - RADIO END
 }
 
 /** Called when a PT_SERVERINFO packet is received
@@ -4989,6 +5079,7 @@ static void HandlePacketFromAwayNode(SINT8 node)
 				G_SetGametype(netbuffer->u.servercfg.gametype);
 
 				modifiedgame = netbuffer->u.servercfg.modifiedgame;
+				connectedtodedicated = netbuffer->u.servercfg.dedicated;
 
 				memcpy(server_context, netbuffer->u.servercfg.server_context, 8);
 
@@ -5396,7 +5487,7 @@ static void PT_HandleVoiceClient(SINT8 node, boolean isserver)
 		{
 			continue;
 		}
-		if (cv_voice_selfdeafen.value != 1 && playernum != g_localplayers[0])
+		if (cv_voice_selfdeafen.value != 1 && playernum != g_localplayers[0] && !g_voice_disabled)
 		{
 			S_QueueVoiceFrameFromPlayer(playernum, (void*)decoded_out, decoded_samples * sizeof(float), false);
 		}
@@ -5410,7 +5501,7 @@ static void PT_HandleVoiceClient(SINT8 node, boolean isserver)
 		return;
 	}
 
-	if (cv_voice_selfdeafen.value != 1 && playernum != g_localplayers[0])
+	if (cv_voice_selfdeafen.value != 1 && playernum != g_localplayers[0] && !g_voice_disabled)
 	{
 		S_QueueVoiceFrameFromPlayer(playernum, (void*)decoded_out, decoded_samples * sizeof(float), terminal);
 	}
@@ -6249,8 +6340,21 @@ static void GetPackets(void)
 			continue;
 		}
 
-		if (netbuffer->packettype == PT_PLAYERINFO)
+		//if (netbuffer->packettype == PT_PLAYERINFO)
+			//continue; // We do nothing with PLAYERINFO, that's for the MS browser.
+		if (netbuffer->packettype == PT_PLAYERINFO) {												//SCS - RADIO START
+			const UINT32 serv = SL_SearchServer(node);
+			if (serv == UINT32_MAX) {
+				// Server hasn't been added to the list yet, so store it in a array temporarily until it IS
+				memcpy(serverextrainfoqueue[node].playerinfo, netbuffer->u.playerinfo, sizeof(serverextrainfoqueue[node].playerinfo));
+				serverextrainfo[node].premature = true;
+			} else {
+				serverextrainfo[node].premature = false;
+				memcpy(serverextrainfo[node].playerinfo, netbuffer->u.playerinfo, sizeof(serverextrainfo[node].playerinfo));	
+			}
+
 			continue; // We do nothing with PLAYERINFO, that's for the MS browser.
+		}																							//SCS - RADIO END
 
 		// Packet received from someone already playing
 		if (nodeingame[node])
@@ -7379,7 +7483,9 @@ void NetKeepAlive(void)
 	FileSendTicker();
 
 	// Update voice whenever possible.
-	NetVoiceUpdate();
+	{
+		NetVoiceUpdate();
+	}
 }
 
 // If a tree falls in the forest but nobody is around to hear it, does it make a tic?
@@ -7580,11 +7686,15 @@ void NetVoiceUpdate(void)
 	UINT8 *encoded = NULL;
 	float *subframe_buffer = NULL;
 	float *denoise_buffer = NULL;
+	ps_voiceupdatetime = I_GetPreciseTime();
 
 	if (dedicated)
 	{
+		ps_voiceupdatetime = I_GetPreciseTime() - ps_voiceupdatetime;
 		return;
 	}
+	
+	floatdenormalstate_t dnzstate = M_EnterFloatDenormalToZero();
 
 	UINT32 bytes_dequed = 0;
 
@@ -7674,7 +7784,7 @@ void NetVoiceUpdate(void)
 			continue;
 		}
 
-		if (cv_voice_selfdeafen.value == 1)
+		if (cv_voice_selfdeafen.value == 1 || g_voice_disabled)
 		{
 			continue;
 		}
@@ -7723,10 +7833,13 @@ void NetVoiceUpdate(void)
 		memmove(g_local_voice_buffer, g_local_voice_buffer + buffer_offset, (g_local_voice_buffer_len - buffer_offset) * sizeof(float));
 		g_local_voice_buffer_len -= buffer_offset;
 	}
+	
+	M_ExitFloatDenormalToZero(dnzstate);
 
 	if (denoise_buffer) Z_Free(denoise_buffer);
 	if (subframe_buffer) Z_Free(subframe_buffer);
 	if (encoded) Z_Free(encoded);
+	ps_voiceupdatetime = I_GetPreciseTime() - ps_voiceupdatetime;
 	return;
 }
 
@@ -7830,10 +7943,13 @@ void DoSayPacket(SINT8 target, UINT8 flags, UINT8 source, char *message)
 
 void DoSayPacketFromCommand(SINT8 target, size_t usedargs, UINT8 flags)
 {
-	char buf[2 + HU_MAXMSGLEN + 1];
+	//char buf[2 + HU_MAXMSGLEN + 1];
+	char msg[HU_MAXMSGLEN + 1];
 	size_t numwords, ix;
-	char *msg = &buf[3];
-	const size_t msgspace = sizeof buf - 2;
+	//char *msg = &buf[3];
+	//char *msg = &buf[2];						//SCS EDIT - Merge Request fix implementation "Fix a crash on some setups when using the say or csay commands"
+	//const size_t msgspace = sizeof buf - 2;
+	const size_t msgspace = sizeof msg;
 
 	numwords = COM_Argc() - usedargs;
 	I_Assert(numwords > 0);

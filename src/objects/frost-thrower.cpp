@@ -131,6 +131,9 @@ struct Frost : Mobj
 				K_DoInstashield(p);
 				return;
 			}
+			if (p->curshield == KSHIELD_FLAME)		//SCS ADD - Flame Shield makes you immune
+				return;
+			
 		}
 
 		if (vars.frozen)

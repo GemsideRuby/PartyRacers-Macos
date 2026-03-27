@@ -15,10 +15,14 @@
 #include "../../d_netcmd.h"
 #include "../../i_time.h"
 #include "../../k_menu.h"
+#include "../../hu_stuff.h"
 #include "../../k_grandprix.h" // K_CanChangeRules
 #include "../../m_cond.h"
 #include "../../s_sound.h"
 #include "../../k_zvote.h"
+#include "../../d_main.h"					//SCS - RADIO START
+
+#include "../../radioracers/rr_setup.h"		//SCS - RADIO END
 
 #ifdef HAVE_DISCORDRPC
 #include "../../discord.h"
@@ -26,6 +30,9 @@
 
 // ESC pause menu
 // Since there's no descriptions to each item, we'll use the descriptions as the names of the patches we want to draw for each option :)
+
+// RadioRacers
+char mutePlayersPauseIcon[] = "M_ICOADM";				//SCS - RADIO
 
 menuitem_t PAUSE_Main[] =
 {
@@ -49,6 +56,10 @@ menuitem_t PAUSE_Main[] =
 
 	{IT_STRING | IT_ARROWS, "ADMIN TOOLS", "M_ICOADM",
 		NULL, {.routine = M_KickHandler}, 0, 0},
+		
+	// RadioRacers: Using the same icon as voting for now.				//SCS - RADIO START
+	{IT_STRING | IT_ARROWS, "MUTE PLAYERS", mutePlayersPauseIcon,
+		NULL, {.routine = M_MuteHandler}, 0, 0}, 						//SCS - RADIO END
 
 	{IT_STRING | IT_ARROWS, "CALL VOTE", "M_ICOVOT",
 		NULL, {.routine = M_HandlePauseMenuCallVote}, 0, 0},
@@ -114,6 +125,10 @@ void Dummymenuplayer_OnChange(void)
 void M_OpenPauseMenu(void)
 {
 	INT32 i = 0;
+	
+	// Radio Racers
+	if (radioracers_usemuteicons)															//SCS - RADIO START
+		strncpy(mutePlayersPauseIcon, "M_ICOMUT", (sizeof mutePlayersPauseIcon - 1));		//SCS - RADIO END
 
 	currentMenu = &PAUSE_MainDef;
 
@@ -124,6 +139,9 @@ void M_OpenPauseMenu(void)
 	pausemenu.openoffset.start = I_GetTime();
 	pausemenu.openoffset.dist = 0;
 	pausemenu.closing = false;
+	
+	// Fix specific input error regarding closing netgame chat with escape while a controller is connected (only on Windows?)
+	chat_keydown = false;
 
 	itemOn = currentMenu->lastOn = mpause_continue;	// Make sure we select "RESUME GAME" by default
 
@@ -136,6 +154,7 @@ void M_OpenPauseMenu(void)
 	PAUSE_Main[mpause_switchmap].status = IT_DISABLED;
 	PAUSE_Main[mpause_callvote].status = IT_DISABLED;
 	PAUSE_Main[mpause_admin].status = IT_DISABLED;
+	PAUSE_Main[mpause_muteplayers].status = IT_DISABLED;			//SCS - RADIO
 #ifdef HAVE_DISCORDRPC
 	PAUSE_Main[mpause_discordrequests].status = IT_DISABLED;
 #endif
@@ -233,6 +252,8 @@ void M_OpenPauseMenu(void)
 
 			PAUSE_Main[mpause_callvote].status = IT_STRING | IT_ARROWS;
 		}
+		
+		PAUSE_Main[mpause_muteplayers].status = IT_STRING | IT_CALL;		//SCS - RADIO
 	}
 
 	if (G_GametypeHasSpectators())

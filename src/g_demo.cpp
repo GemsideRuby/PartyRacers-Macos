@@ -182,9 +182,12 @@ demoghost *ghosts = NULL;
 // - 0x000F -- RR 2.4 indev (staff ghosts part 2 - dynslopes thinker fix)
 // - 0x0010 -- RR 2.4 rc1   (staff ghosts part 3 - skinlimit raise. don't say we never did anythin for 'ya)
 // - 0x0011 -- RR 2.4 rc2   (K_FlipFromObject oversight)
+// - 0x0012 -- RR 2.4 rc6	(Waterskii regression from 2.3)
+// - 0x0013 -- RR 2.4 rc9   (No behavior changes)
+// - 0x0014 -- RR 2.4 final (No behavior changes. just used as a game version indicator for the TA folks to parse)
 
 #define MINDEMOVERSION 0x000E
-#define DEMOVERSION 0x0011
+#define DEMOVERSION 0x0014
 
 boolean G_CompatLevel(UINT16 level)
 {
@@ -2239,7 +2242,7 @@ void G_BeginRecording(void)
 				i |= DEMO_SPECTATOR;
 			if (player->pflags & PF_KICKSTARTACCEL)
 				i |= DEMO_KICKSTART;
-			if (player->pflags & PF2_STRICTFASTFALL)
+			if (player->pflags2 & PF2_STRICTFASTFALL)
 				i |= DEMO_STRICTFASTFALL;
 			if (player->pflags & PF_AUTOROULETTE)
 				i |= DEMO_AUTOROULETTE;
@@ -3417,9 +3420,9 @@ void G_DoPlayDemoEx(const char *defdemoname, lumpnum_t deflumpnum)
 			players[p].pflags &= ~PF_KICKSTARTACCEL;
 
 		if (flags & DEMO_STRICTFASTFALL)
-			players[p].pflags |= PF2_STRICTFASTFALL;
+			players[p].pflags2 |= PF2_STRICTFASTFALL;
 		else
-			players[p].pflags &= ~PF2_STRICTFASTFALL;
+			players[p].pflags2 &= ~PF2_STRICTFASTFALL;
 
 		if (flags & DEMO_AUTOROULETTE)
 			players[p].pflags |= PF_AUTOROULETTE;
@@ -3516,15 +3519,7 @@ void G_DoPlayDemoEx(const char *defdemoname, lumpnum_t deflumpnum)
 	}
 
 	// end of player read (the 0xFF marker)
-	// so this is where we are to read our lua variables (if possible!)
-	if (demoflags & DF_LUAVARS)	// again, used for compability, lua shit will be saved to replays regardless of if it's even been loaded
-	{
-		if (!gL) // No Lua state! ...I guess we'll just start one...
-			LUA_ClearState();
-
-		// No modeattacking check, DF_LUAVARS won't be present here.
-		LUA_UnArchive(&demobuf, false);
-	}
+	// see the DF_LUAVARS if later, though.
 
 	splitscreen = 0;
 
@@ -3545,6 +3540,18 @@ void G_DoPlayDemoEx(const char *defdemoname, lumpnum_t deflumpnum)
 	}
 
 	G_InitNew((demoflags & DF_ENCORE) != 0, gamemap, true, true); // Doesn't matter whether you reset or not here, given changes to resetplayer.
+	
+	// so this is where we are to read our lua variables (if possible!)
+	// we read it here because Lua player variables can have mobj references,
+	// and not having the map loaded causes crashes if that's the case.
+	if (demoflags & DF_LUAVARS)	// again, used for compability, lua shit will be saved to replays regardless of if it's even been loaded
+	{
+		if (!gL) // No Lua state! ...I guess we'll just start one...
+			LUA_ClearState();
+
+		// No modeattacking check, DF_LUAVARS won't be present here.
+		LUA_UnArchive(&demobuf, false);
+	}
 
 	for (i = 0; i < numslots; i++)
 	{
@@ -4211,6 +4218,7 @@ boolean G_CheckDemoStatus(void)
 
 	if (modeattacking || demo.willsave)
 	{
+		demo.willsave = false;
 		if (demobuf.p)
 		{
 			G_SaveDemo();

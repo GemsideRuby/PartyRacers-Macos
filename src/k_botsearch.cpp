@@ -479,6 +479,13 @@ static BlockItReturn_t K_FindObjectsForNudging(mobj_t *thing)
 		case MT_DUELBOMB:
 		case MT_GACHABOM:
 		case MT_SPECIALSTAGEBOMB:
+		case MT_GHZBALL:								//SCS ADD
+		case MT_AFTERBURNER_JAWZ:						//SCS ADD
+		case MT_PRESSUREMINE:							//SCS ADD
+		case MT_XSNAPSHOT:								//SCS ADD
+		case MT_XSNAPLASTSHOT:							//SCS ADD
+		case MT_XSNAPLASTSHOTSHRINK:					//SCS ADD
+		case MT_INKBUBBLE:								//SCS ADD
 			K_AddDodgeObject(thing, side, 20);
 			break;
 		case MT_SHRINK_GUN:
@@ -594,6 +601,14 @@ static BlockItReturn_t K_FindObjectsForNudging(mobj_t *thing)
 				else if (K_PlayerAttackSteer(thing, same_team, side, 20,
 					g_nudgeSearch.botmo->player->itemtype == KITEM_FLAMESHIELD,
 					thing->player->itemtype == KITEM_FLAMESHIELD
+				))
+				{
+					break;
+				}
+				// Normal Shield															//SCS ADD
+				else if (K_PlayerAttackSteer(thing, same_team, side, 20,
+					g_nudgeSearch.botmo->player->itemtype == KITEM_NORMALSHIELD,
+					thing->player->itemtype == KITEM_NORMALSHIELD
 				))
 				{
 					break;

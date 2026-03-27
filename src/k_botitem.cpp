@@ -544,6 +544,122 @@ static void K_BotItemSneaker(const player_t *player, ticcmd_t *cmd)
 }
 
 /*--------------------------------------------------
+	static void K_BotItemArmageddonShield player_t *player, ticcmd_t *cmd)
+
+		Item usage for the arma shield.
+
+	Input Arguments:-
+		player - Bot to do this for.
+		cmd - Bot's ticcmd to edit.
+
+	Return:-
+		None
+--------------------------------------------------*/
+static void K_BotItemArmageddonShield(const player_t *player, ticcmd_t *cmd)
+{
+	ZoneScoped;
+
+	if (P_IsObjectOnGround(player->mo) == false)
+	{
+		// Don't use while mid-air.
+		return;
+	}
+
+	if (player->botvars.itemconfirm > TICRATE)
+	{
+		if (player->armageddonshieldboostdelay <= 0 && leveltime % 45 == 0 && K_ItemButtonWasDown(player) == false)
+		{
+			cmd->buttons |= BT_ATTACK;
+			//player->botvars.itemconfirm = 0;
+		}
+	}
+	else
+	{
+		cmd->bot.itemconfirm++;
+	}
+}
+
+/*--------------------------------------------------
+	static void K_BotItemChameleonBlaster(player_t *player, ticcmd_t *cmd)
+
+		Item usage for the chameleon blaster.
+
+	Input Arguments:-
+		player - Bot to do this for.
+		cmd - Bot's ticcmd to edit.
+
+	Return:-
+		None
+--------------------------------------------------*/
+static void K_BotItemChameleonBlaster(const player_t *player, ticcmd_t *cmd)
+{
+	ZoneScoped;
+
+	if (player->botvars.itemconfirm > TICRATE)
+	{
+		if (player->gunusagetimer && player->gunfiredelay <= 0 && K_ItemButtonWasDown(player) == false)
+		{
+			if (player->botvars.difficulty > 7 && player->chamblasterrapidshots == 7) //if we're high enough level, be smart enough not to misfire (level 8 and above)
+				return;
+				
+			else if (player->botvars.difficulty > 4 && player->chamblasterrapidshots >= 7 && player->chamblasterrapidshots < 10) //cpu should probably misfire a few times between levels 5 and 7
+			{
+				cmd->buttons |= BT_ATTACK;
+				return;
+			}
+			else if (player->botvars.difficulty <= 4 && player->chamblasterrapidshots >= 7 && player->chamblasterrapidshots < 12) //cpu at really low levels should misfire a bunch before reloading
+			{
+				cmd->buttons |= BT_ATTACK;
+				return;
+			}
+			else
+				cmd->buttons |= BT_ATTACK;
+			//player->botvars.itemconfirm = 0;
+		}
+	}
+	else
+	{
+		cmd->bot.itemconfirm++;
+	}
+}
+
+/*--------------------------------------------------
+	static void K_BotItemMegaChopper(player_t *player, ticcmd_t *cmd)
+
+		Item usage for the mega chopper.
+
+	Input Arguments:-
+		player - Bot to do this for.
+		cmd - Bot's ticcmd to edit.
+
+	Return:-
+		None
+--------------------------------------------------*/
+static void K_BotItemMegaChopper(const player_t *player, ticcmd_t *cmd)
+{
+	ZoneScoped;
+
+	if (P_IsObjectOnGround(player->mo) == false)
+	{
+		// Don't use while mid-air.
+		return;
+	}
+
+	if (player->botvars.itemconfirm > TICRATE)
+	{
+		if (leveltime % 35 == 0 && K_ItemButtonWasDown(player) == false)
+		{
+			cmd->buttons |= BT_ATTACK;
+			//player->botvars.itemconfirm = 0;
+		}
+	}
+	else
+	{
+		cmd->bot.itemconfirm++;
+	}
+}
+
+/*--------------------------------------------------
 	static void K_BotItemRocketSneaker(player_t *player, ticcmd_t *cmd)
 
 		Item usage for rocket sneakers.
@@ -957,6 +1073,86 @@ static void K_BotItemOrbinaut(const player_t *player, ticcmd_t *cmd)
 }
 
 /*--------------------------------------------------
+	static void K_BotItemRingGun(const player_t *player, ticcmd_t *cmd)					//SCS ADD
+
+		Item usage for charging the Ring Gun.
+
+	Input Arguments:-
+		player - Bot to do this for.
+		cmd - Bot's ticcmd to edit.
+
+	Return:-
+		None
+--------------------------------------------------*/
+static void K_BotItemRingGun(const player_t *player, ticcmd_t *cmd)
+{
+	ZoneScoped;
+
+	const fixed_t topspeed = K_GetKartSpeed(player, false, true);
+	fixed_t radius = FixedMul(2304 * mapobjectscale, K_GetKartGameSpeedScalar(gamespeed));
+	UINT8 snipeMul = 2;
+	player_t *target = NULL;
+	boolean hold = false;
+	SINT8 desperate = 0;
+	
+	// Too slow, use the item as a last ditch-effort to keep going.
+	if (player->speed < ((topspeed/4)*3)
+		|| (player->offroad && K_ApplyOffroad(player)))
+		desperate++;
+
+	if (desperate == 0)
+	{
+		if (player->speed > topspeed)
+		{
+			radius = FixedMul(radius, FixedDiv(player->speed, topspeed));
+			snipeMul = 3; // Confirm faster when you'll throw it with a bunch of extra speed!!
+		}
+
+		target = K_PlayerInCone(player, (radius*2), 20, false);
+		if (target != NULL)
+		{
+			K_ItemConfirmForTarget(player, cmd, target, player->botvars.difficulty * snipeMul);
+			
+			fixed_t dist = P_AproxDistance(P_AproxDistance(
+				player->mo->x - target->mo->x,
+				player->mo->y - target->mo->y),
+				(player->mo->z - target->mo->z) / 4
+			);
+			
+			if (dist < ((radius/4)*3)) desperate += 3; // REALLY close.
+			else if (dist < ((radius/4)*4)) desperate += 2; // Medium distance.
+			else desperate++; // Very far away.
+			
+			// CONS_Printf("Dist to target: %d - throwdir: %d\n", dist/mapobjectscale, throwdir);
+		}
+	}
+
+	cmd->bot.itemconfirm++;
+	
+	if (player->position < 2)		//Do NOT hold it in first place! That makes you blow up!
+	{
+		hold = false;
+	}
+	else if (target != NULL)		//we're currently trying to aim and fire at someone
+	{
+		if (player->playerringgunpower >= 110 || desperate > 1)	//If we've stored up this much power and still haven't fired, just let go.
+			hold = false;
+		else
+			hold = true;		
+	}
+	else			//we do NOT have a target, and are holding the button to build up speed and firepower.
+	{
+		// We'll hold if we took too long, we're slow or not in first.
+		hold = (player->botvars.itemconfirm > 10*TICRATE) || desperate < 1 || (player->position > 1);	
+	}
+
+	if (hold == true)
+	{
+		cmd->buttons |= BT_ATTACK;
+	}
+}
+
+/*--------------------------------------------------
 	static void K_BotItemBallhog(const player_t *player, ticcmd_t *cmd)
 
 		Item usage for Ballhog throwing.
@@ -973,56 +1169,61 @@ static void K_BotItemBallhog(const player_t *player, ticcmd_t *cmd)
 	ZoneScoped;
 
 	const fixed_t topspeed = K_GetKartSpeed(player, false, true);
-	fixed_t radius = FixedMul(2560 * mapobjectscale, K_GetKartGameSpeedScalar(gamespeed));
-	SINT8 throwdir = -1;
-	boolean tryLookback = false;
+	fixed_t radius = FixedMul(2304 * mapobjectscale, K_GetKartGameSpeedScalar(gamespeed));
+	SINT8 throwdir = 1;
 	UINT8 snipeMul = 2;
 	player_t *target = NULL;
 	boolean hold = false;
+	boolean desperate = false;
+	
+	// Too slow, use the item as a last ditch-effort to keep going.
+	if (player->speed < ((topspeed/4)*3)
+		|| (player->offroad && K_ApplyOffroad(player)))
+		desperate = true;
 
-	if (player->speed > topspeed)
+	if (desperate == false)
 	{
-		radius = FixedMul(radius, FixedDiv(player->speed, topspeed));
-		snipeMul = 3; // Confirm faster when you'll throw it with a bunch of extra speed!!
-	}
+		if (player->speed > topspeed)
+		{
+			radius = FixedMul(radius, FixedDiv(player->speed, topspeed));
+			snipeMul = 3; // Confirm faster when you'll throw it with a bunch of extra speed!!
+		}
 
-	target = K_PlayerInCone(player, radius, 15, false);
-	if (target != NULL)
-	{
-		K_ItemConfirmForTarget(player, cmd, target, player->botvars.difficulty * snipeMul);
-		throwdir = 1;
-	}
-	else
-	{
-		target = K_PlayerInCone(player, radius, 15, true);
-
+		target = K_PlayerInCone(player, radius, 15, false);
 		if (target != NULL)
 		{
-			K_ItemConfirmForTarget(player, cmd, target, player->botvars.difficulty);
-			throwdir = -1;
-			tryLookback = true;
+			K_ItemConfirmForTarget(player, cmd, target, player->botvars.difficulty * snipeMul);
+			
+			fixed_t dist = P_AproxDistance(P_AproxDistance(
+				player->mo->x - target->mo->x,
+				player->mo->y - target->mo->y),
+				(player->mo->z - target->mo->z) / 4
+			);
+			
+			if (dist < ((radius/4)*2)) throwdir = -1; // REALLY close.
+			else if (dist < ((radius/4)*3)) throwdir = 0; // Medium distance.
+			else throwdir = 1; // Very far away.
+			
+			// CONS_Printf("Dist to target: %d - throwdir: %d\n", dist/mapobjectscale, throwdir);
 		}
 	}
 
-	if (tryLookback == true && throwdir == -1)
-	{
-		cmd->buttons |= BT_LOOKBACK;
-	}
-
+	cmd->bot.itemconfirm++;
+	
 	if (target != NULL)
 	{
-		// Charge up!
-		hold = true;
+		// We have a target, we'll hold a volley and release
+		// when it's fully charged.
+		INT32 ballhogmax = player->itemamount * BALLHOGINCREMENT;
+		if (player->ballhogcharge >= ballhogmax)
+			hold = false;
+		else
+			hold = true;
 	}
 	else
 	{
-		// If we lose sight of the target, then we'll just
-		// let go and it'll do a partial-blast.
-
-		// If we've been waiting for too long though, then
-		// we'll go for the full charge :)
-		cmd->bot.itemconfirm++;
-		hold = (player->botvars.itemconfirm > 10*TICRATE);
+		// We'll hold if we took too long, we're slow or first.
+		hold = (player->botvars.itemconfirm > 10*TICRATE) || desperate || (player->position == 1);
 	}
 
 	if (hold == true)
@@ -1121,6 +1322,7 @@ static void K_BotItemJawz(const player_t *player, ticcmd_t *cmd)
 	boolean tryLookback = false;
 	UINT8 snipeMul = 2;
 	INT32 lastTarg = player->lastjawztarget;
+	INT32 lastABTarg = player->lastabjawztarget;		//SCS ADD
 	player_t *target = NULL;
 
 	if (player->speed > topspeed)
@@ -1158,7 +1360,40 @@ static void K_BotItemJawz(const player_t *player, ticcmd_t *cmd)
 			{
 				next = mobj->itnext;
 
-				if (mobj->type == MT_JAWZ && mobj->target == targMo)
+				if ((mobj->type == MT_JAWZ || mobj->type == MT_AFTERBURNER_JAWZ) && mobj->target == targMo)		//SCS EDIT
+				{
+					targettedAlready = true;
+					break;
+				}
+			}
+
+			if (targettedAlready == false)
+			{
+				K_ItemConfirmForTarget(player, cmd, target, player->botvars.difficulty * snipeMul);
+				throwdir = 1;
+			}
+		}
+	}
+	else if (lastABTarg != -1
+	&& playeringame[lastABTarg] == true
+	&& players[lastABTarg].spectator == false
+	&& players[lastABTarg].mo != NULL
+	&& P_MobjWasRemoved(players[lastABTarg].mo) == false)
+	{
+		target = &players[lastABTarg];
+
+		if (G_SameTeam(player, target) == false)
+		{
+			mobj_t *targMo = players[lastABTarg].mo;
+			mobj_t *mobj = NULL, *next = NULL;
+			boolean targettedAlready = false;
+
+			// Make sure no other Jawz are targetting this player.
+			for (mobj = trackercap; mobj; mobj = next)
+			{
+				next = mobj->itnext;
+
+				if ((mobj->type == MT_JAWZ || mobj->type == MT_AFTERBURNER_JAWZ) && mobj->target == targMo)		//SCS EDIT
 				{
 					targettedAlready = true;
 					break;
@@ -1428,6 +1663,199 @@ static void K_BotItemGardenTop(const player_t *player, ticcmd_t *cmd, INT16 turn
 }
 
 /*--------------------------------------------------
+	static void K_BotItemNormShield(const player_t *player, ticcmd_t *cmd)			//SCS ADD
+
+		Item usage for Normal Shield.
+
+	Input Arguments:-
+		player - Bot to do this for.
+		cmd - Bot's ticcmd to edit.
+
+	Return:-
+		None
+--------------------------------------------------*/
+static void K_BotItemNormShield(const player_t *player, ticcmd_t *cmd)
+{
+	ZoneScoped;
+
+	const fixed_t topspeed = K_GetKartSpeed(player, false, true);
+	boolean hold = true;
+	SINT8 desperate = 0;
+	UINT8 i;
+	
+	if (player->normalshieldboostcharge >= (5 * NORMSHIELDINCREMENT))
+	{
+		return;		//If we're at max charge, let go already!
+	}
+	
+	// Too slow, use the item as a last ditch-effort to keep going.
+	if (player->speed < ((topspeed/4)*2))
+		desperate++;
+	
+	if (player->offroad && K_ApplyOffroad(player))	//if we're offroad, that's a good reason to start charging
+		desperate++;
+
+	if (desperate <= 1 && player->normalshieldboostcharge <= 0)	//if we're not desperate to use the shield, then...check surroundings if we aren't already charging it
+	{
+		fixed_t radius = 204 * player->mo->scale;
+		radius = Easing_Linear(FRACUNIT * player->botvars.difficulty / MAXBOTDIFFICULTY, 2*radius, 4*radius/3);
+			
+		for (i = 0; i < MAXPLAYERS; i++)
+		{
+			player_t *target = NULL;
+			fixed_t dist = INT32_MAX;
+
+			if (!playeringame[i])
+			{
+				continue;
+			}
+
+			target = &players[i];
+
+			if (target->mo == NULL || P_MobjWasRemoved(target->mo)
+				|| player == target || target->spectator
+				|| G_SameTeam(player, target)
+				|| target->flashing || player->growshrinktimer > 0 || player->invincibilitytimer > 0)		//disregard smaller players with guns - they can't do anything
+			{
+				continue;
+			}
+
+			dist = P_AproxDistance(P_AproxDistance(
+				player->mo->x - target->mo->x,
+				player->mo->y - target->mo->y),
+				(player->mo->z - target->mo->z) / 4
+			);
+
+			if (dist <= radius && (target->itemtype == KITEM_CHAMBLASTER || target->itemtype == KITEM_EGGBLASTER 
+			|| target->itemtype == KITEM_RINGGUN))		//if we detect anyone nearby that has a gun item, keep the shield on - shields protect from bullets
+			{
+				hold = false;
+				break;
+			}
+		}
+	}
+	else if (player->normalshieldboostcharge > 0)		//We're already charging, figure out when to let go!
+	{
+		if (player->botvars.difficulty < 5)
+		{
+			if (player->normalshieldboostcharge >= (2 * NORMSHIELDINCREMENT))
+				hold = false;
+				
+		}
+		else if (player->botvars.difficulty < 8)
+		{
+			if (player->normalshieldboostcharge >= (3 * NORMSHIELDINCREMENT))
+				hold = false;
+				
+		}
+		else
+		{
+			if (player->normalshieldboostcharge >= (4 * NORMSHIELDINCREMENT) && leveltime % 45 == 0)
+				hold = false;
+				
+		}
+	}
+
+	if (hold == true)
+	{
+		cmd->buttons |= BT_ATTACK;
+	}
+}
+
+/*--------------------------------------------------
+	static void K_BotItemPickpocket(const player_t *player, ticcmd_t *cmd)			//SCS ADD
+
+		Item usage for Pickpocket Hyudoro
+
+	Input Arguments:-
+		player - Bot to do this for.
+		cmd - Bot's ticcmd to edit.
+
+	Return:-
+		None
+--------------------------------------------------*/
+static void K_BotItemPickpocket(const player_t *player, ticcmd_t *cmd)
+{
+	ZoneScoped;
+
+	if (player->rings <= 0 || (player->offroad && K_ApplyOffroad(player)))		//if you're in ring debt, no questions: the immediate pay is more important. Offroad, too.
+	{
+		cmd->buttons |= BT_ATTACK;
+		return;
+	}
+	
+	if (player->invincibilitytimer > 0 || player->hyudorotimer || player->growshrinktimer > 0)		//basically, if we're invincible, don't even bother checking around - there's not too much that could ruin the combo.
+		return;
+
+	fixed_t radius = 245 * player->mo->scale;
+	radius = Easing_Linear(FRACUNIT * player->botvars.difficulty / MAXBOTDIFFICULTY, 2*radius, 4*radius/3);
+	SINT8 nearbyplayers = 0, loops = 0;
+	UINT8 i;
+		
+	for (i = 0; i < MAXPLAYERS; i++)
+	{
+		player_t *target = NULL;
+		fixed_t dist = INT32_MAX;
+		
+		loops++;
+
+		if (!playeringame[i])
+		{
+			continue;
+		}
+
+		target = &players[i];
+
+		if (target->mo == NULL || P_MobjWasRemoved(target->mo)
+			|| player == target || target->spectator
+			|| G_SameTeam(player, target)
+			|| target->flashing)
+		{
+			continue;
+		}
+
+		dist = P_AproxDistance(P_AproxDistance(
+			player->mo->x - target->mo->x,
+			player->mo->y - target->mo->y),
+			(player->mo->z - target->mo->z) / 4
+		);
+		
+		if (dist <= radius)
+			nearbyplayers++;
+		
+		if (target->invincibilitytimer > 0 || target->growshrinktimer > 0)		//if there's something really dangerous neraby, don't chance it - lock in the current combo
+		{
+			cmd->buttons |= BT_ATTACK;
+			break;
+		}
+		else if (target->stoneShoe != NULL)			//Stone Shoe chain can cause a lot of havoc, but is also easy to hit yourself. Not worth the risk.
+		{
+			cmd->buttons |= BT_ATTACK;
+			break;			
+		}
+		
+		if (target->itemtype != KITEM_NONE)
+		{
+			if (target->itemtype == KITEM_CHAMBLASTER || target->itemtype == KITEM_EGGBLASTER) //if we detect anyone nearby that has a gun item, lock in the combo - there's a chance that there could be a lot of bullets flying around.
+			{
+				cmd->buttons |= BT_ATTACK;
+				break;
+			}			
+			else if (target->itemtype == KITEM_WRECKINGBALL)			//far too dangerous lol
+			{
+				cmd->buttons |= BT_ATTACK;
+				break;				
+			}
+		}
+	}
+
+	if (nearbyplayers < (loops/2))			//if there aren't enough players around us to try and combo off of, just lock in what you've got.
+	{
+		cmd->buttons |= BT_ATTACK;
+	}
+}
+
+/*--------------------------------------------------
 	static void K_BotItemRings(const player_t *player, ticcmd_t *cmd)
 
 		Item usage for rings.
@@ -1444,10 +1872,31 @@ static void K_BotItemRings(const player_t *player, ticcmd_t *cmd)
 	ZoneScoped;
 
 	INT32 overdrivepreference = player->amps/3;
+	const fixed_t topspeed = K_GetKartSpeed(player, false, true);		//SCS ADD
 	if (player->position <= 1)
 		overdrivepreference = 0;
 
-	INT32 saferingsval = 16 - K_GetKartRingPower(player, false) - overdrivepreference;
+	//INT32 saferingsval = 16 - K_GetKartRingPower(player, false) - overdrivepreference;
+	INT32 saferingsval = 20 - K_GetKartRingPower(player, false) - overdrivepreference;			//SCS EDIT - Do they really need to be below 20 rings no matter what?
+	
+	
+	if (player->masteremeraldinvincibility)					//SCS ADD
+	{
+		//Don't use rings when using the Master Emerald!
+		return;
+	}
+	
+	if (player->superring && (player->speed < ((topspeed/4)*2) && !(player->offroad && K_ApplyOffroad(player))))		//SCS ADD
+	{
+		//If we have a ring payout, for the love of God, stop grinding it each and every single time
+		return;
+	}
+	
+	if (player->inkblotchtimer > 5 && leveltime % 2 == 0)
+	{
+		//fake them being cautious about using rings when blinded
+		return;
+	}
 
 	if (leveltime < starttime)
 	{
@@ -1473,8 +1922,8 @@ static void K_BotItemRings(const player_t *player, ticcmd_t *cmd)
 		saferingsval -= 5;
 	}
 
-	if (player->rings > saferingsval)
-	{
+	if (player->rings > saferingsval || (player->timestonefrozen && player->timestonefrozenringamount > 0))			//SCS EDIT - Make bots use rings while using a Time Stone. It DOES protect them from losing rings if hit,
+	{																										//but otherwise they just kinda slow down while using it otherwise
 		cmd->buttons |= BT_ATTACK;
 	}
 }
@@ -1664,8 +2113,15 @@ static void K_BotItemRouletteMash(const player_t *player, ticcmd_t *cmd)
 
 	if (player->botvars.itemconfirm > confirmTime)
 	{
-		// We've waited out our reaction time -- press the button now!
-		cmd->buttons |= BT_ATTACK;
+		if (player->inkblotchtimer > 5 && leveltime % 2 == 0)		//SCS ADD - throw off the CPUs a little more if they're meant to have their item slot blinded
+			return;
+		
+		if ((player->itemRoulette.ringbox == true && leveltime % 23 == 0) 
+		|| player->itemRoulette.ringbox == false)			//SCS ADD - add a little variance on how bots select their result in the slots; max levels always seems to pick RING, which isn't the best.
+		{
+			// We've waited out our reaction time -- press the button now!
+			cmd->buttons |= BT_ATTACK;
+		}
 	}
 }
 
@@ -1725,6 +2181,18 @@ void K_BotItemUsage(const player_t *player, ticcmd_t *cmd, INT16 turnamt)
 			{
 				K_BotItemRocketSneaker(player, cmd);
 			}
+			else if (player->megachoppertimer > 0)			//SCS ADD
+			{
+				K_BotItemMegaChopper(player, cmd);
+			}
+			else if (player->gunusagetimer && player->itemtype == KITEM_CHAMBLASTER)	//SCS ADD
+			{
+				K_BotItemChameleonBlaster(player, cmd);
+			}
+			else if (player->armageddonshieldboosttimer > 1)	//SCS ADD
+			{
+				K_BotItemArmageddonShield(player, cmd);
+			}
 			else
 			{
 				switch (player->itemtype)
@@ -1742,7 +2210,15 @@ void K_BotItemUsage(const player_t *player, ticcmd_t *cmd, INT16 turnamt)
 					case KITEM_GROW:
 					case KITEM_SHRINK:
 					case KITEM_SUPERRING:
+					case KITEM_SUPERJACKPOT:					//SCS ADD
+					case KITEM_WRECKINGBALL:					//SCS ADD
 						K_BotItemGenericTap(player, cmd);
+						break;
+					case KITEM_MASTEREMERALD:					//SCS ADD
+						if (!(player->superring))
+						{
+							K_BotItemGenericTap(player, cmd);
+						}
 						break;
 					case KITEM_ROCKETSNEAKER:
 						if (player->rocketsneakertimer <= 0)
@@ -1762,6 +2238,10 @@ void K_BotItemUsage(const player_t *player, ticcmd_t *cmd, INT16 turnamt)
 						{
 							K_BotItemBanana(player, cmd, turnamt);
 						}
+						break;
+					case KITEM_EGGBLASTER:							//SCS ADD
+					case KITEM_GACHABOM:							//SCS ADD
+						K_BotItemBanana(player, cmd, turnamt);
 						break;
 					case KITEM_EGGMAN:
 						K_BotItemEggmanShield(player, cmd);
@@ -1786,6 +2266,12 @@ void K_BotItemUsage(const player_t *player, ticcmd_t *cmd, INT16 turnamt)
 							K_BotItemJawz(player, cmd);
 						}
 						break;
+					case KITEM_ABURNERJAWZ:												//SCS ADD
+						if (player->position != 1) // Hold onto this when in 1st :)
+						{
+							K_BotItemJawz(player, cmd);
+						}					
+						break;
 					case KITEM_MINE:
 						if (!(player->itemflags & IF_ITEMOUT))
 						{
@@ -1798,10 +2284,19 @@ void K_BotItemUsage(const player_t *player, ticcmd_t *cmd, INT16 turnamt)
 						break;
 					case KITEM_LANDMINE:
 					case KITEM_HYUDORO: // Function re-use, as they have about the same usage.
+					case KITEM_PRESSUREMINE:														//SCS ADD
+					case KITEM_BUTLERHYU:															//SCS ADD
+					case KITEM_OCTUS:
 						K_BotItemLandmine(player, cmd, turnamt);
+						break;
+					case KITEM_PICKPOCKETHYU:														//SCS ADD
+						K_BotItemPickpocket(player, cmd);
 						break;
 					case KITEM_BALLHOG:
 						K_BotItemBallhog(player, cmd);
+						break;
+					case KITEM_RINGGUN:								//SCS ADD
+						K_BotItemRingGun(player, cmd);
 						break;
 					case KITEM_DROPTARGET:
 						if (!(player->itemflags & IF_ITEMOUT))
@@ -1832,11 +2327,9 @@ void K_BotItemUsage(const player_t *player, ticcmd_t *cmd, INT16 turnamt)
 					case KITEM_FLAMESHIELD:
 						K_BotItemFlame(player, cmd);
 						break;
-					/*
-					case KITEM_GACHABOM:
-						K_BotItemGachabom(player, cmd);
+					case KITEM_NORMALSHIELD:					//SCS ADD
+						K_BotItemNormShield(player, cmd);
 						break;
-					*/
 				}
 			}
 		}
@@ -1941,6 +2434,10 @@ void K_UpdateBotGameplayVarsItemUsage(player_t *player)
 				;
 			}
 			else if (player->rocketsneakertimer > 0)
+			{
+				;
+			}
+			else if (player->megachoppertimer > 0)			//SCS ADD
 			{
 				;
 			}
