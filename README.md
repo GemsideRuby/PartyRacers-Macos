@@ -1,8 +1,5 @@
-# PartyRacers
-
 <p align="center">
-  <a href="https://www.kartkrew.org">
-    <img src="docs/logo.png" width="404" style="image-rendering:pixelated" alt="Dr. Robotnik's Ring Racers logo">
+    <img src="./party/readme/PartyRacers_BraningIGuess.gif" width="500">
   </a>
 </p>
 
