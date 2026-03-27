@@ -51,7 +51,7 @@ There's a lot more... Check out the changelog included with the assets for a ful
 ## How To Use
 
 * Get the [latest copy](www.kartkrew.org) of Dr. Robotnik's Ring Racers installed on your computer.
-* Download the assets needed for this build [here](templink).
+* Download the assets needed for this build [here](https://github.com/supercoolsonic/PartyRacers/releases/tag/InitialRelease).
 * Make a copy of the Ring Racers install folder.
 * Extract the assets into the directory of the copy of the install of Ring Racers.
 * Leave the radioracer assets in the folder alongside the .exe, and overwrite the other three assets in the 'data' folder.
