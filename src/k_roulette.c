@@ -1631,7 +1631,8 @@ void K_FillItemRouletteData(player_t *player, itemroulette_t *const roulette, bo
 		}
 	}
 
-	fixed_t largegamescaler = roulette->playing * 11 + 115; // Spread out item odds in large games for a less insane experience.
+	//fixed_t largegamescaler = roulette->playing * 11 + 115; // Spread out item odds in large games for a less insane experience.
+	fixed_t largegamescaler = max((roulette->playing*2)/3, 2) * 8 + 110; // Spread out item odds in large games for a less insane experience.			//SCS EDIT - new formula to push some items forward a little bit in non-frantic races
 	if (franticitems)
 		largegamescaler = 100; // Except in Frantic, where you know what you're getting
 

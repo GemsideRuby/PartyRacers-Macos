@@ -64,6 +64,20 @@ fixed_t distance_to_target(const mobj_t* mobj)
 	return FixedHypot(FixedHypot(target->x - mobj->x, target->y - mobj->y), zDelta);
 }
 
+bool CanOccupyMainSlot(player_t* player)			//SCS ADD
+{
+	if (player->stealingtimer
+		|| player->rocketsneakertimer
+		|| player->eggmanexplode
+		|| player->timestonefrozen
+		|| player->timestonefrozentimer
+		|| player->megachoppertimer
+		|| player->gunusagetimer)
+			return false;
+			
+	return true;
+}
+
 bool award_target(mobj_t* mobj)
 {
 	mobj_t* target = rebound_target(mobj);
@@ -79,7 +93,7 @@ bool award_target(mobj_t* mobj)
 		return true;
 	}
 
-	if ((player->itemtype == KITEM_GACHABOM || player->itemtype == KITEM_NONE) && !player->itemRoulette.active && !player->instaWhipCharge)		//SCS EDIT
+	if ((player->itemtype == KITEM_GACHABOM || player->itemtype == KITEM_NONE) && CanOccupyMainSlot(player) && !player->itemRoulette.active && !player->instaWhipCharge)		//SCS EDIT
 	{
 		rebound_timer(mobj)--;
 
