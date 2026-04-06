@@ -19118,8 +19118,14 @@ static fixed_t K_GradingFactorPower(player_t *player, UINT32 gradingpoint)
 	if (opponents < 8)
 		power += (8 - opponents) * power/4;
 
-	if (opponents > 8)
+	if (opponents > 8 && opponents < 17)					//SCS EDIT START
 		power -= (opponents - 8) * (power/24);
+	
+	if (opponents > 16 && opponents < 25)
+		power -= (opponents - 16) * (power/144);
+		
+	if (opponents > 24)
+		power -= (opponents - 24) * (power/864);				//SCS EDIT END
 
 	UINT32 gp = K_GetNumGradingPoints();
 

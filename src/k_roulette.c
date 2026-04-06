@@ -74,7 +74,8 @@
 #define FRANTIC_ITEM_SCALE (FRACUNIT*6/5)
 
 #define ROULETTE_SPEED_SLOWEST (20)
-#define ROULETTE_SPEED_FASTEST (2)
+//#define ROULETTE_SPEED_FASTEST (2)
+#define ROULETTE_SPEED_FASTEST (4)			//SCS EDIT - Slowing wheel down for frontrunners. It spins maybe a tad bit too fast
 #define ROULETTE_SPEED_DIST (150*DISTVAR)
 #define ROULETTE_SPEED_TIMEATTACK (9)
 #define ROULETTE_SPEED_VERSUS_SLOWEST (12)

@@ -186,7 +186,7 @@ static void ABJawzChase(mobj_t *th, boolean grounded)
 		if (abjawz_selfdelay(th) <= 0)
 			thrustamount *= 3;
 		else
-			thrustamount /= 6;
+			thrustamount /= 5;
 		
 		//if (thrustamount <= FRACUNIT/2)
 			//thrustamount = 2*FRACUNIT;

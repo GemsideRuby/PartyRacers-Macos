@@ -1719,7 +1719,6 @@ boolean K_PvPTouchDamage(mobj_t *t1, mobj_t *t2)
 			pickpocketamps = K_PvPAmpReward(5, t2->player, t1->player);
 			K_SpawnAmps(t2->player, pickpocketamps, t2);
 			RR_PushPlayerInteractionToFeed(t2, t1, ATTACK_PICKPOCKETHYU, pickpocketamps);
-
 		}
 		else if (t1->player->itemtype == KITEM_PICKPOCKETHYU)
 		{
