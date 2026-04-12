@@ -551,6 +551,8 @@ void Obj_ABJawzThink(mobj_t *th);										//SCS ADD
 void Obj_ABJawzThrown(mobj_t *th, fixed_t finalSpeed, fixed_t dir);
 void Obj_ABJawzBoosterThink(mobj_t *th);
 
+void Obj_TripWireEffects(mobj_t *tripwire);								//SCS ADD
+
 
 #ifdef __cplusplus
 } // extern "C"

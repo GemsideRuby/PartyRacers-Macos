@@ -7578,6 +7578,12 @@ static boolean P_MobjRegularThink(mobj_t *mobj)
 		Obj_MiniHyudoroThink(mobj);
 		break;
 	}
+	case MT_TRIPWIREOK:				//SCS ADD
+	case MT_TRIPWIRELOCKOUT:
+	{
+		Obj_TripWireEffects(mobj);
+		break;
+	}
 	case MT_TIMESTONEACTIVATE:		//SCS ADD
 	{
 		if (mobj->fuse == 1)

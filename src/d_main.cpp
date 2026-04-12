@@ -113,7 +113,7 @@ extern "C" consvar_t cv_lua_profile, cv_menuframeskip;
 
 #define ASSET_HASH_BIOS_PK3						"36201c4690256d133dff7d3879436dff"
 #define ASSET_HASH_SCRIPTS_PK3					"56be3c47192870c3265f19cf024e860e"
-#define ASSET_HASH_GFX_PK3						"3da49ce9d417f564b15939cc22bc8dd1"//"24a59ebaa74f253dbec55b00328accb9" //SCS EDIT This needs to be changed otherwise release EXEs crash?
+#define ASSET_HASH_GFX_PK3						"56022a3213cab2916ae1068ea6e1ae07"//"24a59ebaa74f253dbec55b00328accb9" //SCS EDIT This needs to be changed otherwise release EXEs crash?
 #define ASSET_HASH_TEXTURES_GENERAL_PK3			"4f3d2665bb6d734df320e9c34fe9bdcb"
 #define ASSET_HASH_TEXTURES_SEGAZONES_PK3		"05ecca580606e4e631b3149570a7ff78"
 #define ASSET_HASH_TEXTURES_ORIGINALZONES_PK3	"d78b0c80f5128f1ae83b6d7d1058eac8"

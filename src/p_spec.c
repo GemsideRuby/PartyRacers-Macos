@@ -2365,6 +2365,18 @@ void P_CrossSpecialLine(line_t *line, INT32 side, mobj_t *thing)
 		if (P_IsLineTripWire(line))
 		{
 			K_ApplyTripWire(player, TRIPSTATE_PASSED);
+			//CONS_Printf("We're meant to spawn an OK object here \n");
+				
+			if (player->tripwireok == NULL)									//SCS ADD START
+			{
+				if (player->tripwirelockout != NULL && player->tripwirelockout->fuse > 2)
+					player->tripwirelockout->fuse = 2;
+						
+				mobj_t *ok = P_SpawnMobj(player->mo->x, player->mo->y, player->mo->z, MT_TRIPWIREOK);
+				K_FlipFromObject(ok, player->mo);
+				P_SetTarget(&ok->target, player->mo);
+				ok->fuse = 75;
+			}																					//SCS ADD END
 		}
 	}
 

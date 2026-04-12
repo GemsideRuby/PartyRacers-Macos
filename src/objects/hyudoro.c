@@ -937,8 +937,8 @@ Obj_MiniHyudoroThink(mobj_t *th)
 	//newx = FixedDiv(newx - th->x, 1);
 //	newy = FixedDiv(newy - th->y, 1);
 	
-	P_SetOrigin(th, (newx + th->threshold*FRACUNIT), (newy + th->threshold*FRACUNIT), (th->target->z + FRACUNIT*15));
-	
+	//P_SetOrigin(th, (newx + th->threshold*FRACUNIT), (newy + th->threshold*FRACUNIT), (th->target->z + FRACUNIT*15));
+	P_MoveOrigin(th, (newx + th->threshold*FRACUNIT), (newy + th->threshold*FRACUNIT), th->target->z + th->target->height);
 	//th->momx = FixedDiv(newx - th->x, 1);
 	//th->momy = FixedDiv(newy - th->y, 1);
 	

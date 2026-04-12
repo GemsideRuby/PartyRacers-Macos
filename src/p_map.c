@@ -4230,6 +4230,18 @@ static void P_BouncePlayerMove(mobj_t *mo, TryMoveResult_t *result)
 	{
 		// TRIPWIRE CANNOT BE MADE NONBOUNCY
 		K_ApplyTripWire(mo->player, TRIPSTATE_BLOCKED);
+		//CONS_Printf("We're meant to spawn a LOCKOUT object here \n");
+				
+		if (mo->player->tripwirelockout == NULL)									//SCS ADD START
+		{
+			if (mo->player->tripwireok != NULL && mo->player->tripwireok->fuse > 2)
+				mo->player->tripwireok->fuse = 2;
+					
+			mobj_t *lockout = P_SpawnMobj(mo->x, mo->y, mo->z, MT_TRIPWIRELOCKOUT);
+			K_FlipFromObject(lockout, mo);
+			P_SetTarget(&lockout->target, mo);
+			lockout->fuse = 75;
+		}																					//SCS ADD END
 	}
 	else
 	{

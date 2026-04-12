@@ -883,6 +883,9 @@ struct player_t
 	boolean usedmasteremeraldduringringboxaward; //Used to determine unique behavior of Master Emerald item where it cuts off and puts you at -20 if used during a ringbox award. //SCS ADD
 	UINT16 playermasteremeraldringdraindelay;
 	
+	mobj_t *tripwirelockout;				//SCS ADD
+	mobj_t *tripwireok;						//SCS ADD
+	
 	UINT16 pickpockethyucombo;	//SCS ADD
 	mobj_t *lastpickpockethyudoro; //SCS ADD
 	

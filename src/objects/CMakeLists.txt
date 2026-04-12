@@ -76,6 +76,7 @@ target_sources(SRB2SDL2 PRIVATE
 	megachopper.c
 	armageddon-shield.cpp
 	afterburner-jawz.c
+	tripewireelectricity.c
 )
 
 add_subdirectory(versus)

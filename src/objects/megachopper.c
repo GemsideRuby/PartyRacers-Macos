@@ -82,7 +82,8 @@ void Obj_MegaChopperThink(mobj_t *th)
 		th->angle = th->target->angle + ANGLE_180;
 	}	
 	
-	P_SetOrigin(th, newx, newy, th->target->z);
+	//P_SetOrigin(th, newx, newy, th->target->z);
+	P_MoveOrigin(th, newx, newy, th->target->z);
 
 	if (leveltime % 6 == 0)
 	{

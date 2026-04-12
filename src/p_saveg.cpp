@@ -6365,6 +6365,16 @@ static void P_RelinkPointers(void)
 			if (!RelinkMobj(&players[i].orbitmasteremerald))
 				CONS_Debug(DBG_GAMELOGIC, "orbitmasteremerald not found on player %d\n", i);		//SCS ADD
 		}
+		if (players[i].tripwirelockout)
+		{
+			if (!RelinkMobj(&players[i].tripwirelockout))
+				CONS_Debug(DBG_GAMELOGIC, "tripwirelockout not found on player %d\n", i);		//SCS ADD
+		}
+		if (players[i].tripwireok)
+		{
+			if (!RelinkMobj(&players[i].tripwireok))
+				CONS_Debug(DBG_GAMELOGIC, "tripwireok not found on player %d\n", i);		//SCS ADD
+		}
 		if (players[i].lastpickpockethyudoro)
 		{
 			if (!RelinkMobj(&players[i].lastpickpockethyudoro))
