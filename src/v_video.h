@@ -454,6 +454,8 @@ void V_DrawAdaptiveScaledPatchWithCoords(fixed_t x, fixed_t y, patch_t *patch, I
  */
 void VID_DisplaySoftwareScreen(void);
 
+void VID_DisplayRHIPostimg(void);
+
 char *V_ParseText(const char *rawText); // Launder srb2::draw::TextElement.parse() through C code!
 
 

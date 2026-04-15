@@ -1385,6 +1385,14 @@ void SetStates(void)
 	pglLoadIdentity();
 	pglScalef(1.0f, 1.0f, -1.0f);
 	pglGetFloatv(GL_MODELVIEW_MATRIX, modelMatrix); // added for new coronas' code (without depth buffer)
+
+	pglBindBuffer(GL_ARRAY_BUFFER, 0);
+	pglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	pglDisableClientState(GL_VERTEX_ARRAY);
+	pglDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	pglDisableClientState(GL_NORMAL_ARRAY);
+	pglDisableClientState(GL_COLOR_ARRAY);
+	SetShader(SHADER_NONE);
 }
 
 
@@ -1532,6 +1540,8 @@ EXPORT void HWRAPI(ReadRect) (INT32 x, INT32 y, INT32 width, INT32 height,
 			bottom -= dst_stride;
 		}
 		free(row);
+		pglPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+		pglPixelStorei(GL_PACK_ALIGNMENT, 4);
 	}
 	else
 	{
@@ -1553,6 +1563,8 @@ EXPORT void HWRAPI(ReadRect) (INT32 x, INT32 y, INT32 width, INT32 height,
 			}
 		}
 		free(image);
+		pglPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+		pglPixelStorei(GL_PACK_ALIGNMENT, 4);
 	}
 }
 
@@ -1609,8 +1621,6 @@ EXPORT void HWRAPI(ClearBuffer) (FBOOLEAN ColorMask,
 	SetBlend(DepthMask ? PF_Occlude | CurrentPolyFlags : CurrentPolyFlags&~PF_Occlude);
 
 	pglClear(ClearMask);
-	pglEnableClientState(GL_VERTEX_ARRAY); // We always use this one
-	pglEnableClientState(GL_TEXTURE_COORD_ARRAY); // And mostly this one, too
 }
 
 
@@ -1644,12 +1654,14 @@ EXPORT void HWRAPI(Draw2DLine) (F2DCoord * v1,
 	p[6] = v2->x + dx;  p[7] = -(v2->y - dy); p[8] = 1;
 	p[9] = v1->x + dx;  p[10] = -(v1->y - dy); p[11] = 1;
 
-	pglDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	pglColor4ubv((GLubyte*)&Color.s);
 	pglVertexPointer(3, GL_FLOAT, 0, p);
+	
+	pglEnableClientState(GL_VERTEX_ARRAY);
+	pglBindBuffer(GL_ARRAY_BUFFER, 0);
 	pglDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+	pglDisableClientState(GL_VERTEX_ARRAY);
 
-	pglEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	pglEnable(GL_TEXTURE_2D);
 }
 
@@ -1864,6 +1876,11 @@ EXPORT void HWRAPI(SetBlend) (FBITFIELD PolyFlags)
 		}
 	}
 	CurrentPolyFlags = PolyFlags;
+}
+
+EXPORT void HWRAPI(ResetRenderState) (void)
+{
+	SetStates();
 }
 
 static void AllocTextureBuffer(GLMipmap_t *pTexInfo)
@@ -2082,6 +2099,8 @@ EXPORT void HWRAPI(UpdateTexture) (GLMipmap_t *pTexInfo)
 	if (maximumAnisotropy)
 		pglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropic_filter);
 
+	pglPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+	pglPixelStorei(GL_PACK_ALIGNMENT, 4);
 	pglActiveTexture(GL_TEXTURE0);
 }
 
@@ -2463,7 +2482,14 @@ EXPORT void HWRAPI(DrawPolygon) (FSurfaceInfo *pSurf, FOutVector *pOutVerts, FUI
 
 	pglVertexPointer(3, GL_FLOAT, sizeof(FOutVector), &pOutVerts[0].x);
 	pglTexCoordPointer(2, GL_FLOAT, sizeof(FOutVector), &pOutVerts[0].s);
+
+	pglEnableClientState(GL_VERTEX_ARRAY);
+	pglEnableClientState(GL_TEXTURE_COORD_ARRAY);
+	pglBindBuffer(GL_ARRAY_BUFFER, 0);
+
 	pglDrawArrays(PolyFlags & PF_WireFrame ? GL_LINES : GL_TRIANGLE_FAN, 0, iNumPts);
+	pglDisableClientState(GL_VERTEX_ARRAY);
+	pglDisableClientState(GL_TEXTURE_COORD_ARRAY);
 
 	if (PolyFlags & PF_RemoveYWrap)
 		pglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -2481,7 +2507,14 @@ EXPORT void HWRAPI(DrawIndexedTriangles) (FSurfaceInfo *pSurf, FOutVector *pOutV
 
 	pglVertexPointer(3, GL_FLOAT, sizeof(FOutVector), &pOutVerts[0].x);
 	pglTexCoordPointer(2, GL_FLOAT, sizeof(FOutVector), &pOutVerts[0].s);
+
+	pglEnableClientState(GL_VERTEX_ARRAY);
+	pglEnableClientState(GL_TEXTURE_COORD_ARRAY);
+	pglBindBuffer(GL_ARRAY_BUFFER, 0);
+	pglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	pglDrawElements(GL_TRIANGLES, iNumPts, GL_UNSIGNED_INT, IndexArray);
+	pglDisableClientState(GL_VERTEX_ARRAY);
+	pglDisableClientState(GL_TEXTURE_COORD_ARRAY);
 
 	// the DrawPolygon variant of this has some code about polyflags and wrapping here but havent noticed any problems from omitting it?
 }
@@ -2533,7 +2566,9 @@ EXPORT void HWRAPI(RenderSkyDome) (gl_sky_t *sky)
 	pglTexCoordPointer(2, GL_FLOAT, sizeof(sky->data[0]), sky_vbo_u);
 	pglColorPointer(4, GL_UNSIGNED_BYTE, sizeof(sky->data[0]), sky_vbo_r);
 
-	// activate color arrays
+	// activate client states
+	pglEnableClientState(GL_VERTEX_ARRAY);
+	pglEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	pglEnableClientState(GL_COLOR_ARRAY);
 
 	// set transforms
@@ -2573,7 +2608,9 @@ EXPORT void HWRAPI(RenderSkyDome) (gl_sky_t *sky)
 	if (gl_ext_arb_vertex_buffer_object)
 		pglBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// deactivate color array
+	// deactivate client states
+	pglDisableClientState(GL_VERTEX_ARRAY);
+	pglDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	pglDisableClientState(GL_COLOR_ARRAY);
 }
 
@@ -2991,6 +3028,8 @@ static void DrawModelEx(model_t *model, INT32 frameIndex, float duration, float 
 		memcmp(&(model->vbo_max_t), &(model->max_t), sizeof(model->max_t)) != 0)
 		useVBO = false;
 
+	pglEnableClientState(GL_VERTEX_ARRAY);
+	pglEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	pglEnableClientState(GL_NORMAL_ARRAY);
 
 	for (i = 0; i < model->numMeshes; i++)
@@ -3010,6 +3049,7 @@ static void DrawModelEx(model_t *model, INT32 frameIndex, float duration, float 
 				if (useVBO)
 				{
 					pglBindBuffer(GL_ARRAY_BUFFER, frame->vboID);
+					pglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 					pglVertexPointer(3, GL_SHORT, sizeof(vbotiny_t), BUFFER_OFFSET(0));
 					pglNormalPointer(GL_BYTE, sizeof(vbotiny_t), BUFFER_OFFSET(sizeof(short)*3));
 					pglTexCoordPointer(2, GL_FLOAT, sizeof(vbotiny_t), BUFFER_OFFSET(sizeof(short) * 3 + sizeof(char) * 6));
@@ -3019,6 +3059,8 @@ static void DrawModelEx(model_t *model, INT32 frameIndex, float duration, float 
 				}
 				else
 				{
+					pglBindBuffer(GL_ARRAY_BUFFER, 0);
+					pglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 					pglVertexPointer(3, GL_SHORT, 0, frame->vertices);
 					pglNormalPointer(GL_BYTE, 0, frame->normals);
 					pglTexCoordPointer(2, GL_FLOAT, 0, mesh->uvs);
@@ -3043,6 +3085,8 @@ static void DrawModelEx(model_t *model, INT32 frameIndex, float duration, float 
 					*normPtr++ = (char)(frame->normals[j] + (pol * (nextframe->normals[j] - frame->normals[j])));
 				}
 
+				pglBindBuffer(GL_ARRAY_BUFFER, 0);
+				pglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 				pglVertexPointer(3, GL_SHORT, 0, vertTinyBuffer);
 				pglNormalPointer(GL_BYTE, 0, normTinyBuffer);
 				pglTexCoordPointer(2, GL_FLOAT, 0, mesh->uvs);
@@ -3106,6 +3150,8 @@ static void DrawModelEx(model_t *model, INT32 frameIndex, float duration, float 
 		}
 	}
 
+	pglDisableClientState(GL_VERTEX_ARRAY);
+	pglDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	pglDisableClientState(GL_NORMAL_ARRAY);
 
 	pglPopMatrix(); // should be the same as glLoadIdentity

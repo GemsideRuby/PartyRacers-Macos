@@ -1323,27 +1323,6 @@ static void init_imgui()
 
 static SDL_bool Impl_CreateContext(void)
 {
-#ifdef HWRENDER
-	if (rendermode == render_opengl)
-	{
-		if (!g_legacy_gl_context)
-		{
-			SDL_GL_ResetAttributes();
-			g_legacy_gl_context = SDL_GL_CreateContext(window);
-		}
-		if (g_legacy_gl_context == NULL)
-		{
-			SDL_DestroyWindow(window);
-			I_Error("Failed to create a Legacy GL context: %s\n", SDL_GetError());
-		}
-		init_imgui();
-		SDL_GL_MakeCurrent(window, g_legacy_gl_context);
-		return SDL_TRUE;
-	}
-#endif
-
-	// RHI always uses OpenGL 2.0 (for now)
-
 	if (!sdlglcontext)
 	{
 		SDL_GL_ResetAttributes();
@@ -1354,10 +1333,17 @@ static SDL_bool Impl_CreateContext(void)
 	if (sdlglcontext == NULL)
 	{
 		SDL_DestroyWindow(window);
-		I_Error("Failed to create an RHI GL context: %s\n", SDL_GetError());
+		I_Error("Failed to create a GL context: %s\n", SDL_GetError());
 	}
 	init_imgui();
 	SDL_GL_MakeCurrent(window, sdlglcontext);
+	
+	#ifdef HWRENDER
+		if (rendermode == render_opengl)
+		{
+			LoadGL();
+		}
+	#endif
 
 	if (!g_rhi)
 	{
@@ -1676,6 +1662,7 @@ void VID_StartupOpenGL(void)
 
 		*(void**)&HWD.pfnSetShaderInfo    = hwSym("SetShaderInfo",NULL);
 		*(void**)&HWD.pfnLoadCustomShader = hwSym("LoadCustomShader",NULL);
+		*(void**)&HWD.pfnResetRenderState = hwSym("ResetRenderState",NULL);
 		glstartup = true;
 	}
 
@@ -1748,24 +1735,9 @@ void srb2::cvarhandler::on_set_vid_wait()
 		interval = 1;
 	}
 
-	switch (rendermode)
+	if (sdlglcontext == nullptr || SDL_GL_GetCurrentContext() != sdlglcontext)
 	{
-	case render_soft:
-		if (sdlglcontext == nullptr || SDL_GL_GetCurrentContext() != sdlglcontext)
-		{
-			return;
-		}
-		SDL_GL_SetSwapInterval(interval);
-		break;
-#ifdef HWRENDER
-	case render_opengl:
-		if (g_legacy_gl_context == nullptr || SDL_GL_GetCurrentContext() != g_legacy_gl_context)
-		{
-			return;
-		}
-		SDL_GL_SetSwapInterval(interval);
-#endif
-	default:
-		break;
+		return;
 	}
+	SDL_GL_SetSwapInterval(interval);
 }
