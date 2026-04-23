@@ -382,7 +382,7 @@ void RR_addPlayerToFinshTicker(player_t *player)
 
 void RR_ridersFinishTick(void)
 {
-    if (playerFinishTickerQueue.empty()) return;
+    if (playerFinishTickerQueue.empty() || !cv_show_riders_finish_ticker.value) return;
     
     // Move over to the left
     playerFinishTickerQueue.front().x -= 2;
@@ -423,7 +423,7 @@ static const int FINISH_TICKER_Y = 45;
  */
 void RR_drawRidersFinishTicker(void)
 {
-    if (playerFinishTickerQueue.empty()) return;
+    if (playerFinishTickerQueue.empty() || !cv_show_riders_finish_ticker.value) return;
 
     patch_t *lapFlag = static_cast<patch_t*>(W_CachePatchName("K_SPTLAP", GTC_CACHE));
 

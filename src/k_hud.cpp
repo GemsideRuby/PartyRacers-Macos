@@ -1555,6 +1555,9 @@ static patch_t *K_GetCachedSlotMachinePatch(INT32 item, UINT8 offset)
 
 //}
 
+// RAIDO
+INT32 LAPS_MINI_Y;
+
 INT32 ITEM_X, ITEM_Y;	// Item Window
 INT32 TIME_X, TIME_Y;	// Time Sticker
 INT32 LAPS_X, LAPS_Y;	// Lap Sticker
@@ -1775,6 +1778,9 @@ static void K_initKartHUD(void)
 	// trick COOL
 	TCOOL_X = (BASEVIDWIDTH)/2;
 	TCOOL_Y = (BASEVIDHEIGHT)/2 -10;
+	
+	// Radio
+	LAPS_MINI_Y = BASEVIDHEIGHT - 20;
 
 	if (r_splitscreen)	// Splitscreen
 	{
@@ -4931,7 +4937,48 @@ static UINT16 K_GetDisplayEXP()									//SCS - RADIO START
 	}
 
 	return displayEXP;
-}																//SCS - RADIO END
+}		
+
+static void RR_handleExpLogicMini(
+	INT32 bump,
+	boolean drewsticker,
+	UINT16 dancecolor,
+	INT32 danceflag,
+	UINT16 displayEXP
+)
+{
+	INT32 fx = LAPS_X + bump, fy = LAPS_Y, fr = 0;
+	INT32 flipflag = 0;
+	INT32 splitflags = V_SNAPTOLEFT|V_SNAPTOBOTTOM;
+
+	fr = fx;
+
+	if (!drewsticker)
+		K_DrawMarginSticker(fr-1+(flipflag ? 2 : 0), fy+1, 25+bump, V_HUDTRANS|V_SLIDEIN|splitflags, true, flipflag);
+									// WHAT IS THIS?
+									// WHAT ARE YOU FUCKING TALKING ABOUT?
+
+	if (franticitems)
+	{
+		V_DrawMappedPatch(fr, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_exp[1], R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_PURPLE, GTC_CACHE));
+	}
+	else
+	{
+		V_DrawMappedPatch(fr, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_exp[1], R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_MUSTARD, GTC_CACHE));
+		auto transflag = K_GetTransFlagFromFixed(K_EffectiveGradingFactor(stplyr), true);
+		skincolornum_t overlaycolor = K_EffectiveGradingFactor(stplyr) < FRACUNIT ? SKINCOLOR_RUBY : SKINCOLOR_ULTRAMARINE ;
+		auto colormap = R_GetTranslationColormap(TC_RAINBOW, overlaycolor, GTC_CACHE);
+		V_DrawMappedPatch(fr, fy, transflag|V_SLIDEIN|splitflags, kp_exp[1], colormap);
+	}
+
+
+	// EXP
+
+	using srb2::Draw;
+
+	Draw row = Draw(fr+11, fy).flags(V_HUDTRANS|V_SLIDEIN|splitflags|danceflag).font(Draw::Font::kPing).colorize(dancecolor);
+	row.text("{:03}", displayEXP);
+}														//SCS - RADIO END
 
 static boolean K_drawKartLaps(void)
 {
@@ -4940,8 +4987,14 @@ static boolean K_drawKartLaps(void)
 	INT32 basebump = 0;
 	boolean drewsticker = false;
 	
-	const boolean DRAW_EXP_ON_PLAYER = cv_exponplayer.value == 1;			//SCS - RADIO START
-	const boolean DRAW_RINGS_ON_PLAYER = cv_ringsonplayer.value == 1;		//SCS - RADIO END
+	const boolean DRAW_EXP_ON_PLAYER = cv_exponplayer.value == 1;							//SCS - RADIO START
+	const boolean DRAW_RINGS_ON_PLAYER = cv_ringsonplayer.value == 1;
+	const boolean DRAW_MINI_HUD_DETAILS = cv_hud_compact.value == 1 && r_splitscreen == 0;
+
+	INT32 OLD_LAPS_Y = LAPS_Y;
+	if (DRAW_MINI_HUD_DETAILS) {
+		LAPS_Y = LAPS_MINI_Y;
+	}																						//SCS - RADIO END
 
 	UINT16 displayEXP = stplyr->karthud[khud_exp];
 
@@ -4960,7 +5013,7 @@ static boolean K_drawKartLaps(void)
 
 	if (drawinglaps)
 	{
-		if (r_splitscreen > 1)
+		if (r_splitscreen > 1 || DRAW_MINI_HUD_DETAILS)							//SCS EDIT - RADIO
 			bump = 27;
 		else
 			bump = 40;
@@ -4968,12 +5021,12 @@ static boolean K_drawKartLaps(void)
 		basebump = bump;
 
 		if (numlaps > 9)
-			bump += (r_splitscreen > 1) ? 6 : 8;
+			bump += (r_splitscreen > 1 || DRAW_MINI_HUD_DETAILS) ? 6 : 8;		//SCS EDIT - RADIO
 	}
 
 	if (drawinglaps)
 	{
-		if (r_splitscreen > 1)
+		if (r_splitscreen > 1 || DRAW_MINI_HUD_DETAILS)							//SCS EDIT - RADIO
 		{
 
 			INT32 fx = 0, fy = 0, fr = 0;
@@ -5008,7 +5061,12 @@ static boolean K_drawKartLaps(void)
 				fr += 15;
 
 			drewsticker = true;
-			K_DrawMarginSticker(fx-1-(flipflag ? 10 : 0), fy+1, 25+bump, V_HUDTRANS|V_SLIDEIN|splitflags, true, flipflag);
+		
+			int lapstickerwidth = 25 + bump;																							//SCS EDIT - RADIO START
+			if (DRAW_EXP_ON_PLAYER) {
+				lapstickerwidth = 25;
+			}
+			K_DrawMarginSticker(fx-1-(flipflag ? 10 : 0), fy+1, lapstickerwidth, V_HUDTRANS|V_SLIDEIN|splitflags, true, flipflag);		//SCS EDIT - RADIO END
 
 			V_DrawScaledPatch(fr, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_splitlapflag);
 			//V_DrawScaledPatch(fx+22, fy, V_HUDTRANS|V_SLIDEIN|splitflags, frameslash);
@@ -5064,6 +5122,11 @@ static boolean K_drawKartLaps(void)
 	{
 		;
 	}
+	else if (DRAW_MINI_HUD_DETAILS) {														//SCS EDIT - RADIO START
+		if (!DRAW_EXP_ON_PLAYER) {
+			RR_handleExpLogicMini(bump, drewsticker, dancecolor, danceflag, displayEXP);
+		}
+	}																						//SCS EDIT - RADIO END
 	else if (r_splitscreen > 1)
 	{
 		INT32 fx = 0, fy = 0, fr = 0;
@@ -5182,7 +5245,9 @@ static boolean K_drawKartLaps(void)
 		Draw row = Draw(EXP_X+23+bump, EXP_Y+3).flags(expFlags|danceflag).font(Draw::Font::kThinTimer).colorize(dancecolor);											//SCS - RADIO
 		row.text("{:03}", displayEXP);
 	}
-
+	
+	if (DRAW_MINI_HUD_DETAILS)		//SCS EDIT - RADIO
+		LAPS_Y = OLD_LAPS_Y;
 	return drewsticker;
 }
 
@@ -5261,7 +5326,341 @@ static void K_GetKartSpeedometerNumbers(uint8_t numbers[3])
 	numbers[0] = ((convSpeed / 100) % 10);
 	numbers[1] = ((convSpeed / 10) % 10);
 	numbers[2] = (convSpeed % 10);
-}																											//SCS - RADIO END
+}																											
+
+// Radio
+// partial code repetition, but the behaviour has to be somewhat consistent
+// also reduce rebasing work
+static void RR_drawRingCounterOnPlayer(
+	INT32 ringx, INT32 ringflip, SINT8 ringanim_realframe, boolean colorring, UINT8 *ringmap, UINT16 superringcolor)
+{
+	const INT32 ringcounterflags = V_HUDTRANS;
+	INT32 ringstickerwidth = 33;
+	INT32 RINGC_X = 0;
+	INT32 fy = 0;
+
+	const boolean DRAW_SPEEDO_ON_PLAYER = (cv_kartspeedometer.value && cv_speedometeronplayer.value);
+	const boolean DRAW_EXP_ON_PLAYER = cv_exponplayer.value == 1;
+
+	{
+		trackingResult_t result;
+
+		const boolean doesPlayerHaveMo = !((stplyr->mo == NULL || P_MobjWasRemoved(stplyr->mo)));
+		if (doesPlayerHaveMo)
+		{
+			// Get X,Y coordinates for player relative to the HUD
+			RR_GetTrackingCoordinatesForPlayer(&result, doesPlayerHaveMo);
+
+			// Add some offset so it's directly below the player (in Software)
+			fy = (result.y / FRACUNIT); 
+			RINGC_X = (result.x / FRACUNIT) - 20;
+		} 
+	}
+
+	if (DRAW_SPEEDO_ON_PLAYER && !DRAW_EXP_ON_PLAYER) 
+	{
+		// Speedometer has a width of 42, add some extra pixels for padding
+		ringstickerwidth += 42;
+		RINGC_X += 24;
+	}
+
+	if (DRAW_EXP_ON_PLAYER && !DRAW_SPEEDO_ON_PLAYER)
+	{
+		// Exp has a width of 24~
+		ringstickerwidth += 35;
+		RINGC_X += 20;
+	}
+
+	// Rings
+
+	// Sticker
+	int RINGC_STICKER_X = RINGC_X + 7;
+	if ((DRAW_SPEEDO_ON_PLAYER && !DRAW_EXP_ON_PLAYER))
+		RINGC_STICKER_X = (RINGC_X - 42) +7;
+	if ((DRAW_EXP_ON_PLAYER && !DRAW_SPEEDO_ON_PLAYER))
+		RINGC_STICKER_X = (RINGC_X - 37) +8;
+	using srb2::Draw;
+	Draw(RINGC_STICKER_X, fy+1)
+		.flags(ringcounterflags)
+		.align(Draw::Align::kCenter)
+		.width(ringstickerwidth)
+		.small_sticker();
+
+
+	// Actual Rings
+
+	if (stplyr->overdrive)
+	{
+		V_DrawMappedPatch(RINGC_X+7-8, fy-5-8, ringcounterflags, kp_overdrive[0][leveltime%32], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));
+	}
+	else
+	{
+		V_DrawMappedPatch(RINGC_X+ringx+7, fy-5, ringcounterflags|ringflip, kp_ring[ringanim_realframe], (colorring ? ringmap : NULL));
+
+		if (stplyr->amps)
+		{
+			UINT8 amplevel = std::min(stplyr->amps / AMPLEVEL, 6);
+
+			V_DrawMappedPatch(RINGC_X+7-7, fy-5-8, ringcounterflags, kp_amps[amplevel][leveltime%12], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));
+			if (amplevel == 6)
+			{
+				V_DrawMappedPatch(RINGC_X+7-7, fy-5-8, V_ADD|ringcounterflags, kp_amps_underlay[leveltime%12], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));
+			}
+		}
+	}
+
+	INT32 hr = stplyr->hudrings;
+
+	if (stplyr->baildrop)
+		hr += -1 * (stplyr->baildrop / BAIL_DROPFREQUENCY);
+
+	if (hr < -999)
+		hr = -999;
+
+	if (hr < 0) // Draw the minus for ring debt
+	{
+		V_DrawMappedPatch(RINGC_X+23-1, fy, ringcounterflags, kp_ringdebtminus, ringmap);
+		using srb2::Draw;
+		Draw row = Draw(RINGC_X+29+0, fy-4).flags(ringcounterflags).font(Draw::Font::kThinTimer).colormap(ringmap);
+		row.text("{:02}", abs(hr));
+	}
+	else
+	{
+		using srb2::Draw;
+		Draw row = Draw(RINGC_X+23+3, fy-4).flags(ringcounterflags).font(Draw::Font::kThinTimer).colormap(ringmap);
+		row.text("{:02}", abs(hr));
+	}
+
+	if (stplyr->inkblotchtimer >= 10 || (stplyr->inkblotchtimer && stplyr->inkblotchtimer < 10 && leveltime % 2 == 0))			//SCS ADD - want it to flicker when about to disappear
+	{
+		V_DrawScaledPatch(RINGC_X-15, fy-12, V_HUDTRANS|V_SLIDEIN, kp_inkblotches[5]);
+	}
+	
+	if (stplyr->masteremeraldinvincibility && stplyr->orbitmasteremerald == NULL)			//SCS ADD  Display the emeralds once the Master Emerald is done orbiting us
+	{
+		V_DrawMappedPatch(RINGC_X-10, fy-22, ringcounterflags, kp_ringemeralds[0], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_WHITE), GTC_CACHE));
+		V_DrawMappedPatch(RINGC_X-10, fy-22, ringcounterflags, kp_ringemeralds[1], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_RUBY), GTC_CACHE));
+		V_DrawMappedPatch(RINGC_X-10, fy-22, ringcounterflags, kp_ringemeralds[2], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_YELLOW), GTC_CACHE));
+		V_DrawMappedPatch(RINGC_X-10, fy-22, ringcounterflags, kp_ringemeralds[3], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_GREEN), GTC_CACHE));
+		V_DrawMappedPatch(RINGC_X-10, fy-22, ringcounterflags, kp_ringemeralds[4], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_AQUAMARINE), GTC_CACHE));
+		V_DrawMappedPatch(RINGC_X-10, fy-22, ringcounterflags, kp_ringemeralds[5], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_BLUE), GTC_CACHE));
+		V_DrawMappedPatch(RINGC_X-10, fy-22, ringcounterflags, kp_ringemeralds[6], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_PURPLE), GTC_CACHE));
+	}
+	
+	// SPB ring lock
+	if (stplyr->pflags & PF_RINGLOCK) {
+		// Use the debt animation when drawing rings on player
+		// The overanimated SPB icon can be distracting
+		int framenum = (14 + (leveltime % 2));
+
+		V_DrawScaledPatch(RINGC_X-5, fy-17, ringcounterflags, kp_ringspblock[framenum]);
+	}
+		
+	if (stplyr->superringdisplay && !(stplyr->superringalert % 2))
+	{
+		using srb2::Draw;
+		Draw row = Draw(RINGC_X+23+3+15, fy-4).flags(ringcounterflags).font(Draw::Font::kThinTimer).colorize(superringcolor);
+		row.text("+{:01}", abs(stplyr->superringdisplay));
+	}
+
+	// Speedometer
+	if (DRAW_SPEEDO_ON_PLAYER && !DRAW_EXP_ON_PLAYER)
+	{
+		uint8_t speedometer_numbers[3];
+		K_GetKartSpeedometerNumbers(speedometer_numbers);
+		// int ringtext_x = ((stplyr->hudrings < 0) ? RINGC_X+29+0 : RINGC_X+23+3) + 10;
+		int ringtext_x = RINGC_X - 42;
+
+		using srb2::Draw;
+		V_DrawScaledPatch(ringtext_x+7, fy, ringcounterflags, kp_facenum[speedometer_numbers[0]]);
+		V_DrawScaledPatch(ringtext_x+13, fy, ringcounterflags, kp_facenum[speedometer_numbers[1]]);
+		V_DrawScaledPatch(ringtext_x+19, fy, ringcounterflags, kp_facenum[speedometer_numbers[2]]);
+		V_DrawScaledPatch(ringtext_x+29, fy, ringcounterflags, kp_speedometerlabel[K_GetKartSpeedometerLabel()]);
+		
+		if (stplyr->inkblotchtimer >= 10 || (stplyr->inkblotchtimer && stplyr->inkblotchtimer < 10 && leveltime % 2 == 0))			//SCS ADD - want it to flicker when about to disappear
+		{
+			V_DrawScaledPatch(ringtext_x-3, fy-13, V_HUDTRANS|V_SLIDEIN, kp_inkblotches[2]);
+		}
+	}
+
+	// Exp
+	if (DRAW_EXP_ON_PLAYER && !DRAW_SPEEDO_ON_PLAYER)
+	{
+		const int exp_x = RINGC_X - 36;
+		const INT32 exp_y = fy - 7;
+
+		V_DrawMappedPatch(exp_x, exp_y, V_HUDTRANS, kp_exp[0], R_GetTranslationColormap(TC_RAINBOW, SKINCOLOR_MUSTARD, GTC_CACHE));
+
+		auto transflag = K_GetTransFlagFromFixed(K_EffectiveGradingFactor(stplyr), true);
+		skincolornum_t overlaycolor = K_EffectiveGradingFactor(stplyr) < FRACUNIT ? SKINCOLOR_RUBY : SKINCOLOR_ULTRAMARINE ;
+		auto colormap = R_GetTranslationColormap(TC_RAINBOW, overlaycolor, GTC_CACHE);
+
+		V_DrawMappedPatch(exp_x, exp_y, V_HUDTRANS|transflag, kp_exp[0], colormap);
+
+		boolean dance = (stplyr->exp > (UINT32)stplyr->karthud[khud_exp]);
+		INT32 danceflag = dance ? V_STRINGDANCE : 0;
+		UINT16 dancecolor = dance ? SKINCOLOR_AQUAMARINE : 0;
+
+		using srb2::Draw;
+		Draw row = Draw(exp_x+23, exp_y+3).flags(V_HUDTRANS|danceflag).font(Draw::Font::kThinTimer).colorize(dancecolor);
+		row.text("{:03}", K_GetDisplayEXP());
+	}
+}
+
+static void RR_handleRingCounterLogicMini(
+	boolean gametypeinfoshown, 
+	boolean uselives,
+	INT32 ringx, 
+	INT32 ringflip, 
+	SINT8 ringanim_realframe, 
+	boolean colorring, 
+	UINT8 *ringmap, 
+	UINT16 superringcolor,
+	UINT8 *rn
+)
+{
+	const boolean DRAW_RINGS_ON_PLAYER = cv_ringsonplayer.value == 1;
+
+	INT32 fx = LAPS_X, fy = LAPS_Y, fr = fx;
+	INT32 splitflags = V_SNAPTOLEFT|V_SNAPTOBOTTOM;
+	const INT32 flipflag = 0;
+
+	if (gametypeinfoshown)
+	{
+		fy -= 10;
+	}
+
+	// Rings
+	if (!uselives)
+	{
+		if (!DRAW_RINGS_ON_PLAYER) {
+			V_DrawScaledPatch(fx-2 + (flipflag ? (SHORT(kp_ringstickersplit[1]->width) - 3) : 0), fy, V_HUDTRANS|V_SLIDEIN|splitflags|flipflag, kp_ringstickersplit[1]);
+			if (flipflag)
+				fr += 15;
+		}
+	} else {
+		if (DRAW_RINGS_ON_PLAYER) {
+			V_DrawScaledPatch(fx-2 + (flipflag ? (SHORT(kp_ringstickersplit[1]->width) - 3) : 0), fy, V_HUDTRANS|V_SLIDEIN|splitflags|flipflag, kp_ringstickersplit[1]);
+		} else {
+			V_DrawScaledPatch(fx-2 + (flipflag ? (SHORT(kp_ringstickersplit[0]->width) - 3) : 0), fy, V_HUDTRANS|V_SLIDEIN|splitflags|flipflag, kp_ringstickersplit[0]);
+		}
+	}
+
+
+	UINT8 ampx = 2 + 8;
+	UINT8 ampy = 1 + 8;
+	UINT8 odx = 11;
+	UINT8 ody = 9;
+
+	UINT32 greyout = V_HUDTRANS;
+	SINT8 superoffset = 5;
+
+	if (DRAW_RINGS_ON_PLAYER) {
+		RR_drawRingCounterOnPlayer(ringx, ringflip, ringanim_realframe, colorring, ringmap, superringcolor);
+	} else {
+		if (stplyr->overdrive)
+		{
+			V_DrawMappedPatch(fr-odx, fy-3-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_overdrive[1][leveltime%32], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));
+		}
+		else
+		{
+			V_DrawMappedPatch(fr+ringx, fy-3, V_HUDTRANS|V_SLIDEIN|splitflags|ringflip, kp_smallring[ringanim_realframe], (colorring ? ringmap : NULL));
+
+			if (stplyr->amps)
+			{
+				UINT8 amplevel = std::min(stplyr->amps / AMPLEVEL, 6);
+
+				V_DrawMappedPatch(fr-ampx, fy-3-ampy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_amps[amplevel][leveltime%12], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));
+				if (amplevel == 6)
+				{
+					V_DrawMappedPatch(fr-ampx, fy-3-ampy, V_ADD|V_HUDTRANS|V_SLIDEIN|splitflags, kp_amps_underlay[leveltime%12], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE));
+				}
+			}
+		}
+
+		INT32 hr = stplyr->hudrings;
+
+		if (stplyr->baildrop)
+			hr += -1 * (stplyr->baildrop / BAIL_DROPFREQUENCY);
+
+		if (hr < -999)
+			hr = -999;
+
+		if (hr < 0) // Draw the minus for ring debt
+		{
+			V_DrawMappedPatch(fr+11, fy, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringdebtminussmall, ringmap);
+			using srb2::Draw;
+			Draw row = Draw(fr+15, fy).flags(V_HUDTRANS|V_SLIDEIN|splitflags).font(Draw::Font::kPing).colormap(ringmap);
+			row.text("{:02}", abs(hr));
+		}
+		else
+		{
+			V_DrawMappedPatch(fr+11, fy, V_HUDTRANS|V_SLIDEIN|splitflags, fontv[PINGNUM_FONT].font[rn[0]], ringmap);
+			V_DrawMappedPatch(fr+15, fy, V_HUDTRANS|V_SLIDEIN|splitflags, fontv[PINGNUM_FONT].font[rn[1]], ringmap);
+		}
+		
+		if (stplyr->inkblotchtimer >= 10 || (stplyr->inkblotchtimer && stplyr->inkblotchtimer < 10 && leveltime % 2 == 0))			//SCS ADD - want it to flicker when about to disappear
+		{
+			if (uselives)
+				V_DrawScaledPatch(fx-6 + (flipflag ? (SHORT(kp_inkblotches[6]->width) - 3) : 0), fy-8, V_HUDTRANS|V_SLIDEIN, kp_inkblotches[6]);
+			else
+				V_DrawScaledPatch(fx-6 + (flipflag ? (SHORT(kp_inkblotches[7]->width) - 3) : 0), fy-8, V_HUDTRANS|V_SLIDEIN, kp_inkblotches[7]);
+			
+		}
+		
+		if (stplyr->masteremeraldinvincibility && stplyr->orbitmasteremerald == NULL)			//SCS ADD  Display the emeralds once the Master Emerald is done orbiting us
+		{
+			V_DrawMappedPatch(fr-odx, fy-8-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringemeraldssmall[0], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_WHITE), GTC_CACHE));
+			V_DrawMappedPatch(fr-odx, fy-8-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringemeraldssmall[1], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_RUBY), GTC_CACHE));
+			V_DrawMappedPatch(fr-odx, fy-8-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringemeraldssmall[2], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_YELLOW), GTC_CACHE));
+			V_DrawMappedPatch(fr-odx, fy-8-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringemeraldssmall[3], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_GREEN), GTC_CACHE));
+			V_DrawMappedPatch(fr-odx, fy-8-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringemeraldssmall[4], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_AQUAMARINE), GTC_CACHE));
+			V_DrawMappedPatch(fr-odx, fy-8-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringemeraldssmall[5], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_BLUE), GTC_CACHE));
+			V_DrawMappedPatch(fr-odx, fy-8-ody, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringemeraldssmall[6], R_GetTranslationColormap(TC_RAINBOW, static_cast<skincolornum_t>(SKINCOLOR_PURPLE), GTC_CACHE));
+		}
+
+		// SPB ring lock
+		if (stplyr->pflags & PF_RINGLOCK)
+			V_DrawScaledPatch(fr-12, fy-13, V_HUDTRANS|V_SLIDEIN|splitflags, kp_ringspblocksmall[stplyr->karthud[khud_ringspblock]]);
+
+		if (stplyr->superringdisplay)
+		{
+			greyout = V_HUDTRANSHALF;
+			if (flipflag && !uselives)
+				superoffset = -25 - (stplyr->superringdisplay >= 10 ? 3 : 0) - (stplyr->superringdisplay >= 100 ? 3 : 0);
+		}
+	}
+
+	// Lives
+	if (uselives)
+	{
+		INT32 lives_x = fr+21;
+		INT32 lives_face_x = fr+34;
+		if (DRAW_RINGS_ON_PLAYER) {
+			lives_x = fr+5;
+			lives_face_x = lives_x+13;
+		} else {
+			// Face patch overlaps the ring graphic when in debt
+			if (stplyr->hudrings < 0) {
+				lives_x+= 5;
+				lives_face_x+= 5; 
+			}
+		}
+		UINT8 *colormap = R_GetTranslationColormap(stplyr->skin, static_cast<skincolornum_t>(stplyr->skincolor), GTC_CACHE);
+		V_DrawMappedPatch(lives_x, fy-3, V_SLIDEIN|splitflags|greyout, faceprefix[stplyr->skin][FACE_MINIMAP], colormap);
+		if (stplyr->lives >= 0)
+			K_DrawLivesDigits(lives_face_x, fy, 4, V_SLIDEIN|splitflags|greyout, fontv[PINGNUM_FONT].font);
+	}
+
+	if (!DRAW_RINGS_ON_PLAYER) {
+		if (stplyr->superringdisplay && !(stplyr->superringalert % 2))
+		{
+			using srb2::Draw;
+			Draw row = Draw(fr+19+superoffset, fy).flags(V_HUDTRANS|V_SLIDEIN|splitflags).font(Draw::Font::kPing).colorize(superringcolor);
+			row.text("+{:01}", abs(stplyr->superringdisplay));
+		}
+	}
+}																													//SCS - RADIO END
 
 static void K_drawRingCounter(boolean gametypeinfoshown)
 {
@@ -5274,7 +5673,14 @@ static void K_drawRingCounter(boolean gametypeinfoshown)
 	boolean colorring = false;
 	//INT32 ringx = 0, fy = 0;
 	INT32 ringx = 0, fy = 0, lives_y = 0;					//SCS - RADIO
-	
+
+	const boolean DRAW_MINI_HUD_DETAILS = cv_hud_compact.value == 1 && r_splitscreen == 0;		//SCS - RADIO START
+	const boolean DRAW_RINGS_ON_PLAYER = cv_ringsonplayer.value == 1;
+
+	const INT32 OLD_LAPS_Y = LAPS_Y;
+	if (DRAW_MINI_HUD_DETAILS)
+		LAPS_Y = LAPS_MINI_Y;
+																								//SCS - RADIO END
 	UINT16 superringcolor = SKINCOLOR_SAPPHIRE;
 	if (stplyr->momentboost)
 	{
@@ -5321,11 +5727,12 @@ static void K_drawRingCounter(boolean gametypeinfoshown)
 	{
 		ringflip = V_FLIP;
 		ringanim_realframe = RINGANIM_NUMFRAMES-stplyr->karthud[khud_ringframe];
-		ringx += SHORT((r_splitscreen > 1) ? kp_smallring[ringanim_realframe]->width : kp_ring[ringanim_realframe]->width);
+		ringx += SHORT((r_splitscreen > 1 || (DRAW_MINI_HUD_DETAILS && !DRAW_RINGS_ON_PLAYER)) ? kp_smallring[ringanim_realframe]->width : kp_ring[ringanim_realframe]->width);	//SCS EDIT - RADIO
 	}
 
-	if (r_splitscreen > 1)
-	{
+	if (DRAW_MINI_HUD_DETAILS) {																																		//SCS EDIT - RADIO
+		RR_handleRingCounterLogicMini(gametypeinfoshown, uselives, ringx, ringflip, ringanim_realframe, colorring, ringmap, superringcolor, rn);
+	} else if (r_splitscreen > 1) {
 		INT32 fx = 0, fr = 0;
 		INT32 flipflag = 0;
 
@@ -5466,9 +5873,9 @@ static void K_drawRingCounter(boolean gametypeinfoshown)
 	}
 	else			//SCS NOTE - Drawing in single-player screen
 	{
-		const boolean DRAW_RINGS_ON_PLAYER = cv_ringsonplayer.value == 1;										//SCS - RADIO START
+		//const boolean DRAW_RINGS_ON_PLAYER = cv_ringsonplayer.value == 1;										//SCS - RADIO START
 		const boolean DRAW_SPEEDO_ON_PLAYER = (cv_kartspeedometer.value && cv_speedometeronplayer.value);
-		const boolean DRAW_EXP_ON_PLAYER = cv_exponplayer.value == 1;;
+		const boolean DRAW_EXP_ON_PLAYER = cv_exponplayer.value == 1;
 		INT32 ringcounterflags = V_HUDTRANS|V_SLIDEIN|splitflags;
 		INT32 RINGC_X = LAPS_X;
 
@@ -5728,12 +6135,14 @@ static void K_drawRingCounter(boolean gametypeinfoshown)
 		if (stplyr->inkblotchtimer >= 10 || (stplyr->inkblotchtimer && stplyr->inkblotchtimer < 10 && leveltime % 2 == 0))			//SCS ADD - want it to flicker when about to disappear
 		{
 			if (uselives)
-				V_DrawScaledPatch(DRAW_RINGS_ON_PLAYER ? RINGC_STICKER_X : LAPS_X-7, fy-12, V_HUDTRANS|V_SLIDEIN|splitflags, kp_inkblotches[5]);
-			else
 				V_DrawScaledPatch(DRAW_RINGS_ON_PLAYER ? RINGC_STICKER_X : LAPS_X-7, fy-12, V_HUDTRANS|V_SLIDEIN|splitflags, kp_inkblotches[4]);
+			else
+				V_DrawScaledPatch(DRAW_RINGS_ON_PLAYER ? RINGC_STICKER_X : LAPS_X-7, fy-12, V_HUDTRANS|V_SLIDEIN|splitflags, kp_inkblotches[5]);
 			
 		}
 	}
+	if (DRAW_MINI_HUD_DETAILS)
+		LAPS_Y = OLD_LAPS_Y;
 }
 
 #undef RINGANIM_FLIPFRAME
@@ -5887,7 +6296,45 @@ static void K_drawKartSpeedometer(boolean gametypeinfoshown)
 	INT32 speedometerFlags = V_HUDTRANS|V_SLIDEIN|splitflags;
 
 	boolean showbluespheres = (gametyperules & GTR_SPHERES);
-	INT32 fy = LAPS_Y - ((cv_ringsonplayer.value == 1 && !showbluespheres && !G_GametypeUsesLives()) ? 0 : 14);		//SCS - RADIO END
+	const boolean DRAW_MINI_HUD_DETAILS = cv_hud_compact.value == 1 && r_splitscreen == 0;
+	const boolean NOT_BATTLE_OR_LIVES = !showbluespheres && !G_GametypeUsesLives();
+	const boolean RINGS_ON_PLAYER = (cv_ringsonplayer.value == 1 && NOT_BATTLE_OR_LIVES);
+
+	const boolean drawinglaps = (numlaps != 1 && !K_InRaceDuel() && stplyr->karthud[khud_exp] != UINT16_MAX);
+	const boolean EXP_ON_PLAYER = (cv_exponplayer.value == 1 && NOT_BATTLE_OR_LIVES) && !drawinglaps;
+
+	INT32 fy = LAPS_Y-14;
+
+	/**
+	 * radio
+	 * 
+	 * Stepdown
+	 * 
+	 * Normal HUD
+	 * No Rings, No lives? fy = LAPS_Y - 0
+	 * No laps, no exp? fy = LAPS_Y + 14
+	 * 
+	 * Mini/Splitscreen HUD
+	 * Default? fy = LAPS_Y - 2
+	 * No Rings, No lives? fy = LAPS_Y + 10
+	 * No laps, no exp? fy = LAPS_Y + 20
+	 */
+	if (DRAW_MINI_HUD_DETAILS) {
+		fy = LAPS_Y - 2;
+		if (RINGS_ON_PLAYER) {
+			fy = LAPS_Y + 10;
+			if (EXP_ON_PLAYER) {
+				fy = LAPS_Y + 20;
+			}
+		}
+	} else {
+		if (RINGS_ON_PLAYER) {
+			fy = LAPS_Y;
+			if (EXP_ON_PLAYER) {
+				fy = LAPS_Y + 14;
+			}
+		}
+	}																											//SCS - RADIO END
 
 	if (battleprisons)
 	{

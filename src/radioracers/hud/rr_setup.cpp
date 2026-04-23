@@ -1005,7 +1005,8 @@ void RR_Init(void) {
         radio_last_powerup_jingle_sound = S_AddSoundFx("pujvlj", false, 0, false);
 
         // S Ranks
-        radio_s_rank_voiceline = S_AddSoundFx("srankl", false, 0, false);
+        if (W_LumpExists("DSSRANKL"))
+            radio_s_rank_voiceline = S_AddSoundFx("srankl", false, 0, false);
 
         // Perfect boost
         radio_perfectboost_line = S_AddSoundFx("rrpfst", false, 0, false);

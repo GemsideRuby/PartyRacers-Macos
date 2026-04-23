@@ -87,6 +87,7 @@ extern consvar_t cv_hud_hidecountdown; // Hide the bigass letters at the start o
 extern consvar_t cv_hud_hideposition;  // Hide the bigass position bulbs at the start of the race
 extern consvar_t cv_hud_hidelapemblem; // Hide the bigass lap emblem when you start a new lap
 extern consvar_t cv_hud_usehighresportraits; // Draw higher-res portraits in the minirankings
+extern consvar_t cv_hud_compact; // Toggle a slightly more compact HUD
 extern consvar_t cv_holdbuttonforscoreboard; // Restore SRB2Kart behaviour when viewing in-game scoreboards
 extern consvar_t cv_inputdisplaytoggle; // Toggle betweeen DIGITAL and ANALOG input display controller
 extern consvar_t cv_inputdisplaytogglesize; // Toggle controller display size (mini or big)

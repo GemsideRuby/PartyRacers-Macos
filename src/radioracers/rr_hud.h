@@ -223,6 +223,9 @@ typedef struct
 // Emote grade tally
 extern void RR_EmoteTally_Tick(void);
 
+// Mini HUD
+extern INT32 LAPS_MINI_Y;
+
 /**
  * HUD TRACKING
  */

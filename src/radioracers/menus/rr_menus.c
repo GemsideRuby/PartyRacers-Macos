@@ -21,6 +21,9 @@
 // HUD Options - Race
 static menuitem_t OPTIONS_RadioRacersHudRace[] =
 {
+	{IT_STRING | IT_CVAR, "Compact HUD Details", "Toggle compact player information in the HUD (bottom-left).",
+		NULL, {.cvar = &cv_hud_compact}, 0, 0},
+	
 	{IT_HEADER, "Toggle HUD Elements", NULL,
 		NULL, {NULL}, 0, 0},
 		
