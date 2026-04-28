@@ -637,6 +637,12 @@ consvar_t cv_customemeraldhud = Player("customemeraldhud", "Full").values({
 	{2, "Full"}
 }).radio();
 
+// Display Combat UFO Power-Ups on the bottom of the screen
+consvar_t cv_poweruponbottom = Player("poweruponbottom", "Bottom").values({
+	{0, "Vanilla"}, 
+	{1, "Bottom"}
+}).radio();
+
 // Toggle Winner announcement at end of the round
 consvar_t cv_battle_toggle_winner_announcement = Player("bttl_toggle_winner_announcement", "On").on_off().radio();
 

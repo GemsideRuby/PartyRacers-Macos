@@ -45,6 +45,7 @@ extern consvar_t cv_precise_countdown;              // Show a little bar below s
 // Battle
 extern consvar_t cv_customemeraldhud;    // Alternate Emerald display for Battle Mode
 extern consvar_t cv_spheremeteronplayer; // Blue Sphere meter drawn on player
+extern consvar_t cv_poweruponbottom; // Display Power-Up counter on the bottom of the screen
 
 // Battle - HUD Tracking
 extern consvar_t cv_targetrackplayers;  // Toggle the TARGET HUD graphics for other players

@@ -4406,7 +4406,7 @@ fixed_t K_GetKartAccel(const player_t *player)
 {
 	fixed_t k_accel = 121;
 	//UINT8 stat = (9 - player->kartspeed);
-	INT8 stat = (9 - player->kartspeed);			//SCS EDIT
+	SINT8 stat = (9 - player->kartspeed);			//SCS EDIT MERGE REQUEST (SCS 2nd edit - changing from INT8 to SINT8 to allow compiling on Linux)
 
 	if (K_PodiumSequence() == true)
 	{
@@ -4425,7 +4425,7 @@ fixed_t K_GetKartAccel(const player_t *player)
 	if (player->curshield == KSHIELD_TOP)
 	{
 		k_accel = FixedMul(k_accel, player->topAccel);
-		//k_accel += max(17 * stat, -120);					//SCS EDIT
+		//k_accel += max(17 * stat, -120);					//SCS EDIT MERGE REQUEST
 	}
 
 	if (K_PodiumSequence() == true)
