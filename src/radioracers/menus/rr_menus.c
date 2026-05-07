@@ -23,6 +23,12 @@ static menuitem_t OPTIONS_RadioRacersHudRace[] =
 {
 	{IT_STRING | IT_CVAR, "Compact HUD Details", "Toggle compact player information in the HUD (bottom-left).",
 		NULL, {.cvar = &cv_hud_compact}, 0, 0},
+		
+	{IT_STRING | IT_CVAR, "Position Number", "Change how the bottom-right position number is displayed.",
+		NULL, {.cvar = &cv_toggle_position_number}, 0, 0},   
+
+	{IT_SPACE | IT_NOTHING, NULL,  NULL,
+		NULL, {NULL}, 0, 0},
 	
 	{IT_HEADER, "Toggle HUD Elements", NULL,
 		NULL, {NULL}, 0, 0},
@@ -31,10 +37,7 @@ static menuitem_t OPTIONS_RadioRacersHudRace[] =
 		NULL, {.cvar = &cv_toggle_nametags}, 0, 0},   
 		
 	{IT_STRING | IT_CVAR, "EXP on Split", "Show/hide EXP gained during checkpoint splits.",
-		NULL, {.cvar = &cv_showexponsplit}, 0, 0},   
-		
-	{IT_STRING | IT_CVAR, "Position Number", "Toggle position number on the bottom-right.",
-		NULL, {.cvar = &cv_toggle_position_number}, 0, 0},   
+		NULL, {.cvar = &cv_showexponsplit}, 0, 0},  
 
 	{IT_STRING | IT_CVAR, "Minimap", "Hide the minimap.",
 		NULL, {.cvar = &cv_toggle_race_minimap}, 0, 0},   
@@ -224,6 +227,9 @@ menuitem_t OPTIONS_RadioRacersHud[] =
 	
 	{IT_STRING | IT_CVAR, "Use Higher Resolution Portraits", "Draw higher resolution portraits in the minirankings.",
 		NULL, {.cvar = &cv_hud_usehighresportraits}, 0, 0},
+		
+	{IT_STRING | IT_CVAR, "Display Delay Counter Beside FPS", "Toggle if the delay counter should be displayed next to the FPS counter.",
+		NULL, {.cvar = &cv_hud_displaypingbesideticrate}, 0, 0},
 
 	{IT_HEADER, "Roulette Options", NULL,
 		NULL, {NULL}, 0, 0},
