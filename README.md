@@ -99,3 +99,9 @@ Original Battle Plus mod here: https://mb.srb2.org/addons/srb2kart-battle-plus-k
 Pressure Mine: sprites by ArtoMeister
 
 Original Lethal Landmine mod here: https://mb.srb2.org/addons/lethal-landmine-a-mine-reskin.6291/
+
+Custom Sprites for Double Banana, Triple Banana, Quad Banana, Double Sneakers, Triple Sneakers, and Dual Jawz by Spee, Jin, and Momphi, originally used in Sunflower's Garden/Saturn/Blankart. Small modifications by me.
+
+Saturn Build here: https://github.com/Indev450/SRB2Kart-Saturn
+
+Blankart Build here: https://codeberg.org/NepDisk/blankart

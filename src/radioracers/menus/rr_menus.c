@@ -511,7 +511,7 @@ void Roulette_OnChange(void)
 
 	UINT16 newstatus = (cv_rouletteonplayer.value) ? IT_STRING | IT_CVAR : IT_GRAYEDOUT;
 
-	for (int i = 15; i < 19; i++) {
+	for (int i = 16; i < 20; i++) {
 		OPTIONS_RadioRacersHud[i].status = newstatus;
 	}
 
