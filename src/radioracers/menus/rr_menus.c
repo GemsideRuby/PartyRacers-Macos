@@ -312,6 +312,17 @@ static menuitem_t OPTIONS_RadioRacersAccessibility[] =
 
 	{IT_STRING | IT_CVAR, "Extra Countdown Jingle", "Play an extra sound on the last second the coutdown jingle.",
 		NULL, {.cvar = &cv_powersoundjoke}, 0, 0},
+		
+	{IT_SPACE | IT_NOTHING, NULL,  NULL,
+		NULL, {NULL}, 0, 0},
+		
+	{IT_HEADER, "CPU Randomization", NULL,
+		NULL, {NULL}, 0, 0},
+		
+	{IT_STRING | IT_CVAR, "CPU Colors and Followers", "Make it so CPUs can randomize their color and follower each race.",
+		NULL, {.cvar = &cv_toggle_cpu_colorfollowerrand}, 0, 0},   
+
+
 };
 
 void RadioAccessibilityMenu_Init(void)
@@ -511,7 +522,7 @@ void Roulette_OnChange(void)
 
 	UINT16 newstatus = (cv_rouletteonplayer.value) ? IT_STRING | IT_CVAR : IT_GRAYEDOUT;
 
-	for (int i = 15; i < 19; i++) {
+	for (int i = 16; i < 20; i++) {
 		OPTIONS_RadioRacersHud[i].status = newstatus;
 	}
 

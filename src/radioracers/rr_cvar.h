@@ -41,6 +41,7 @@ extern consvar_t cv_gingeritemtimersbiggertext;      // Draw the timer text in a
 extern consvar_t cv_obvious_tripwire;               // Replace default tripwire texture with more obvious graphics
 extern consvar_t cv_obvious_voltage;                // Re-colour voltage VFX with same colour as drift spark
 extern consvar_t cv_precise_countdown;              // Show a little bar below starting countdown to better time your approach
+extern consvar_t cv_toggle_cpu_colorfollowerrand;	// Randmize CPU colors and followers											//SCS ADD
 
 // Battle
 extern consvar_t cv_customemeraldhud;    // Alternate Emerald display for Battle Mode
