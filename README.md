@@ -49,6 +49,8 @@ There's a lot more... Check out the changelog included with the assets for a ful
 * Online is largely untested. Any issues can be reported here, and anyone willing to assist with issues regarding it are welcome to share their findings and/or solutions. Netcoding isn't my strongest area of expertise.
 * Battle mode is also thus untested, as a direct result.
 
+* Dr. Robotnik's Ring Racers is a work of fan art made available for free without intent to profit or harm the intellectual property rights of the original works it is based on. Kart Krew Dev is in no way affiliated with SEGA Corporation. We do not claim ownership of any of SEGA's intellectual property used in Dr. Robotnik's Ring Racers.
+
 ## How To Use
 
 * Get the [latest copy](www.kartkrew.org) of Dr. Robotnik's Ring Racers installed on your computer.
