@@ -5,7 +5,7 @@
 
 A fork of [Dr. Robotnik's Ring Racers](www.kartkrew.org/) and [radioracers](https://github.com/blondedradio/RadioRacers), making several tweaks to the game balance to make it a more chaotic experience for those who find the vanilla game to be either too hard or not quite to their tastes. The codebase was merged with radioracers, so all QoL additions and changes from that build are available here, as well.
 Updated for version 2.4. Downloads for mac builds can be found in the releases.
-
+You can find instructions for building Party Racers below.
 ## Links
 
 - [Kart Krew Dev Website](https://www.kartkrew.org/)
