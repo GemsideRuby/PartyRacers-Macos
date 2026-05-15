@@ -677,8 +677,8 @@ static ItemConfigForFeedUpdate getItemConfigForFeedAttackUpdate(playerattacks_t 
 		case ATTACK_PICKPOCKETHYU:				//SCS ADD
             return {
                 .patch = "RRISPCK",
-                .width = 20,
-                .height = 22,
+                .width = 17,
+                .height = 20,
                 {
                     .animated = true,
                     .animated_frames = 3,

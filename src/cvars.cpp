@@ -715,6 +715,14 @@ consvar_t cv_toggle_position_number = Player("positionnumbertoggle", "Small").va
 	{2, "Off"}
 }).radio();
 
+consvar_t cv_toggle_cpu_colorfollowerrand = Player("cpurandomizationtoggle", "Full").values({		//SCS ADD (Toggle for CPU color and follower randomization)
+	{0, "Full"}, 
+	{1, "Color"},
+	{2, "Follower"},
+	{3, "Off"}
+}).radio();
+
+
 consvar_t cv_toggle_race_minimap = Player("raceminimaptoggle", "On").on_off().radio();
 consvar_t cv_toggle_trick_cool = Player("tricktexttoggle", "On").on_off().radio();
 consvar_t cv_toggle_race_standings = Player("racestandingstoggle", "On").on_off().radio();

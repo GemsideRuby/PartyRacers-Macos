@@ -47,6 +47,8 @@
 #include "i_net.h" // doomcom
 #include "k_follower.h"			//SCS ADD
 
+#include "radioracers/rr_cvar.h"		//SCS ADD
+
 extern "C" consvar_t cv_forcebots;
 
 /*--------------------------------------------------
@@ -125,15 +127,15 @@ void K_SetBot(UINT8 newplayernum, UINT16 skinnum, UINT8 difficulty, botStyle_e s
 
 	skincolornum_t color = static_cast<skincolornum_t>(skins[skinnum]->prefcolor);
 	
-	if (P_RandomRange(PR_BOTS, 0, 5) > 2)
+	if (cv_toggle_cpu_colorfollowerrand.value <= 1 && P_RandomRange(PR_BOTS, 0, 5) > 2)		//SCS ADD - Randomize CPU colors and followers!
 	{
-		color = static_cast<skincolornum_t>(P_RandomRange(PR_ITEM_SPAWNER, 1, FIRSTSUPERCOLOR-1));								//SCS ADD - TESTTTTTTT
+		color = static_cast<skincolornum_t>(P_RandomRange(PR_ITEM_SPAWNER, 1, FIRSTSUPERCOLOR-1));
 	}
-	if (P_RandomRange(PR_BOTS, 0, 7) > 4)
+	if ((cv_toggle_cpu_colorfollowerrand.value == 0 || cv_toggle_cpu_colorfollowerrand.value == 2) && P_RandomRange(PR_BOTS, 0, 7) > 4)
 	{
 		botfollower = P_RandomRange(PR_DECORATION, 1, numfollowers);
 		
-		if (P_RandomRange(PR_BOTS, 0, 10) > 6)
+		if (cv_toggle_cpu_colorfollowerrand.value == 0 && P_RandomRange(PR_BOTS, 0, 10) > 6)
 			botfollowercolor = P_RandomRange(PR_ITEM_RINGS, 1, FIRSTSUPERCOLOR-1);	
 		
 	}
