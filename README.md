@@ -49,18 +49,10 @@ There's a lot more... Check out the changelog included with the assets for a ful
 * Online is largely untested. Any issues can be reported here, and anyone willing to assist with issues regarding it are welcome to share their findings and/or solutions. Netcoding isn't my strongest area of expertise.
 * Battle mode is also thus untested, as a direct result.
 
-* Dr. Robotnik's Ring Racers is a work of fan art made available for free without intent to profit or harm the intellectual property rights of the original works it is based on. Kart Krew Dev is in no way affiliated with SEGA Corporation. We do not claim ownership of any of SEGA's intellectual property used in Dr. Robotnik's Ring Racers.
+* Dr. Robotnik's Ring Racers is a work of fan art made available for free without intent to profit or harm the intellectual property rights of the original works it is based on. Kart Krew Dev is in no way affiliated with SEGA Corporation. We do not claim ownership of any of SEGA's intelletual property used in Dr. Robotnik's Ring Racers.
 
-## How To Use
-
-* Get the [latest copy](www.kartkrew.org) of Dr. Robotnik's Ring Racers installed on your computer.
-* Download the assets needed for this build [here](https://github.com/supercoolsonic/PartyRacers/releases/tag/InitialRelease).
-* Make a copy of the Ring Racers install folder.
-* Extract the assets into the directory of the copy of the install of Ring Racers.
-* Leave the radioracer assets in the folder alongside the .exe, and overwrite the other three assets in the 'data' folder.
-* Compile the build, and place the ringracers_party.exe into the folder, and remove the vanilla .exe.
-* Run the ringracers_party.exe to play.
-
+## How to play.
+TODO:add instructions on how to compile and play.
 
 ## Credits
 Butler Hyudoro sprites: modifications by YKJavi, original Hyudoro sprites by VelocitOni
