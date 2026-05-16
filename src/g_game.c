@@ -3045,7 +3045,7 @@ mapthing_t *G_FindRaceStart(INT32 playernum)
 		{
 			if (G_CheckSpot(playernum, playerstarts[i]))
 				return playerstarts[i];
-		}
+		}	
 
 		// SRB2Kart: We have solid players, so this behavior is less ideal.
 		// Don't bother checking to see if the player 1 start is open.
@@ -3054,7 +3054,10 @@ mapthing_t *G_FindRaceStart(INT32 playernum)
 
 		if (doprints)
 			CONS_Alert(CONS_WARNING, M_GetText("Could not spawn at any Race starts!\n"));
-		return NULL;
+		//return NULL;					//SCS EDIT
+		
+		return playerstarts[0];			//SCS ADD		- Not sure what's going on here that some mod maps spawn everyone at 1st place, and some put them at the first Mapthing, but it'd be better to spawn at 1st place than the middle of nowhere, no?
+														//This'll probably be temporary until a better solution is found	
 	}
 
 	if (doprints)

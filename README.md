@@ -33,7 +33,7 @@ You can find instructions for building Party Racers below.
 
 <img src="./party/readme/DRPR_FireShieldDemo.gif" width="500">
 
-* 32 players is now the maximum amount of players possible per race.
+* 32 players is now the maximum amount of players possible per race (Online is not stable with more than 16 players currently. To play online, use the 16 player limit branch for now).
 * CHECK warnings now appear sooner. There are new CHECK warnings, as well.
 * Insta-whip charges a little faster and drains rings much slower.
 * EXP item lockout is gone, so use any item you can to win the race.

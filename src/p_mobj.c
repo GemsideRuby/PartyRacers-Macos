@@ -13546,7 +13546,7 @@ static boolean P_SpawnNonMobjMapThing(mapthing_t *mthing)
 #if MAXPLAYERS > 32
 	You should think about modifying the deathmatch starts to take full advantage of this!
 #endif
-	if (mthing->type <= MAXPLAYERS) // Player starts
+	if (mthing->type <= 32)//MAXPLAYERS) // Player starts		//SCS EDIT - The first 32 slots should be reserved for the playerstarts anyway, right?
 	{
 		// save spots for respawning in network games
 		playerstarts[mthing->type - 1] = mthing;

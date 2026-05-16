@@ -1489,6 +1489,14 @@ void readlevelheader(MYFILE *f, char * name)
 				{
 					mapheaderinfo[num]->playerLimit = 16;
 				}
+				else if (fastcmp(word2, "EXTRALARGE"))					//SCS ADD START				I'm sure this'll mean something somewhere lol
+				{
+					mapheaderinfo[num]->playerLimit = 24;
+				}
+				else if (fastcmp(word2, "MASSIVE"))
+				{
+					mapheaderinfo[num]->playerLimit = 32;
+				}														//SCS ADD END
 				else
 				{
 					deh_warning("Level header %d: invalid lobby size '%s'", num, word2);
