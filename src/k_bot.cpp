@@ -127,17 +127,20 @@ void K_SetBot(UINT8 newplayernum, UINT16 skinnum, UINT8 difficulty, botStyle_e s
 
 	skincolornum_t color = static_cast<skincolornum_t>(skins[skinnum]->prefcolor);
 	
-	if (cv_toggle_cpu_colorfollowerrand.value <= 1 && P_RandomRange(PR_BOTS, 0, 5) > 2)		//SCS ADD - Randomize CPU colors and followers!
+	if (!netgame)
 	{
-		color = static_cast<skincolornum_t>(P_RandomRange(PR_ITEM_SPAWNER, 1, FIRSTSUPERCOLOR-1));
-	}
-	if ((cv_toggle_cpu_colorfollowerrand.value == 0 || cv_toggle_cpu_colorfollowerrand.value == 2) && P_RandomRange(PR_BOTS, 0, 7) > 4)
-	{
-		botfollower = P_RandomRange(PR_DECORATION, 1, numfollowers);
-		
-		if (cv_toggle_cpu_colorfollowerrand.value == 0 && P_RandomRange(PR_BOTS, 0, 10) > 6)
-			botfollowercolor = P_RandomRange(PR_ITEM_RINGS, 1, FIRSTSUPERCOLOR-1);	
-		
+		if (cv_toggle_cpu_colorfollowerrand.value <= 1 && P_RandomRange(PR_BOTS, 0, 5) > 2)		//SCS ADD - Randomize CPU colors and followers!
+		{
+			color = static_cast<skincolornum_t>(P_RandomRange(PR_ITEM_SPAWNER, 1, FIRSTSUPERCOLOR-1));
+		}
+		if ((cv_toggle_cpu_colorfollowerrand.value == 0 || cv_toggle_cpu_colorfollowerrand.value == 2) && P_RandomRange(PR_BOTS, 0, 7) > 4)
+		{
+			botfollower = P_RandomRange(PR_DECORATION, 1, numfollowers);
+			
+			if (cv_toggle_cpu_colorfollowerrand.value == 0 && P_RandomRange(PR_BOTS, 0, 10) > 6)
+				botfollowercolor = P_RandomRange(PR_ITEM_RINGS, 1, FIRSTSUPERCOLOR-1);	
+			
+		}
 	}
 	
 	const char *realname = skins[skinnum]->realname;
