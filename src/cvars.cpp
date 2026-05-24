@@ -174,6 +174,18 @@ struct consvar_t::Builder
 	{
 		var_.is_radio_cvar = true;
 		return *this;
+	}
+	
+	Builder& is_fake_netcvar()
+	{
+		var_.is_fake_netcvar = true;
+		return *this;
+	}
+
+	Builder& enablefornetgames(boolean should_enable)
+	{
+		var_.enablefornetgames = should_enable;
+		return *this;
 	}														//SCS - RADIO END
 
 private:
@@ -528,13 +540,26 @@ consvar_t cv_votesnitch = Player("votesnitch", "On").on_off().radio();
 consvar_t cv_applylocalencore = Player("localencore", "Off").values({{0, "Off"}, {1, "On"}}).dont_save().onchange_noinit(KartLocalEncore_OnChange).radio();
 
 // Observation Haki
-consvar_t cv_applyhaki = Player("hakimode", "Off").values({{0, "Off"}, {1, "On"}}).dont_save().onchange_noinit(KartHaki_OnChange).radio();
+consvar_t cv_applyhaki = Player("radio_hakimode", "Off")
+.values({{0, "Off"}, {1, "On"}})
+.description("Observation Haki")
+.dont_save()
+.onchange_noinit(KartHaki_OnChange)
+.radio()
+.is_fake_netcvar();
 
 // Show 'S' ranks in the tally and player standings
 consvar_t cv_show_s_ranks = Player("showperfectranks", "On").on_off().radio();
 
+// How many checkpoints are needed to make item boxes appear in offline races						//SCS ADD
+consvar_t cv_toggle_checkpointitemnum = Player("numcheckpointsforitemboxes", "1").min_max(0, 99).radio();
+
 // Rings Ghost Accessibility
-consvar_t cv_accessibility_rings_hide = Player("ringsaccessibility", "On").on_off().radio();
+consvar_t cv_accessibility_rings_hide = Player("radio_ringsaccessibility", "On").on_off()
+.onchange_noinit(AccessibilityRings_OnChange)
+.description("Ghost Rings")
+.radio()
+.is_fake_netcvar();
 
 // Hudfeed
 consvar_t cv_hudfeed_enabled = Player("hudfeed", "Yes").yes_no().onchange_noinit(RR_Hudfeed_OnChange).radio();
@@ -597,6 +622,12 @@ consvar_t cv_rr_rumble_rings = Player("rr_rumble_rings", "On").on_off().radio();
 consvar_t cv_rr_rumble_spheres = Player("rr_rumble_spheres", "On").on_off().radio();
 consvar_t cv_rr_rumble_wavedash = Player("rr_rumble_wavedash", "On").on_off().radio();
 
+// Change how the Ring Counter appears															//SCS ADD
+consvar_t cv_ringcountertype = Player("ringcountertype", "Numerical").values({
+	{0, "Numerical"}, 
+	{1, "Meter"}
+}).radio();
+
 // Rings drawn on player (akin to driftgauge)
 consvar_t cv_ringsonplayer = Player("ringsonplayer", "Custom").values({
 	{0, "Vanilla"}, 
@@ -648,8 +679,8 @@ consvar_t cv_poweruponbottom = Player("poweruponbottom", "Bottom").values({
 consvar_t cv_battle_toggle_winner_announcement = Player("bttl_toggle_winner_announcement", "On").on_off().radio();
 
 // Emerald locations on minimap
-consvar_t cv_battle_toggle_emerald_on_minimap = Player("bttl_emerald_on_minimap", "On").on_off().radio();
-consvar_t cv_battle_toggle_ufo_timer_on_minimap = Player("bttl_ufo_timer_on_minimap", "On").on_off().radio();
+consvar_t cv_battle_toggle_emerald_on_minimap = Player("radio_bttl_emerald_on_minimap", "On").on_off().onchange_noinit(EmeraldsMinimap_OnChange).description("Display Emeralds on Minimap").radio().is_fake_netcvar();
+//consvar_t cv_battle_toggle_ufo_timer_on_minimap = Player("bttl_ufo_timer_on_minimap", "On").on_off().radio();
 
 // Toggle tracking players in the HUD
 consvar_t cv_targetrackplayers = Player("targetrackplayers", "Yes").yes_no().radio();
@@ -1015,6 +1046,8 @@ consvar_t cv_kartbumpers = UnsavedNetVar("battlebumpers", "3").min_max(0, 12);
 
 void KartEliminateLast_OnChange(void);
 consvar_t cv_karteliminatelast = NetVar("eliminatelast", "Yes").yes_no().onchange(KartEliminateLast_OnChange);
+
+consvar_t cv_toggle_checkpointitemnum_net = NetVar("numcheckpointsforitemboxesonline", "1").min_max(0, 99);		//SCS ADD
 
 void KartEncore_OnChange(void);
 consvar_t cv_kartencore = UnsavedNetVar("encore", "Auto").values({{-1, "Auto"}, {0, "Off"}, {1, "On"}}).onchange_noinit(KartEncore_OnChange);

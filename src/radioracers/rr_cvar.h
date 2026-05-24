@@ -23,12 +23,14 @@ extern "C" {
 
 // Player (Clientside)
 extern consvar_t cv_votesnitch;         // Vote Snitch
+extern consvar_t cv_ringcountertype;	//Ring Counter Appearance																		//SCS ADD	
 extern consvar_t cv_ringsonplayer;      // Rings drawn on player
 extern consvar_t cv_speedometeronplayer;      // Speedometer drawn on player
 extern consvar_t cv_exponplayer;      // EXP drawn on player
 extern consvar_t cv_rouletteonplayer;   // Item/Ring Roulette drawn on player
 extern consvar_t cv_applylocalencore;    // Clientside encore palettes
 extern consvar_t cv_show_s_ranks;       // Show 'S' ranks during tally
+extern consvar_t cv_toggle_checkpointitemnum;	//How many checkpoints need to be crossed in a race to make item boxes appear			//SCS ADD
 
 // Accessibility
 extern consvar_t cv_applyhaki;                      // Observation Haki mode
@@ -58,6 +60,8 @@ extern consvar_t cv_targetrackplayers;  // Toggle the TARGET HUD graphics for ot
 
 void KartLocalEncore_OnChange(void);
 void KartHaki_OnChange(void);
+void EmeraldsMinimap_OnChange(void);
+void AccessibilityRings_OnChange(void);
 void KartExtraPowerSound_OnChange(void);
 void KartFinishLineTicker_OnChange(void);
 void RR_ChatEmotes_OnChange(void);
@@ -127,7 +131,7 @@ extern consvar_t cv_hudfeed_toggle_shrink; // Show Shrink hits in the feed?			//
 
 // HUD -- Battle
 extern consvar_t cv_battle_toggle_emerald_on_minimap; 
-extern consvar_t cv_battle_toggle_ufo_timer_on_minimap;
+//extern consvar_t cv_battle_toggle_ufo_timer_on_minimap;
 extern consvar_t cv_battle_toggle_winner_announcement;
 
 // Server

@@ -33,6 +33,9 @@ static menuitem_t OPTIONS_RadioRacersHudRace[] =
 	{IT_HEADER, "Toggle HUD Elements", NULL,
 		NULL, {NULL}, 0, 0},
 		
+	{IT_STRING | IT_CVAR, "Show Timer During Races", "Toggle if the timer appears in normal races.",											//SCS ADD
+		NULL, {.cvar = &cv_drawtimer}, 0, 0},
+		
 	{IT_STRING | IT_CVAR, "Nametags", "Toggle in-game nametags.",
 		NULL, {.cvar = &cv_toggle_nametags}, 0, 0},   
 		
@@ -98,11 +101,11 @@ static menuitem_t OPTIONS_RadioRacersHudBattle[] =
 	{IT_HEADER, "Toggle HUD Elements", NULL,
 		NULL, {NULL}, 0, 0},
 
-	{IT_STRING | IT_CVAR, "Emeralds", "Show emerald positions in the minimap?",
+	{IT_STRING | IT_CVAR, "Emeralds", "Show emerald positions in the minimap? \x82(Disabled in netgames.)",
 		NULL, {.cvar = &cv_battle_toggle_emerald_on_minimap}, 0, 0},
 
-	{IT_STRING | IT_CVAR, "Combat UFO Timer", "Show where and how long until the next Combat UFO spawns?",
-		NULL, {.cvar = &cv_battle_toggle_ufo_timer_on_minimap}, 0, 0},
+	/*{IT_STRING | IT_CVAR, "Combat UFO Timer", "Show where and how long until the next Combat UFO spawns?",
+		NULL, {.cvar = &cv_battle_toggle_ufo_timer_on_minimap}, 0, 0},*/
 
 	{IT_STRING | IT_CVAR, "Track Players", "Display TARGET markers on the HUD to track players?",
 		NULL, {.cvar = &cv_targetrackplayers}, 0, 0},
@@ -207,6 +210,9 @@ menuitem_t OPTIONS_RadioRacersHud[] =
 	{IT_HEADER, "Ring Counter Options", NULL,
 		NULL, {NULL}, 0, 0},
 		
+	{IT_STRING | IT_CVAR, "Ring Counter Type", "Change how the Ring Counter looks.",					//SCS ADD
+		NULL, {.cvar = &cv_ringcountertype}, 0, 0},		
+		
 	{IT_STRING | IT_CVAR, "Ring Counter Position", "Toggle the RING COUNTER's HUD position.",
 		NULL, {.cvar = &cv_ringsonplayer}, 0, 0},
 			
@@ -233,9 +239,6 @@ menuitem_t OPTIONS_RadioRacersHud[] =
 		
 	{IT_STRING | IT_CVAR, "Display Delay Counter Beside FPS", "Toggle if the delay counter should be displayed next to the FPS counter.",
 		NULL, {.cvar = &cv_hud_displaypingbesideticrate}, 0, 0},
-		
-	{IT_STRING | IT_CVAR, "Show Timer During Races", "Toggle if the timer appears in normal races.",											//SCS ADD
-		NULL, {.cvar = &cv_drawtimer}, 0, 0},
 
 	{IT_HEADER, "Roulette Options", NULL,
 		NULL, {NULL}, 0, 0},
@@ -277,7 +280,7 @@ menu_t OPTIONS_RadioRacersHudDef = {
 // Accessibility
 static menuitem_t OPTIONS_RadioRacersAccessibility[] =
 {
-	{IT_STRING | IT_CVAR, "Observation Haki", "Apply a grayscale filter to the level, keeping important elements in colour.",
+	{IT_STRING | IT_CVAR, "Observation Haki", "Apply a grayscale filter to the level. \x82(Disabled in netgames.)",
 		NULL, {.cvar = &cv_applyhaki}, 0, 0},
 
 	{IT_STRING | IT_CVAR, "Obvious Voltage", "Re-colour your voltage aura depending on your driftcharge.",
@@ -286,7 +289,7 @@ static menuitem_t OPTIONS_RadioRacersAccessibility[] =
 	{IT_STRING | IT_CVAR, "Precise Countdown", "Show a more precise countdown, accompanied with a little bar.",
 		NULL, {.cvar = &cv_precise_countdown}, 0, 0},
 
-	{IT_STRING | IT_CVAR, "Ghost Rings", "Ghost rings and ringboxes when you're unable to collect any rings.",
+	{IT_STRING | IT_CVAR, "Ghost Rings", "Draw rings at an opacity level reflecting your ring count. \x82(Disabled in netgames.)",
 		NULL, {.cvar = &cv_accessibility_rings_hide}, 0, 0},
 
 	{IT_STRING | IT_CVAR, "Dangerous Player Checks", "Draw warning symbols to the side of the HUD for any incoming danger.",
@@ -411,7 +414,7 @@ static menu_t OPTIONS_RadioRacersGameplayDef = {
 // Fun features
 static menuitem_t OPTIONS_RadioRacersFun[] =
 {
-	{IT_STRING | IT_CVAR, "Enable Encore Palettes (Clientside)", "Toggle encore palettes clientside for levels, if available.",
+	{IT_STRING | IT_CVAR, "Enable Encore Palettes", "Toggle encore palettes clientside for levels, if available.",
 		NULL, {.cvar = &cv_applylocalencore}, 0, 0},
 
 	{IT_STRING | IT_CVAR, "Riders Finish Line Ticker", "Show a finish line ticker, like in Sonic Riders!",
@@ -420,13 +423,16 @@ static menuitem_t OPTIONS_RadioRacersFun[] =
 	{IT_STRING | IT_CVAR, "Show 'S' ranks", "Show S ranks in the player tally and standings (purely cosmetic).",
 		NULL, {.cvar = &cv_show_s_ranks}, 0, 0},
 		
-	{IT_SPACE | IT_NOTHING, NULL,  NULL,																										//SCS ADD START
+	{IT_STRING | IT_CVAR, "Checkpoint Items Number", "How many checkpoints are needed to make item boxes appear? \x82(Offline only.)",		//SCS ADD START
+		NULL, {.cvar = &cv_toggle_checkpointitemnum}, 0, 0},
+		
+	{IT_SPACE | IT_NOTHING, NULL,  NULL,
 		NULL, {NULL}, 0, 0},
 		
 	{IT_HEADER, "CPU Randomization", NULL,
 		NULL, {NULL}, 0, 0},
 		
-	{IT_STRING | IT_CVAR, "CPU Colors and Followers", "Make it so CPUs can randomize their color and follower each race. (Local Only!)",
+	{IT_STRING | IT_CVAR, "CPU Colors and Followers", "Make it so CPUs can randomize their color and follower each race. \x82(Disabled in netgames.)",
 		NULL, {.cvar = &cv_toggle_cpu_colorfollowerrand}, 0, 0},
 		
 	{IT_SPACE | IT_NOTHING, NULL,  NULL,
@@ -448,7 +454,7 @@ static menuitem_t OPTIONS_RadioRacersFun[] =
 		NULL, {.cvar = &cv_toggle_ribbon_signposts}, 0, 0}, 
 		
 	{IT_STRING | IT_CVAR, "Sign Sparkles", "Should 1st place's signpost sparkle if the player achieved perfect EXP during the race?",
-		NULL, {.cvar = &cv_toggle_sparkling_signposts}, 0, 0},																					//SCS ADD END
+		NULL, {.cvar = &cv_toggle_sparkling_signposts}, 0, 0},																								//SCS ADD END
 		
 };
 
