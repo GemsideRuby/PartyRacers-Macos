@@ -2796,9 +2796,9 @@ static void K_drawBackupItem(void)
 	bool tiny = r_splitscreen > 1;
 	patch_t *localpatch[3] = { kp_nodraw, kp_nodraw, kp_nodraw };
 	patch_t *localinv = kp_invincibility[((leveltime % (6*3)) / 3) + 7 + tiny];
-	patch_t *localmemer = kp_masteremerald[((leveltime % (6*3)) / 3) + 6 + tiny];
-	patch_t *localpickpocket = kp_pickpockethyu[((leveltime % (3*3)) / 3) + 9 + tiny];
-	patch_t *localtimestone = kp_timestone[((leveltime % (10*3)) / 3) + 10 + tiny];
+	patch_t *localmemer = kp_masteremerald[((leveltime % (6*3)) / 3) + 6 + (tiny ? 5 : 0) + tiny];			//SCS ADD
+	patch_t *localpickpocket = kp_pickpockethyu[((leveltime % (3*3)) / 3) + 9 + (tiny ? 2 : 0) + tiny];		//SCS ADD
+	patch_t *localtimestone = kp_timestone[((leveltime % (10*3)) / 3) + 10 + (tiny ? 9 : 0) + tiny];			//SCS ADD
 	INT32 fx = 0, fy = 0, fflags = 0, tx = 0, ty = 0;	// final coords for hud and flags...
 	const INT32 numberdisplaymin = 2;
 	skincolornum_t localcolor[3] = { static_cast<skincolornum_t>(stplyr->skincolor) };
