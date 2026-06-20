@@ -3865,7 +3865,11 @@ void P_CalcChasePostImg(player_t *player, camera_t *thiscam)
 	if (thiscam->subsector == NULL || thiscam->subsector->sector == NULL)
 		return;
 
-	if (encoremode)
+	if (player->mo->eflags & MFE_VERTICALFLIP && cv_flipcam.value && !player->exiting)		//SCS ADD
+	{
+		postimg = (encoremode) ? postimg_mirrorflip : postimg_flip;
+	}
+	else if (encoremode)												//SCS EDIT
 	{
 		postimg = postimg_mirror;
 	}
@@ -9750,7 +9754,7 @@ static boolean P_MobjRegularThink(mobj_t *mobj)
 					else
 						mobj->color = SKINCOLOR_GREY;
 								
-					if (cv_toggle_ribbon_signposts.value && mobj->target->player->rings >= 20)
+					if (cv_toggle_ribbon_signposts.value && (mobj->target->player->rings + mobj->target->player->superringdisplay) >= 20)
 					{
 						mobj_t *ribbon = P_SpawnMobjFromMobj(mobj, 0, 0, 0, MT_SIGNPOSTRIBBON);
 									

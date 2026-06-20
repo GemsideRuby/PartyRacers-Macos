@@ -2604,7 +2604,7 @@ void P_KillMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, UINT8 damaget
 		target->z += P_MobjFlip(target)*20*target->scale;
 	}
 	
-	if (target->type == MT_PPOCKETHYUDORO)				//SCS ADD
+	if (target != NULL && target->type == MT_PPOCKETHYUDORO)				//SCS ADD
 	{
 		if (target->target != NULL)
 		{
@@ -3095,9 +3095,13 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 				source->player->roundconditions.checkthisframe = true;
 			}
 			break;
-		case MT_MEGACHOPPER:
+		case MT_MEGACHOPPER:			//SCS ADD
 			return false;
 			break;
+			
+		case MT_PPOCKETHYUDORO:		//SCS ADD
+			if (target->type == MT_PPOCKETHYUDORO && (target->state == &states[S_BHYUDORO_RETURNING] || target->extravalue1 != 0))
+				return false;
 
 		default:
 			break;
@@ -3131,9 +3135,13 @@ static boolean P_DamageMobjCompat(mobj_t *target, mobj_t *inflictor, mobj_t *sou
 
 			P_SetObjectMomZ(target, 12*FRACUNIT, false);
 			break;
-		case MT_MEGACHOPPER:
+		/*case MT_MEGACHOPPER:		//SCS ADD
 			return false;
 			break;
+			
+		case MT_PPOCKETHYUDORO:		//SCS ADD
+			if (target->type == MT_PPOCKETHYUDORO && target->state == &states[S_BHYUDORO_RETURNING])
+				return false;*/
 
 		default:
 			break;
@@ -4203,6 +4211,10 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 		case MT_MEGACHOPPER:		//SCS ADD
 				return false;
 			break;
+			
+		case MT_PPOCKETHYUDORO:		//SCS ADD
+			if (target->type == MT_PPOCKETHYUDORO && (target->state == &states[S_BHYUDORO_RETURNING] || target->extravalue1 != 0))
+				return false;
 
 		default:
 			break;
@@ -4236,9 +4248,13 @@ boolean P_DamageMobj(mobj_t *target, mobj_t *inflictor, mobj_t *source, INT32 da
 
 			P_SetObjectMomZ(target, 12*FRACUNIT, false);
 			break;
-		case MT_MEGACHOPPER:									//SCS ADD
+		/*case MT_MEGACHOPPER:									//SCS ADD
 			return false;
 			break;
+			
+		case MT_PPOCKETHYUDORO:		//SCS ADD
+			if (target->type == MT_PPOCKETHYUDORO && target->state == &states[S_BHYUDORO_RETURNING])
+				return false;*/
 
 		default:
 			break;

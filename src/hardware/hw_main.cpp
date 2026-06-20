@@ -15,6 +15,7 @@
 #include <math.h>
 
 #include "../doomstat.h"
+#include "hw_defs.h"
 
 #ifdef HWRENDER
 #include "hw_glob.h"
@@ -5575,12 +5576,12 @@ static void HWR_DrawSkyBackground(player_t *player)
 		HWR_SetTransformAiming(&dometransform, player, false);
 		dometransform.angley = (float)((viewangle-ANGLE_270)>>ANGLETOFINESHIFT)*(360.0f/(float)FINEANGLES);
 
-		if (*type == postimg_flip)
+		if (*type == postimg_flip || *type == postimg_mirrorflip)			//SCS EDIT
 			dometransform.flip = true;
 		else
 			dometransform.flip = false;
 
-		if (*type == postimg_mirror)
+		if (*type == postimg_mirror || *type == postimg_mirrorflip)			//SCS EDIT
 			dometransform.mirror = true;
 		else
 			dometransform.mirror = false;
@@ -5854,12 +5855,12 @@ static void HWR_RenderViewpoint(player_t *player, boolean drawSkyTexture, boolea
 	gl_viewludsin = FIXED_TO_FLOAT(FINECOSINE(gl_aimingangle>>ANGLETOFINESHIFT));
 	gl_viewludcos = FIXED_TO_FLOAT(-FINESINE(gl_aimingangle>>ANGLETOFINESHIFT));
 
-	if (*type == postimg_flip)
+	if (*type == postimg_flip || *type == postimg_mirrorflip)	//SCS EDIT
 		atransform.flip = true;
 	else
 		atransform.flip = false;
 
-	if (*type == postimg_mirror)
+	if (*type == postimg_mirror || *type == postimg_mirrorflip)	//SCS EDIT
 		atransform.mirror = true;
 	else
 		atransform.mirror = false;
@@ -6039,6 +6040,7 @@ void HWR_RenderPlayerView(void)
 
 		HWD.pfnSetShaderInfo(HWD_SHADERINFO_LIGHT_CONTRAST, maplighting.contrast);
 		HWD.pfnSetShaderInfo(HWD_SHADERINFO_LIGHT_BACKLIGHT, maplighting.backlight);
+		HWD.pfnSetShaderInfo(HWD_SHADERINFO_DITHEREDLIGHTING, cv_gllightdither.value);
 	}
 
 	if (viewssnum == 0) // Only do it if it's the first screen being rendered
@@ -6107,6 +6109,16 @@ void CV_glanisotropic_OnChange(void)
 	if (rendermode == render_opengl)
 		HWD.pfnSetSpecialState(HWD_SET_TEXTUREANISOTROPICMODE, cv_glanisotropicmode.value);
 }
+
+extern "C" void CV_gllightdither_OnChange(void);
+void CV_gllightdither_OnChange(void)
+{
+	if (rendermode == render_opengl) {
+		HWD.pfnSetShaderInfo(HWD_SHADERINFO_DITHEREDLIGHTING, cv_gllightdither.value);
+		HWR_CompileShaders();
+	}
+}
+
 extern "C" struct CVarList *cvlist_opengl;
 
 //added by Hurdler: console varibale that are saved

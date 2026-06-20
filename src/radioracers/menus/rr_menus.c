@@ -21,7 +21,7 @@
 // HUD Options - Race
 static menuitem_t OPTIONS_RadioRacersHudRace[] =
 {
-	{IT_STRING | IT_CVAR, "Compact HUD Details", "Toggle compact player information in the HUD (bottom-left).",
+	{IT_STRING | IT_CVAR, "Compact HUD Details", "Toggle compact player information in the HUD (bottom-left). \x82(N/A in splitscreen)",		//SCS EDIT
 		NULL, {.cvar = &cv_hud_compact}, 0, 0},
 		
 	{IT_STRING | IT_CVAR, "Position Number", "Change how the bottom-right position number is displayed.",
@@ -134,7 +134,7 @@ static menu_t OPTIONS_RadioRacersHudBattleDef =
 // HUD Options - Hudfeed
 static menuitem_t OPTIONS_RadioRacersHudfeed[] = 
 {
-	{IT_STRING | IT_CVAR, "Enabled?", "Show the feed.",
+	{IT_STRING | IT_CVAR, "Enabled?", "Show the feed. \x82(N/A in splitscreen)",								//SCS EDIT
 		NULL, {.cvar = &cv_hudfeed_enabled}, 0, 0},
 
 	{IT_SPACE | IT_NOTHING, NULL,  NULL,
@@ -159,7 +159,10 @@ static menuitem_t OPTIONS_RadioRacersHudfeed[] =
 		NULL, {.cvar = &cv_hudfeed_show_amps}, 0, 0},
 		
 	{IT_STRING | IT_CVAR, "Show Shrink Hits?", "Show Shrink hits in the feed?",									//SCS ADD
-		NULL, {.cvar = &cv_hudfeed_toggle_shrink}, 0, 0}
+		NULL, {.cvar = &cv_hudfeed_toggle_shrink}, 0, 0},
+		
+	{IT_STRING | IT_CVAR, "Show Spring Hits?", "Show Spring hits in the feed?",									//SCS ADD
+		NULL, {.cvar = &cv_hudfeed_toggle_spring}, 0, 0}
 };
 
 void RadioHudfeedMenu_Init(void)
@@ -213,13 +216,13 @@ menuitem_t OPTIONS_RadioRacersHud[] =
 	{IT_STRING | IT_CVAR, "Ring Counter Type", "Change how the Ring Counter looks.",					//SCS ADD
 		NULL, {.cvar = &cv_ringcountertype}, 0, 0},		
 		
-	{IT_STRING | IT_CVAR, "Ring Counter Position", "Toggle the RING COUNTER's HUD position.",
+	{IT_STRING | IT_CVAR, "Ring Counter Position", "Toggle the RING COUNTER's HUD position. \x82(N/A in splitscreen)",	//SCS EDIT
 		NULL, {.cvar = &cv_ringsonplayer}, 0, 0},
 			
-	{IT_STRING | IT_CVAR, "Speedometer Position", "Toggle the SPEEDOMETER's HUD position.",
+	{IT_STRING | IT_CVAR, "Speedometer Position", "Toggle the SPEEDOMETER's HUD position. \x82(N/A in splitscreen)",	//SCS EDIT
 		NULL, {.cvar = &cv_speedometeronplayer}, 0, 0},
 
-	{IT_STRING | IT_CVAR, "EXP Display Position", "Toggle the EXP HUD position.",
+	{IT_STRING | IT_CVAR, "EXP Display Position", "Toggle the EXP HUD position. \x82(N/A in splitscreen)",				//SCS EDIT
 		NULL, {.cvar = &cv_exponplayer}, 0, 0},
 
 	{IT_HEADER, "General Options", NULL,
@@ -228,7 +231,7 @@ menuitem_t OPTIONS_RadioRacersHud[] =
 	{IT_STRING | IT_CVAR, "Input Display Type", "Toggle between the DIGITAL and ANALOG controller types in the input display.",
 		NULL, {.cvar = &cv_inputdisplaytoggle}, 0, 0},
 
-	{IT_STRING | IT_CVAR, "Input Display Size", "Toggle the size of the input display size",
+	{IT_STRING | IT_CVAR, "Input Display Size", "Toggle the size of the input display size \x82(Ignored in 3P/4P splitscreen)",		//SCS EDIT
 		NULL, {.cvar = &cv_inputdisplaytogglesize}, 0, 0},
 
 	{IT_STRING | IT_CVAR, "Hold Rankings Button", "Press and hold the rankings button to view the rankings, just like in SRB2Kart.",
@@ -243,7 +246,7 @@ menuitem_t OPTIONS_RadioRacersHud[] =
 	{IT_HEADER, "Roulette Options", NULL,
 		NULL, {NULL}, 0, 0},
 
-	{IT_STRING | IT_CVAR, "Roulette Layout", "Change the HUD layout for drawing the item/ring roluette.",
+	{IT_STRING | IT_CVAR, "Roulette Layout", "Change the HUD layout for drawing the item/ring roluette. \x82(N/A in splitscreen)",		//SCS EDIT
 		NULL, {.cvar = &cv_rouletteonplayer}, 0, 0},
 
 	{IT_STRING | IT_CVAR, "Ring Roulette Scale", "Choose a scale to draw the RING ROULETTE at.",
@@ -283,20 +286,29 @@ static menuitem_t OPTIONS_RadioRacersAccessibility[] =
 	{IT_STRING | IT_CVAR, "Observation Haki", "Apply a grayscale filter to the level. \x82(Disabled in netgames.)",
 		NULL, {.cvar = &cv_applyhaki}, 0, 0},
 
-	{IT_STRING | IT_CVAR, "Obvious Voltage", "Re-colour your voltage aura depending on your driftcharge.",
-		NULL, {.cvar = &cv_obvious_voltage}, 0, 0},
-
 	{IT_STRING | IT_CVAR, "Precise Countdown", "Show a more precise countdown, accompanied with a little bar.",
 		NULL, {.cvar = &cv_precise_countdown}, 0, 0},
 
-	{IT_STRING | IT_CVAR, "Ghost Rings", "Draw rings at an opacity level reflecting your ring count. \x82(Disabled in netgames.)",
+	{IT_STRING | IT_CVAR, "Ghost Rings", "Draw rings at an opacity level reflecting your ring count. \x82(N/A in netgames/splitscreen)",		//SCS EDIT
 		NULL, {.cvar = &cv_accessibility_rings_hide}, 0, 0},
 
 	{IT_STRING | IT_CVAR, "Dangerous Player Checks", "Draw warning symbols to the side of the HUD for any incoming danger.",
 		NULL, {.cvar = &cv_show_dangerous_player_check}, 0, 0},
+		
+	{IT_STRING | IT_CVAR, "Invert Anti-Gravity Cam", "Flips the camera upside-down when driving upside-down.",
+		NULL, {.cvar = &cv_flipcam}, 0, 0},
+		
+	{IT_SPACE | IT_NOTHING, NULL,  NULL,
+		NULL, {NULL}, 0, 0},
 
-	{IT_STRING | IT_CVAR, "Obvious Tripwires", "Draw color-coded tripwires to indicate whether you can pass through or not.",
-		NULL, {.cvar = &cv_obvious_tripwire}, 0, 0},
+	{IT_HEADER, "Obvious Mechanics", NULL,
+		NULL, {NULL}, 0, 0},
+		
+	{IT_STRING | IT_CVAR, "Obvious Voltage", "Re-colour your voltage aura depending on your driftcharge.",
+		NULL, {.cvar = &cv_obvious_voltage}, 0, 0},
+		
+	{IT_STRING | IT_CVAR, "Obvious Tripwires", "Draw color-coded tripwires to indicate if you can pass through or not. \x82(N/A in splitscreen)",	//SCS EDIT
+		NULL, {.cvar = &cv_obvious_tripwire}, 0, 0},		
 
 	{IT_SPACE | IT_NOTHING, NULL,  NULL,
 		NULL, {NULL}, 0, 0},
@@ -304,7 +316,7 @@ static menuitem_t OPTIONS_RadioRacersAccessibility[] =
 	{IT_HEADER, "Item Timers", NULL,
 		NULL, {NULL}, 0, 0},
 
-	{IT_STRING | IT_CVAR, "Enabled?", "Show item timers in the middle-bottom of your HUD.",
+	{IT_STRING | IT_CVAR, "Enabled?", "Show item timers in the middle-bottom of your HUD. \x82(N/A in splitscreen)",
 		NULL, {.cvar = &cv_gingeritemtimers}, 0, 0},
 
 	{IT_STRING | IT_CVAR, "Font Size", "Switch the font size for the timer text.",
@@ -480,7 +492,7 @@ static menuitem_t OPTIONS_RadioRacersFun2[] =														//SCS ADD
 	{IT_STRING | IT_CVAR, "Checkpoint Items Number", "How many checkpoints are needed to make item boxes appear? \x82(Offline only.)",
 		NULL, {.cvar = &cv_toggle_checkpointitemnum}, 0, 0},	
 	
-	{IT_STRING | IT_CVAR, "Randomized Item Capsules", "Item (Not Ring) Capsules in races will have randomized content. (\x82(Offline only.)",
+	{IT_STRING | IT_CVAR, "Randomized Item Capsules", "Item (Not Ring) Capsules in races will have randomized content. \x82(Offline only.)",
 		NULL, {.cvar = &cv_randomizeitemcapsules}, 0, 0},
 		
 	{IT_STRING | IT_CVAR, "Mini-Ranking Shaking", "Toggle whether the player icons in the mini-ranking shake when they take damage.",
@@ -581,7 +593,7 @@ void Roulette_OnChange(void)
 
 	UINT16 newstatus = (cv_rouletteonplayer.value) ? IT_STRING | IT_CVAR : IT_GRAYEDOUT;
 
-	for (int i = 16; i < 20; i++) {
+	for (int i = 17; i < 21; i++) {							//SCS EDIT - changing from 16 and 20 to 17 and 21. Not sure how this ever started happening, but whatever.
 		OPTIONS_RadioRacersHud[i].status = newstatus;
 	}
 
