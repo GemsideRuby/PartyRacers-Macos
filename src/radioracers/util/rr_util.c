@@ -11,7 +11,6 @@
 
 #include "../../doomtype.h"
 
-#include "../../fastcmp.h"
 #include "../../deh_tables.h"
 #include "../../doomstat.h" // encoremode, localencore
 #include "../rr_util.h" // encoremode, localencore
