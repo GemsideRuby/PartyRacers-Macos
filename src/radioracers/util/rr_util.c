@@ -348,29 +348,3 @@ int scaleInt(int value, fixed_t scale)
 {
     return value - (value - (int)(round(value * FixedToFloat(scale))));
 }
-
-// Uplifted from deh_soc.c
-UINT16 get_skincolornum(const char *word)
-{ // Returns the value of SKINCOLOR_ enumerations
-	UINT16 i;
-	if (*word >= '0' && *word <= '9')
-		return atoi(word);
-	if (fastncmp("SKINCOLOR_",word,10))
-		word += 10; // take off the SKINCOLOR_
-
-    char upper_word[MAXCOLORNAME+1];
-    strlcpy(upper_word, word, sizeof(upper_word));
-    strupr(upper_word);
-
-	for (i = 0; i < NUMCOLORFREESLOTS; i++) {
-		if (!FREE_SKINCOLORS[i])
-			break;
-		if (fastcmp(upper_word, FREE_SKINCOLORS[i]))
-			return SKINCOLOR_FIRSTFREESLOT+i;
-	}
-	for (i = 0; i < SKINCOLOR_FIRSTFREESLOT; i++)
-		if (fastcmp(upper_word, COLOR_ENUMS[i]))
-			return i;
-    
-	return 0;
-}
