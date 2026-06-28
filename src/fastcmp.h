@@ -8,6 +8,8 @@
 // See the 'LICENSE' file for more details.
 //-----------------------------------------------------------------------------
 
+#include <ctype.h> // fixes a compile error on macos
+
 #ifndef __FASTCMP_H__
 #define __FASTCMP_H__
 
